@@ -108,10 +108,14 @@
       box-shadow: 0 6px 0 rgba(91, 74, 63, 0.2);
     }
     .screen button:active { transform: translateY(3px); box-shadow: 0 3px 0 rgba(91,74,63,0.2); }
+    .screen button.ghost {
+      background: transparent; color: var(--ink); border-color: var(--accent);
+      font-size: 15px; padding: 10px 28px; margin-top: 14px; box-shadow: none;
+    }
     .hidden { opacity: 0; pointer-events: none; }
     #ending { display: none; }
   </style>
-  <script type="module" crossorigin src="./assets/index-B2A38ZUd.js"></script>
+  <script type="module" crossorigin src="./assets/index-CpTIkAES.js"></script>
 </head>
 <body>
   <div id="app"></div>
@@ -141,9 +145,10 @@
   <div id="ending" class="screen">
     <h1>✨ Chapter I Complete</h1>
     <h2>Christian leaves the City of Destruction</h2>
-    <p>Following the shining light, Christian sets out across the fields toward
-       the Wicket Gate — the first step on the long road to the Celestial City…</p>
-    <button id="restart-btn">Play Again</button>
+    <p>Through the Wicket Gate and into the wide world — the first step on the
+       long road to the Celestial City…</p>
+    <button id="continue-btn">Continue the Journey →</button>
+    <button id="restart-btn" class="ghost">Play Chapter I Again</button>
   </div>
 
 </body>

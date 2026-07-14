@@ -22,6 +22,7 @@ export interface NPC {
 export interface QuestState {
   talkedToEvangelist: boolean;
   talkedToFamily: boolean;
+  pliableFollowing: boolean;
   chapterComplete: boolean;
 }
 
@@ -138,15 +139,24 @@ const DEFS: NPCDef[] = [
     facing: Math.PI,
     wanderRadius: 3,
     getLines: (s) =>
-      s.talkedToEvangelist
+      s.pliableFollowing
         ? [
-            { speaker: 'Pliable', text: 'A shining light, you say?! Ooooh, that DOES sound exciting…' },
-            { speaker: 'Pliable', text: 'Maybe I will hop along! …Unless the road gets muddy. I do hate mud.' },
+            { speaker: 'Pliable', text: 'Lead on, Christian! Crowns of gold, here we come — hop hop!' },
           ]
-        : [
-            { speaker: 'Pliable', text: 'Oh, hello Christian! Don\'t mind old Obstinate — he grumbles at clouds, too.' },
-            { speaker: 'Pliable', text: 'A Celestial City, all gold and light? If it\'s real, I\'d love to see it… I think.' },
-          ],
+        : s.talkedToEvangelist
+          ? [
+              { speaker: 'Pliable', text: 'A shining light?! And a Wicket Gate?! Ooooh, tell me EVERYTHING.' },
+              { speaker: 'Christian', text: 'Evangelist says beyond the gate lies the way to the Celestial City — where no city ever crumbles.' },
+              { speaker: 'Pliable', text: 'Golden streets? Crowns? No crumbling?! That settles it — I\'m coming with you!' },
+              { speaker: 'Pliable', text: 'Well, what are we standing about for? Lead the way, friend!' },
+            ]
+          : [
+              { speaker: 'Pliable', text: 'Oh, hello Christian! Don\'t mind old Obstinate — he grumbles at clouds, too.' },
+              { speaker: 'Pliable', text: 'A Celestial City, all gold and light? If it\'s real, I\'d love to see it… I think.' },
+            ],
+    onFinish: (s) => {
+      if (s.talkedToEvangelist) s.pliableFollowing = true;
+    },
   },
   {
     id: 'baker',

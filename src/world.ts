@@ -15,8 +15,18 @@ export interface World {
   group: THREE.Group;
   colliders: Collider[];
   lightBeam: THREE.Group; // shining light, hidden until Evangelist speaks
+  gate: { open: boolean }; // wicket gate doors swing open once set
   update: (t: number) => void; // ambient life: smoke, butterflies, birds
 }
+
+// city wall footprint (used by main.ts for movement bounds)
+export const WALL = {
+  east: 60,
+  west: -46,
+  north: -34,
+  south: 34,
+  gateHalfWidth: 1.9, // the gate corridor on the east wall at z≈0
+} as const;
 
 function makeHouse(
   wall: number, roof: number, w = 5, d = 4.4, h = 2.6,
@@ -182,7 +192,8 @@ export function buildWorld(scene: THREE.Scene): World {
     group.add(p);
   };
   addPath(0, 0, 16, 16);          // plaza
-  addPath(30, 0, 44, 5);          // east road to the fields
+  addPath(33.5, 0, 51, 5);        // east road to the wicket gate
+  addPath(63, 0, 8, 4);           // path stub beyond the gate
   addPath(-16, 0, 16, 4.5);       // west road
   addPath(0, -14, 4.5, 14);       // north road
   addPath(0, 13, 4.5, 12);        // south road
@@ -299,14 +310,102 @@ export function buildWorld(scene: THREE.Scene): World {
     group.add(block(0.08, 0.2, 0.08, PALETTE.leaf, x, 0.06, z));
   }
 
-  // ---------- crumbling city wall hints (it IS the City of Destruction) ----------
-  for (const [x, z, w] of [[-40, -20, 6], [-42, 6, 8], [-38, 20, 5], [-6, -30, 9], [12, 30, 7]] as const) {
-    const wall = block(w, 1.6 + rng(), 1.2, PALETTE.stone, x, 0.8, z);
-    wall.rotation.y = rng() * 0.6;
-    group.add(wall);
-    colliders.push({ x, z, r: w / 2 });
-    // cracked rubble beside it
-    group.add(block(0.8, 0.5, 0.8, 0xc4beb5, x + w / 2 + 0.8, 0.25, z + 0.5));
+  // ---------- white brick city wall around the whole town ----------
+  const BRICK = 0xf7f3ea;
+  const BRICK_ALT = 0xefe9dc;
+  const MORTAR = 0xdfd8c8;
+  const wallH = 2.8;
+  const wallT = 1.2;
+
+  const addWallRun = (
+    x0: number, z0: number, x1: number, z1: number, skip?: (px: number, pz: number) => boolean,
+  ) => {
+    const dx = x1 - x0;
+    const dz = z1 - z0;
+    const len = Math.hypot(dx, dz);
+    const segs = Math.round(len / 6);
+    const horizontal = Math.abs(dx) > Math.abs(dz);
+    for (let i = 0; i < segs; i++) {
+      const fx = x0 + (dx * (i + 0.5)) / segs;
+      const fz = z0 + (dz * (i + 0.5)) / segs;
+      if (skip && skip(fx, fz)) continue;
+      const segLen = len / segs;
+      const w = horizontal ? segLen : wallT;
+      const d = horizontal ? wallT : segLen;
+      const wall = block(w, wallH, d, i % 2 === 0 ? BRICK : BRICK_ALT, fx, wallH / 2, fz);
+      group.add(wall);
+      // mortar lines so it reads as brickwork
+      group.add(block(horizontal ? w : wallT + 0.06, 0.09, horizontal ? wallT + 0.06 : d, MORTAR, fx, 1.0, fz));
+      group.add(block(horizontal ? w : wallT + 0.06, 0.09, horizontal ? wallT + 0.06 : d, MORTAR, fx, 1.9, fz));
+      // cap + crenellations
+      group.add(block(w + 0.2, 0.28, d + 0.2, MORTAR, fx, wallH + 0.14, fz));
+      const crens = Math.floor(segLen / 1.9);
+      for (let c = 0; c < crens; c++) {
+        const off = -segLen / 2 + (c + 0.5) * (segLen / crens);
+        group.add(block(
+          horizontal ? 0.85 : wallT + 0.1, 0.55, horizontal ? wallT + 0.1 : 0.85,
+          BRICK, fx + (horizontal ? off : 0), wallH + 0.55, fz + (horizontal ? 0 : off),
+        ));
+      }
+    }
+  };
+
+  const addTower = (x: number, z: number, big = false) => {
+    const s = big ? 2.4 : 2.0;
+    const h = big ? 5.2 : 4.2;
+    group.add(block(s, h, s, BRICK, x, h / 2, z));
+    group.add(block(s + 0.5, 0.35, s + 0.5, MORTAR, x, h + 0.18, z));
+    for (const [ox, oz] of [[-1, -1], [-1, 1], [1, -1], [1, 1]] as const) {
+      group.add(block(0.55, 0.55, 0.55, BRICK, x + (ox * s) / 2.6, h + 0.6, z + (oz * s) / 2.6));
+    }
+    // cute pastel roof cap
+    group.add(block(s - 0.4, 0.6, s - 0.4, PALETTE.roofPink, x, h + 0.75, z));
+    colliders.push({ x, z, r: s * 0.75 });
+  };
+
+  const E = WALL.east;
+  const W = WALL.west;
+  const N = WALL.north;
+  const S = WALL.south;
+  addWallRun(W, N, E, N); // north
+  addWallRun(W, S, E, S); // south
+  addWallRun(W, N, W, S); // west
+  // east wall with a gap for the wicket gate
+  addWallRun(E, N, E, S, (_px, pz) => Math.abs(pz) < 4.4);
+  // corner + gate towers
+  addTower(W, N);
+  addTower(E, N);
+  addTower(W, S);
+  addTower(E, S);
+  addTower(E, -3.6, true);
+  addTower(E, 3.6, true);
+  // arch over the gate
+  group.add(block(0.9, 1.1, 5.4, BRICK, E, 4.3, 0));
+  group.add(block(1.1, 0.3, 5.8, MORTAR, E, 4.95, 0));
+  group.add(block(0.7, 0.5, 4.6, PALETTE.roofPink, E, 5.3, 0));
+
+  // wicket gate doors (swing open once Evangelist reveals the way)
+  const gate = { open: false };
+  const makeDoor = (side: number) => {
+    const pivot = new THREE.Group();
+    pivot.position.set(E, 0, 2.35 * side);
+    const panel = block(0.35, 3.4, 2.3, PALETTE.woodDark, 0, 1.7, -1.15 * side);
+    pivot.add(panel);
+    // plank lines + hinges
+    pivot.add(block(0.4, 0.16, 2.3, 0x8a6f52, 0, 0.9, -1.15 * side));
+    pivot.add(block(0.4, 0.16, 2.3, 0x8a6f52, 0, 2.4, -1.15 * side));
+    pivot.add(block(0.12, 0.3, 0.3, PALETTE.robeGold, 0.2, 1.7, -2.0 * side));
+    group.add(pivot);
+    return pivot;
+  };
+  const doorL = makeDoor(-1);
+  const doorR = makeDoor(1);
+
+  // a couple of mossy rubble piles inside — it IS the City of Destruction
+  for (const [x, z] of [[-30, -20], [18, 24], [-24, 18]] as const) {
+    group.add(block(1.4, 0.8, 1.2, PALETTE.stone, x, 0.4, z));
+    group.add(block(0.8, 0.5, 0.8, 0xc4beb5, x + 1.1, 0.25, z + 0.4));
+    group.add(block(0.5, 0.3, 0.5, PALETTE.grassDark, x + 0.4, 0.85, z - 0.3));
   }
 
   // ---------- the shining light, far to the east (hidden at first) ----------
@@ -343,11 +442,8 @@ export function buildWorld(scene: THREE.Scene): World {
   const glow = new THREE.PointLight(0xffe87a, 3.5, 40);
   glow.position.y = 4;
   lightBeam.add(glow);
-  // little wicket-gate silhouette at the base
-  lightBeam.add(block(0.3, 2.4, 0.3, PALETTE.woodDark, -1.1, 1.2, 0));
-  lightBeam.add(block(0.3, 2.4, 0.3, PALETTE.woodDark, 1.1, 1.2, 0));
-  lightBeam.add(block(2.5, 0.3, 0.3, PALETTE.woodDark, 0, 2.5, 0));
-  lightBeam.position.set(78, 0, 0);
+  // the light shines down just beyond the wicket gate in the city wall
+  lightBeam.position.set(64.5, 0, 0);
   lightBeam.visible = false;
   group.add(lightBeam);
 
@@ -400,6 +496,11 @@ export function buildWorld(scene: THREE.Scene): World {
   }
 
   const update = (t: number) => {
+    // swing the wicket gate doors open/closed
+    const doorTarget = gate.open ? 1.85 : 0;
+    doorL.rotation.y += (-doorTarget - doorL.rotation.y) * 0.04;
+    doorR.rotation.y += (doorTarget - doorR.rotation.y) * 0.04;
+
     for (const p of puffs) {
       const cycle = (t * p.speed + p.phase) % 1;
       p.mesh.position.set(
@@ -434,7 +535,7 @@ export function buildWorld(scene: THREE.Scene): World {
   };
 
   scene.add(group);
-  return { group, colliders, lightBeam, update };
+  return { group, colliders, lightBeam, gate, update };
 }
 
 // tiny deterministic PRNG so the village looks the same every run

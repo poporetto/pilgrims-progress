@@ -1,9 +1,10 @@
 import * as THREE from 'three';
 import { PALETTE } from './palette';
 import { makeBear, animateBear } from './bear';
-import { buildWorld, Collider } from './world';
+import { buildWorld, WALL } from './world';
 import { createNPCs, NPC, QuestState, DialogueLine } from './npcs';
 import { Music } from './music';
+import { WorldMap } from './worldmap';
 
 // ---------------------------------------------------------------- setup
 
@@ -55,10 +56,13 @@ scene.add(christian.root);
 const quest: QuestState = {
   talkedToEvangelist: false,
   talkedToFamily: false,
+  pliableFollowing: false,
   chapterComplete: false,
 };
 
 const music = new Music();
+const worldMap = new WorldMap(window.innerWidth / window.innerHeight);
+let mode: 'village' | 'map' = 'village';
 
 // ---------------------------------------------------------------- UI refs
 
@@ -100,6 +104,23 @@ ui.musicBtn.addEventListener('click', () => {
 });
 
 ui.restartBtn.addEventListener('click', () => window.location.reload());
+
+// after the ending screen, continue onto the world map
+const continueBtn = document.getElementById('continue-btn') as HTMLButtonElement;
+continueBtn.addEventListener('click', () => {
+  music.blip();
+  ui.ending.classList.add('hidden');
+  setTimeout(() => (ui.ending.style.display = 'none'), 900);
+  // close any dialogue left open in the village
+  dialogueOpen = false;
+  dialogueNPC = null;
+  ui.dialogue.style.display = 'none';
+  ui.talkBtn.style.display = 'none';
+  mode = 'map';
+  worldMap.start(quest.pliableFollowing ? ['pliable'] : []);
+  setObjective('🗺 The road east — onward to the Slough of Despond');
+  ui.promptKey.style.display = 'none';
+});
 
 function setObjective(text: string): void {
   ui.objective.textContent = text;
@@ -157,7 +178,8 @@ ui.dialogue.addEventListener('click', advanceDialogue);
 
 function revealShiningLight(): void {
   world.lightBeam.visible = true;
-  setObjective('✨ Follow the shining light to the east!');
+  world.gate.open = true;
+  setObjective('✨ Follow the shining light through the Wicket Gate!');
 }
 
 // ---------------------------------------------------------------- input
@@ -250,6 +272,43 @@ const camOffset = new THREE.Vector3(0, 13, 13);
 const camTarget = new THREE.Vector3();
 let playerMoving = false;
 
+// ---------- little white dust puffs at Christian's feet ----------
+interface Dust { mesh: THREE.Mesh; mat: THREE.MeshBasicMaterial; life: number; vx: number; vz: number; }
+const dustPool: Dust[] = [];
+for (let i = 0; i < 16; i++) {
+  const m = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0 });
+  const mesh = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.22, 0.22), m);
+  mesh.visible = false;
+  mesh.castShadow = false;
+  scene.add(mesh);
+  dustPool.push({ mesh, mat: m, life: 1, vx: 0, vz: 0 });
+}
+let dustTimer = 0;
+
+function spawnDust(x: number, z: number): void {
+  const d = dustPool.find((p) => p.life >= 1);
+  if (!d) return;
+  d.life = 0;
+  d.vx = (Math.random() - 0.5) * 0.8;
+  d.vz = (Math.random() - 0.5) * 0.8;
+  d.mesh.position.set(x, 0.12, z);
+  d.mesh.visible = true;
+}
+
+function updateDust(dt: number): void {
+  for (const d of dustPool) {
+    if (d.life >= 1) continue;
+    d.life = Math.min(1, d.life + dt * 2.2);
+    d.mesh.position.x += d.vx * dt;
+    d.mesh.position.z += d.vz * dt;
+    d.mesh.position.y += dt * 0.9;
+    const s = 0.6 + d.life * 1.6;
+    d.mesh.scale.setScalar(s);
+    d.mat.opacity = 0.55 * (1 - d.life);
+    if (d.life >= 1) d.mesh.visible = false;
+  }
+}
+
 function resolveCollisions(pos: THREE.Vector3): void {
   const R = 0.6;
   for (const c of world.colliders) {
@@ -272,9 +331,19 @@ function resolveCollisions(pos: THREE.Vector3): void {
       pos.z = npc.parts.root.position.z + (dz / d) * 1.1;
     }
   }
-  // world bounds
-  pos.x = THREE.MathUtils.clamp(pos.x, -45, 90);
-  pos.z = THREE.MathUtils.clamp(pos.z, -32, 32);
+  // city wall bounds (inner faces minus the player's radius)
+  const xMin = WALL.west + 1.4;
+  const xMax = WALL.east - 1.2;
+  const zLim = WALL.south - 1.4;
+  const inGateCorridor = Math.abs(pos.z) < WALL.gateHalfWidth && pos.x > xMax - 2;
+  if (inGateCorridor && world.gate.open) {
+    // squeeze through the wicket gate to the light outside
+    pos.z = THREE.MathUtils.clamp(pos.z, -WALL.gateHalfWidth, WALL.gateHalfWidth);
+    pos.x = Math.min(pos.x, WALL.east + 8);
+  } else {
+    pos.x = THREE.MathUtils.clamp(pos.x, xMin, xMax);
+    pos.z = THREE.MathUtils.clamp(pos.z, -zLim, zLim);
+  }
 }
 
 let blockMessageAt = 0;
@@ -302,21 +371,27 @@ function updatePlayer(dt: number, t: number): void {
       christian.root.rotation.y, Math.atan2(mx, mz), 12 * dt,
     );
 
-    // can't leave town before meeting Evangelist
-    if (!quest.talkedToEvangelist && pos.x > 48) {
-      pos.x = 48;
+    // the wicket gate stays shut until Evangelist shows the way
+    if (!quest.talkedToEvangelist && pos.x > WALL.east - 4 && Math.abs(pos.z) < 5) {
       if (t - blockMessageAt > 4) {
         blockMessageAt = t;
-        setObjective('🤔 The fields look endless… I should ask Evangelist for direction.');
+        setObjective('🚪 The gate is shut fast… Evangelist on the east road may know the way.');
       }
+    }
+
+    // kick up little dust puffs while walking
+    dustTimer -= dt;
+    if (dustTimer <= 0) {
+      dustTimer = 0.13;
+      spawnDust(pos.x + (Math.random() - 0.5) * 0.5, pos.z + (Math.random() - 0.5) * 0.5);
     }
   }
   animateBear(christian, t, playerMoving);
 
-  // reached the shining light → chapter complete
+  // reached the shining light beyond the gate → chapter complete
   if (
     quest.talkedToEvangelist && !quest.chapterComplete &&
-    christian.root.position.distanceTo(world.lightBeam.position) < 4.5
+    christian.root.position.distanceTo(world.lightBeam.position) < 3.4
   ) {
     quest.chapterComplete = true;
     ui.ending.style.display = 'flex';
@@ -347,6 +422,25 @@ function updateNPCs(dt: number, t: number): void {
   npcs.forEach((npc, i) => {
     const ws = wanderState[i];
     const isTalking = dialogueOpen && dialogueNPC === npc;
+
+    // Pliable tags along once persuaded
+    if (npc.id === 'pliable' && quest.pliableFollowing && !isTalking) {
+      const pos = npc.parts.root.position;
+      const dx = christian.root.position.x - pos.x;
+      const dz = christian.root.position.z - pos.z;
+      const d = Math.hypot(dx, dz);
+      if (d > 2.1) {
+        const sp = Math.min(SPEED * 0.92, d * 2.5) * dt;
+        pos.x += (dx / d) * sp;
+        pos.z += (dz / d) * sp;
+        npc.parts.root.rotation.y = Math.atan2(dx, dz);
+        animateBear(npc.parts, t + 0.4, true);
+      } else {
+        animateBear(npc.parts, t + 0.4, false);
+      }
+      return;
+    }
+
     if (!npc.wanderRadius || isTalking) {
       animateBear(npc.parts, t + i * 1.7, false);
       return;
@@ -387,6 +481,32 @@ function tick(): void {
   const dt = Math.min(clock.getDelta(), 0.05);
   const t = clock.elapsedTime;
 
+  if (mode === 'map') {
+    // ---- world map mode ----
+    let ax = 0;
+    if (keys.has('KeyD') || keys.has('ArrowRight')) ax += 1;
+    if (keys.has('KeyA') || keys.has('ArrowLeft')) ax -= 1;
+    if (keys.has('KeyW') || keys.has('ArrowUp')) ax += 1; // "onward" = east
+    if (keys.has('KeyS') || keys.has('ArrowDown')) ax -= 1;
+    ax += joy.x;
+    worldMap.update(dt, t, THREE.MathUtils.clamp(ax, -1, 1));
+
+    const spot = worldMap.spot();
+    if (spot === 'city') {
+      ui.prompt.style.display = 'block';
+      ui.promptWho.textContent = '🏘 City of Destruction — Chapter I ✓';
+    } else if (spot === 'slough') {
+      ui.prompt.style.display = 'block';
+      ui.promptWho.textContent = '🐸 Slough of Despond — Chapter II, coming soon!';
+    } else {
+      ui.prompt.style.display = 'none';
+    }
+
+    renderer.render(worldMap.scene, worldMap.camera);
+    return;
+  }
+
+  // ---- village mode ----
   if (started) {
     updatePlayer(dt, t);
     updateNPCs(dt, t);
@@ -404,6 +524,7 @@ function tick(): void {
   }
 
   world.update(t);
+  updateDust(dt);
 
   // shining light pulse
   if (world.lightBeam.visible) {
@@ -422,10 +543,11 @@ function tick(): void {
 window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
+  worldMap.resize(window.innerWidth / window.innerHeight);
   renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
 tick();
 
 // small debug handle for testing (harmless in production)
-(window as any).__game = { christian, npcs, quest, world, openDialogue, advanceDialogue, camTarget };
+(window as any).__game = { christian, npcs, quest, world, openDialogue, advanceDialogue, camTarget, worldMap };
