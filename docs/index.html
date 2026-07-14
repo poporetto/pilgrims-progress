@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Pilgrim's Progress — City of Destruction</title>
+  <style>
+    :root {
+      --ink: #5b4a3f;
+      --paper: #fff8ef;
+      --accent: #f4b8c4;
+      --accent2: #a9d8f0;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; overflow: hidden; background: #cfe8ff; }
+    body { font-family: "Trebuchet MS", "Comic Sans MS", system-ui, sans-serif; color: var(--ink); }
+    #app { position: fixed; inset: 0; }
+    canvas { display: block; }
+
+    /* ---------- HUD ---------- */
+    #objective {
+      position: fixed; top: 14px; left: 50%; transform: translateX(-50%);
+      background: var(--paper); border: 3px solid var(--accent);
+      border-radius: 999px; padding: 8px 22px; font-size: 15px; font-weight: bold;
+      box-shadow: 0 4px 0 rgba(91, 74, 63, 0.15);
+      white-space: nowrap; pointer-events: none; z-index: 10;
+      transition: opacity 0.4s;
+    }
+    #music-btn {
+      position: fixed; top: 12px; right: 12px; z-index: 20;
+      width: 46px; height: 46px; border-radius: 50%;
+      border: 3px solid var(--accent2); background: var(--paper);
+      font-size: 20px; cursor: pointer;
+      box-shadow: 0 4px 0 rgba(91, 74, 63, 0.15);
+    }
+    #music-btn:active { transform: translateY(2px); box-shadow: 0 2px 0 rgba(91,74,63,0.15); }
+
+    /* ---------- Interact prompt ---------- */
+    #prompt {
+      position: fixed; bottom: 150px; left: 50%; transform: translateX(-50%);
+      background: var(--paper); border: 3px solid var(--accent2);
+      border-radius: 14px; padding: 8px 18px; font-size: 15px; font-weight: bold;
+      box-shadow: 0 4px 0 rgba(91, 74, 63, 0.15);
+      display: none; z-index: 10; pointer-events: none; white-space: nowrap;
+    }
+    #prompt .key {
+      display: inline-block; background: var(--accent2); color: #fff;
+      border-radius: 6px; padding: 1px 8px; margin-right: 6px;
+    }
+
+    /* ---------- Dialogue ---------- */
+    #dialogue {
+      position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%);
+      width: min(640px, calc(100% - 32px));
+      background: var(--paper); border: 4px solid var(--accent);
+      border-radius: 20px; padding: 16px 20px 20px;
+      box-shadow: 0 6px 0 rgba(91, 74, 63, 0.18);
+      display: none; z-index: 30; cursor: pointer;
+    }
+    #dialogue .name {
+      display: inline-block; background: var(--accent); color: #fff;
+      font-weight: bold; font-size: 14px; border-radius: 999px;
+      padding: 3px 14px; margin-bottom: 8px;
+    }
+    #dialogue .text { font-size: 17px; line-height: 1.5; min-height: 52px; }
+    #dialogue .next {
+      position: absolute; right: 18px; bottom: 10px; font-size: 13px; opacity: 0.55;
+      animation: bob 1s ease-in-out infinite;
+    }
+    @keyframes bob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+
+    /* ---------- Touch controls ---------- */
+    #joystick {
+      position: fixed; left: 22px; bottom: 22px; width: 120px; height: 120px;
+      border-radius: 50%; background: rgba(255, 248, 239, 0.45);
+      border: 3px solid rgba(255, 255, 255, 0.6);
+      touch-action: none; z-index: 15; display: none;
+    }
+    #joystick .stick {
+      position: absolute; left: 50%; top: 50%; width: 54px; height: 54px;
+      transform: translate(-50%, -50%); border-radius: 50%;
+      background: rgba(244, 184, 196, 0.85); border: 3px solid #fff;
+    }
+    #talk-btn {
+      position: fixed; right: 26px; bottom: 40px; width: 84px; height: 84px;
+      border-radius: 50%; border: 4px solid #fff;
+      background: rgba(169, 216, 240, 0.92); color: #fff;
+      font-size: 17px; font-weight: bold; z-index: 15; display: none;
+      box-shadow: 0 5px 0 rgba(91, 74, 63, 0.2);
+    }
+    body.touch #joystick { display: block; }
+
+    /* ---------- Title / ending ---------- */
+    .screen {
+      position: fixed; inset: 0; z-index: 50;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      text-align: center; padding: 24px;
+      background: linear-gradient(#cfe8ffee, #ffe3ecee);
+      transition: opacity 0.8s;
+    }
+    .screen h1 { font-size: clamp(28px, 6vw, 52px); margin-bottom: 8px; text-shadow: 0 3px 0 #fff; }
+    .screen h2 { font-size: clamp(16px, 3vw, 24px); font-weight: normal; margin-bottom: 26px; opacity: 0.8; }
+    .screen p { max-width: 480px; font-size: 16px; line-height: 1.6; margin-bottom: 28px; }
+    .screen button {
+      font-family: inherit; font-size: 20px; font-weight: bold; color: #fff;
+      background: var(--accent); border: 4px solid #fff; border-radius: 999px;
+      padding: 14px 44px; cursor: pointer;
+      box-shadow: 0 6px 0 rgba(91, 74, 63, 0.2);
+    }
+    .screen button:active { transform: translateY(3px); box-shadow: 0 3px 0 rgba(91,74,63,0.2); }
+    .hidden { opacity: 0; pointer-events: none; }
+    #ending { display: none; }
+  </style>
+  <script type="module" crossorigin src="/assets/index-DDh8uTiA.js"></script>
+</head>
+<body>
+  <div id="app"></div>
+
+  <div id="objective">🐻 Say goodbye, then find Evangelist</div>
+  <button id="music-btn" title="Toggle music">🎵</button>
+  <div id="prompt"><span class="key">E</span><span class="who"></span></div>
+
+  <div id="dialogue">
+    <div class="name"></div>
+    <div class="text"></div>
+    <div class="next">▼ continue</div>
+  </div>
+
+  <div id="joystick"><div class="stick"></div></div>
+  <button id="talk-btn">Talk</button>
+
+  <div id="title-screen" class="screen">
+    <h1>🐻 Pilgrim's Progress</h1>
+    <h2>Chapter I — The City of Destruction</h2>
+    <p>Christian the bear carries a heavy burden, and his heart tells him this
+       city will not stand. Walk with him as he says his goodbyes and seeks
+       the way to the Celestial City.</p>
+    <button id="start-btn">Begin the Journey</button>
+  </div>
+
+  <div id="ending" class="screen">
+    <h1>✨ Chapter I Complete</h1>
+    <h2>Christian leaves the City of Destruction</h2>
+    <p>Following the shining light, Christian sets out across the fields toward
+       the Wicket Gate — the first step on the long road to the Celestial City…</p>
+    <button id="restart-btn">Play Again</button>
+  </div>
+
+</body>
+</html>
