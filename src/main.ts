@@ -41,7 +41,14 @@ scene.add(sun);
 const world = buildWorld(scene);
 const npcs: NPC[] = createNPCs(scene);
 
-const christian = makeBear({ fur: PALETTE.bearBrown, accessory: 'burden' });
+const christian = makeBear({
+  species: 'bear',
+  fur: PALETTE.bearBrown,
+  outfit: 'shirt',
+  outfitColor: 0x8fb8d8,
+  sling: true,
+  burden: true,
+});
 christian.root.position.set(-6, 0, -4);
 scene.add(christian.root);
 
@@ -168,6 +175,11 @@ window.addEventListener('keydown', (e) => {
   }
 });
 window.addEventListener('keyup', (e) => keys.delete(e.code));
+// don't leave movement keys stuck when the tab loses focus mid-keypress
+window.addEventListener('blur', () => keys.clear());
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) keys.clear();
+});
 
 // touch joystick
 const joy = { active: false, id: -1, x: 0, y: 0 };
@@ -390,6 +402,8 @@ function tick(): void {
       if (!dialogueOpen) ui.talkBtn.style.display = 'none';
     }
   }
+
+  world.update(t);
 
   // shining light pulse
   if (world.lightBeam.visible) {

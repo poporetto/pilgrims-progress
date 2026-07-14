@@ -15,6 +15,7 @@ export interface World {
   group: THREE.Group;
   colliders: Collider[];
   lightBeam: THREE.Group; // shining light, hidden until Evangelist speaks
+  update: (t: number) => void; // ambient life: smoke, butterflies, birds
 }
 
 function makeHouse(
@@ -34,7 +35,8 @@ function makeHouse(
     const rw = w + 0.6 - (i * (w + 0.6)) / steps;
     g.add(block(rw, 0.5, d + 0.6, roof, 0, h + 0.25 + i * 0.5, 0));
   }
-  g.add(block(0.5, 0.9, 0.5, PALETTE.stone, w / 2 - 0.8, h + 1.1, -0.8)); // chimney
+  g.add(block(0.55, 2.2, 0.55, PALETTE.stone, w / 2 - 0.8, h + 1.6, -0.8)); // chimney
+  g.add(block(0.7, 0.25, 0.7, 0xc4beb5, w / 2 - 0.8, h + 2.75, -0.8)); // chimney cap
   // door
   g.add(block(0.9, 1.5, 0.16, PALETTE.woodDark, 0, 0.75, d / 2 + 0.06));
   g.add(block(0.12, 0.12, 0.1, PALETTE.roofPeach, 0.28, 0.75, d / 2 + 0.16));
@@ -77,6 +79,63 @@ function makeWell(): THREE.Group {
   g.add(block(0.14, 1.5, 0.14, PALETTE.woodDark, -0.7, 1.2, 0));
   g.add(block(0.14, 1.5, 0.14, PALETTE.woodDark, 0.7, 1.2, 0));
   g.add(block(1.8, 0.35, 1.1, PALETTE.roofPink, 0, 2.05, 0));
+  return g;
+}
+
+function makeStall(awning: number): THREE.Group {
+  const g = new THREE.Group();
+  // counter
+  g.add(block(2.6, 0.9, 1.2, PALETTE.wood, 0, 0.45, 0));
+  g.add(block(2.8, 0.14, 1.4, PALETTE.woodDark, 0, 0.95, 0));
+  // goods on the counter
+  g.add(block(0.4, 0.3, 0.4, PALETTE.flowerYellow, -0.8, 1.15, 0.1));
+  g.add(block(0.35, 0.35, 0.35, 0xffb3c6, -0.1, 1.2, -0.2));
+  g.add(block(0.45, 0.25, 0.3, 0xaecbff, 0.7, 1.14, 0.15));
+  // posts + striped awning
+  g.add(block(0.14, 2.2, 0.14, PALETTE.woodDark, -1.25, 1.1, 0.62));
+  g.add(block(0.14, 2.2, 0.14, PALETTE.woodDark, 1.25, 1.1, 0.62));
+  g.add(block(0.14, 2.2, 0.14, PALETTE.woodDark, -1.25, 1.1, -0.62));
+  g.add(block(0.14, 2.2, 0.14, PALETTE.woodDark, 1.25, 1.1, -0.62));
+  for (let i = 0; i < 5; i++) {
+    const c = i % 2 === 0 ? awning : 0xfff8ef;
+    g.add(block(0.58, 0.16, 1.7, c, -1.16 + i * 0.58, 2.28, 0));
+  }
+  return g;
+}
+
+function makeBarrel(): THREE.Group {
+  const g = new THREE.Group();
+  g.add(block(0.7, 0.9, 0.7, PALETTE.wood, 0, 0.45, 0));
+  g.add(block(0.76, 0.12, 0.76, PALETTE.woodDark, 0, 0.25, 0));
+  g.add(block(0.76, 0.12, 0.76, PALETTE.woodDark, 0, 0.7, 0));
+  g.add(block(0.6, 0.06, 0.6, PALETTE.water, 0, 0.93, 0));
+  return g;
+}
+
+function makeCrates(): THREE.Group {
+  const g = new THREE.Group();
+  g.add(block(0.8, 0.8, 0.8, PALETTE.wood, 0, 0.4, 0));
+  g.add(block(0.7, 0.7, 0.7, PALETTE.woodDark, 0.75, 0.35, 0.15));
+  g.add(block(0.6, 0.6, 0.6, PALETTE.wood, 0.3, 1.1, 0.05));
+  return g;
+}
+
+function makeHay(): THREE.Group {
+  const g = new THREE.Group();
+  g.add(block(1.4, 0.9, 1.0, 0xf0dd9e, 0, 0.45, 0));
+  g.add(block(1.44, 0.14, 1.04, 0xd9c078, 0, 0.45, 0));
+  return g;
+}
+
+function makeWashLine(): THREE.Group {
+  const g = new THREE.Group();
+  g.add(block(0.14, 2.0, 0.14, PALETTE.woodDark, -2.2, 1.0, 0));
+  g.add(block(0.14, 2.0, 0.14, PALETTE.woodDark, 2.2, 1.0, 0));
+  g.add(block(4.4, 0.05, 0.05, 0xfff8ef, 0, 1.9, 0));
+  // hanging laundry
+  g.add(block(0.7, 0.8, 0.06, PALETTE.dressSky, -1.2, 1.5, 0));
+  g.add(block(0.6, 0.7, 0.06, PALETTE.dressRose, 0.1, 1.55, 0));
+  g.add(block(0.5, 0.6, 0.06, PALETTE.dressLeaf, 1.3, 1.6, 0));
   return g;
 }
 
@@ -138,12 +197,21 @@ export function buildWorld(scene: THREE.Scene): World {
     [-26, -2, 1.35, PALETTE.wallCream, PALETTE.roofBlue],
     [22, -8, -1.1, PALETTE.wallPink, PALETTE.roofPink],
   ];
+  const chimneyTops: THREE.Vector3[] = [];
   for (const [x, z, ry, wall, roof] of houses) {
     const h = makeHouse(wall, roof);
     h.position.set(x, 0, z);
     h.rotation.y = ry;
     group.add(h);
     colliders.push({ x, z, r: 3.6 });
+    // world-space chimney top (local offset rotated by ry) for smoke puffs
+    const lx = 5 / 2 - 0.8;
+    const lz = -0.8;
+    chimneyTops.push(new THREE.Vector3(
+      x + lx * Math.cos(ry) + lz * Math.sin(ry),
+      2.6 + 3.1,
+      z - lx * Math.sin(ry) + lz * Math.cos(ry),
+    ));
   }
 
   // ---------- plaza well ----------
@@ -173,6 +241,43 @@ export function buildWorld(scene: THREE.Scene): World {
     group.add(lamp);
     colliders.push({ x, z, r: 0.4 });
   }
+
+  // ---------- village life props ----------
+  const stall = makeStall(PALETTE.roofPink);
+  stall.position.set(-4, 0, 8.5);
+  stall.rotation.y = Math.PI;
+  group.add(stall);
+  colliders.push({ x: -4, z: 8.5, r: 1.8 });
+
+  const stall2 = makeStall(PALETTE.roofBlue);
+  stall2.position.set(6, 0, -8);
+  stall2.rotation.y = 0.2;
+  group.add(stall2);
+  colliders.push({ x: 6, z: -8, r: 1.8 });
+
+  const barrel1 = makeBarrel();
+  barrel1.position.set(8.2, 0, 9);
+  group.add(barrel1);
+  colliders.push({ x: 8.2, z: 9, r: 0.6 });
+
+  const crates = makeCrates();
+  crates.position.set(-13, 0, 13);
+  crates.rotation.y = 0.4;
+  group.add(crates);
+  colliders.push({ x: -13, z: 13, r: 1.1 });
+
+  for (const [hx, hz] of [[16, 18.5], [19.5, 17]] as const) {
+    const hay = makeHay();
+    hay.position.set(hx, 0, hz);
+    hay.rotation.y = rng() * Math.PI;
+    group.add(hay);
+    colliders.push({ x: hx, z: hz, r: 0.9 });
+  }
+
+  const wash = makeWashLine();
+  wash.position.set(-6, 0, -10.5);
+  wash.rotation.y = 0.35;
+  group.add(wash);
 
   // ---------- fences near Christian's house ----------
   const fence1 = makeFence(7);
@@ -246,8 +351,90 @@ export function buildWorld(scene: THREE.Scene): World {
   lightBeam.visible = false;
   group.add(lightBeam);
 
+  // ---------- ambient life: chimney smoke ----------
+  interface Puff { mesh: THREE.Mesh; base: THREE.Vector3; phase: number; speed: number; }
+  const puffs: Puff[] = [];
+  for (const top of chimneyTops) {
+    for (let i = 0; i < 3; i++) {
+      const m = new THREE.Mesh(
+        new THREE.BoxGeometry(0.5, 0.5, 0.5),
+        new THREE.MeshLambertMaterial({ color: 0xf5f2ec, transparent: true, opacity: 0.7 }),
+      );
+      m.castShadow = false;
+      group.add(m);
+      puffs.push({ mesh: m, base: top, phase: i / 3, speed: 0.14 + rng() * 0.05 });
+    }
+  }
+
+  // ---------- ambient life: butterflies ----------
+  interface Butterfly { g: THREE.Group; wingL: THREE.Mesh; wingR: THREE.Mesh; cx: number; cz: number; r: number; ph: number; sp: number; }
+  const butterflies: Butterfly[] = [];
+  const bflyColors = [0xffd6a5, 0xf4b8c4, 0xaecbff, 0xcbb8f0, 0xfff3b8, 0xbdeeb6];
+  const bflySpots: Array<[number, number]> = [[-18, 4], [5, 12], [-10, -4], [16, 8], [-24, 10], [30, -6]];
+  bflySpots.forEach(([cx, cz], i) => {
+    const g = new THREE.Group();
+    const c = bflyColors[i % bflyColors.length];
+    const wingL = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.05, 0.24), new THREE.MeshLambertMaterial({ color: c }));
+    wingL.position.x = -0.16;
+    const wingR = wingL.clone();
+    wingR.position.x = 0.16;
+    const bodyM = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, 0.26), mat(PALETTE.nose));
+    g.add(wingL, wingR, bodyM);
+    group.add(g);
+    butterflies.push({ g, wingL, wingR, cx, cz, r: 1.5 + rng() * 2, ph: rng() * 6.28, sp: 0.5 + rng() * 0.5 });
+  });
+
+  // ---------- ambient life: little birds circling above ----------
+  interface Bird { g: THREE.Group; wingL: THREE.Mesh; wingR: THREE.Mesh; r: number; h: number; ph: number; sp: number; }
+  const birds: Bird[] = [];
+  for (let i = 0; i < 3; i++) {
+    const g = new THREE.Group();
+    const bodyM = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.22, 0.5), mat(0xfff8ef));
+    const wingL = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.06, 0.3), mat(0xd8d3cc));
+    wingL.position.x = -0.35;
+    const wingR = wingL.clone();
+    wingR.position.x = 0.35;
+    g.add(bodyM, wingL, wingR);
+    group.add(g);
+    birds.push({ g, wingL, wingR, r: 12 + i * 7, h: 9 + i * 2.5, ph: i * 2.1, sp: 0.12 + i * 0.03 });
+  }
+
+  const update = (t: number) => {
+    for (const p of puffs) {
+      const cycle = (t * p.speed + p.phase) % 1;
+      p.mesh.position.set(
+        p.base.x + Math.sin((cycle + p.phase) * 9) * 0.3,
+        p.base.y + cycle * 3.2,
+        p.base.z + Math.cos((cycle + p.phase) * 7) * 0.2,
+      );
+      const s = 0.5 + cycle * 0.9;
+      p.mesh.scale.setScalar(s);
+      (p.mesh.material as THREE.MeshLambertMaterial).opacity = 0.65 * (1 - cycle);
+    }
+    for (const b of butterflies) {
+      const a = t * b.sp + b.ph;
+      b.g.position.set(
+        b.cx + Math.cos(a) * b.r,
+        1.2 + Math.sin(t * 1.7 + b.ph) * 0.5,
+        b.cz + Math.sin(a * 1.3) * b.r,
+      );
+      b.g.rotation.y = -a * 1.15 + Math.PI / 2;
+      const flap = Math.sin(t * 16 + b.ph) * 0.9;
+      b.wingL.rotation.z = flap;
+      b.wingR.rotation.z = -flap;
+    }
+    for (const b of birds) {
+      const a = t * b.sp + b.ph;
+      b.g.position.set(Math.cos(a) * b.r, b.h + Math.sin(t * 0.9 + b.ph), Math.sin(a) * b.r);
+      b.g.rotation.y = -a - Math.PI / 2;
+      const flap = Math.sin(t * 7 + b.ph) * 0.6;
+      b.wingL.rotation.z = flap;
+      b.wingR.rotation.z = -flap;
+    }
+  };
+
   scene.add(group);
-  return { group, colliders, lightBeam };
+  return { group, colliders, lightBeam, update };
 }
 
 // tiny deterministic PRNG so the village looks the same every run

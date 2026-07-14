@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { PALETTE } from './palette';
-import { makeBear, BearParts, BearAccessory } from './bear';
+import { makeBear, BearParts, Species, Outfit } from './bear';
 
 export interface DialogueLine {
   speaker: string;
@@ -28,10 +28,11 @@ export interface QuestState {
 interface NPCDef {
   id: string;
   name: string;
-  fur: number;
+  species: Species;
+  fur?: number;
   scale: number;
-  accessory: BearAccessory;
-  accessoryColor?: number;
+  outfit: Outfit;
+  outfitColor?: number;
   x: number;
   z: number;
   facing: number;
@@ -41,13 +42,15 @@ interface NPCDef {
 }
 
 const DEFS: NPCDef[] = [
+  // ---------------- Christian's family ----------------
   {
     id: 'christiana',
     name: 'Christiana',
+    species: 'bear',
     fur: PALETTE.bearHoney,
     scale: 0.95,
-    accessory: 'dress',
-    accessoryColor: PALETTE.dressRose,
+    outfit: 'dress',
+    outfitColor: PALETTE.dressRose,
     x: -8.5, z: -7,
     facing: Math.PI,
     getLines: (s) =>
@@ -67,9 +70,11 @@ const DEFS: NPCDef[] = [
   {
     id: 'cub1',
     name: 'Matthew (cub)',
+    species: 'bear',
     fur: PALETTE.bearBrown,
     scale: 0.55,
-    accessory: 'none',
+    outfit: 'shirt',
+    outfitColor: 0xaecbff,
     x: -11, z: -6,
     facing: Math.PI * 0.8,
     wanderRadius: 2,
@@ -87,9 +92,11 @@ const DEFS: NPCDef[] = [
   {
     id: 'cub2',
     name: 'Samuel (cub)',
+    species: 'bear',
     fur: PALETTE.bearHoney,
     scale: 0.5,
-    accessory: 'none',
+    outfit: 'overalls',
+    outfitColor: 0x9fdcc8,
     x: -7, z: -5,
     facing: -Math.PI * 0.7,
     wanderRadius: 2,
@@ -104,27 +111,29 @@ const DEFS: NPCDef[] = [
             { speaker: 'Samuel', text: 'It smells like… like honey! Hee hee.' },
           ],
   },
+  // ---------------- villagers ----------------
   {
     id: 'obstinate',
     name: 'Obstinate',
-    fur: PALETTE.bearCocoa,
+    species: 'pig',
     scale: 1.05,
-    accessory: 'apron',
-    accessoryColor: 0x9db8a1,
+    outfit: 'shirt',
+    outfitColor: 0x9db8a1,
     x: 4, z: 4.5,
     facing: -Math.PI / 3,
     getLines: () => [
       { speaker: 'Obstinate', text: 'Hmph. Still going on about the city falling down, Christian?' },
-      { speaker: 'Obstinate', text: 'This is the finest city a bear could want! Honey in the market, fish in the river…' },
-      { speaker: 'Obstinate', text: 'Leave if you like — but no sensible bear will go with you. Hmph!' },
+      { speaker: 'Obstinate', text: 'This is the finest city anyone could want! Acorns in the market, mud by the river…' },
+      { speaker: 'Obstinate', text: 'Leave if you like — but no sensible creature will go with you. Hmph!' },
     ],
   },
   {
     id: 'pliable',
     name: 'Pliable',
-    fur: PALETTE.bearHoney,
+    species: 'rabbit',
     scale: 0.95,
-    accessory: 'none',
+    outfit: 'shirt',
+    outfitColor: 0xffd6a5,
     x: 7, z: 1,
     facing: Math.PI,
     wanderRadius: 3,
@@ -132,7 +141,7 @@ const DEFS: NPCDef[] = [
       s.talkedToEvangelist
         ? [
             { speaker: 'Pliable', text: 'A shining light, you say?! Ooooh, that DOES sound exciting…' },
-            { speaker: 'Pliable', text: 'Maybe I will come along! …Unless the road gets muddy. I do hate mud.' },
+            { speaker: 'Pliable', text: 'Maybe I will hop along! …Unless the road gets muddy. I do hate mud.' },
           ]
         : [
             { speaker: 'Pliable', text: 'Oh, hello Christian! Don\'t mind old Obstinate — he grumbles at clouds, too.' },
@@ -142,10 +151,11 @@ const DEFS: NPCDef[] = [
   {
     id: 'baker',
     name: 'Mrs. Bramble',
+    species: 'bear',
     fur: PALETTE.bearBrown,
     scale: 0.98,
-    accessory: 'apron',
-    accessoryColor: 0xf3d9a6,
+    outfit: 'apron',
+    outfitColor: 0xf3d9a6,
     x: -3, z: 11,
     facing: 0,
     getLines: () => [
@@ -154,12 +164,87 @@ const DEFS: NPCDef[] = [
     ],
   },
   {
+    id: 'farmer',
+    name: 'Old Hamlet',
+    species: 'pig',
+    fur: 0xe8a7b2,
+    scale: 1.0,
+    outfit: 'overalls',
+    outfitColor: 0x8fb8d8,
+    x: 17, z: 16,
+    facing: -Math.PI / 2,
+    wanderRadius: 3,
+    getLines: (s) =>
+      s.talkedToEvangelist
+        ? [
+            { speaker: 'Old Hamlet', text: 'A light in the east, eh? My old snout smells a change in the wind…' },
+            { speaker: 'Old Hamlet', text: 'Take care on the road, lad. Mind the bog past the fields — it swallows boots whole.' },
+          ]
+        : [
+            { speaker: 'Old Hamlet', text: 'Mornin\', Christian. Fine day for turnips. Not so fine for carryin\' great sacks about, I\'d say.' },
+            { speaker: 'Old Hamlet', text: 'You look like a pig who\'s seen the butcher\'s calendar. Whatever\'s weighing you, don\'t carry it alone.' },
+          ],
+  },
+  {
+    id: 'frogkid',
+    name: 'Puddle',
+    species: 'frog',
+    scale: 0.55,
+    outfit: 'shirt',
+    outfitColor: 0xf7c8d4,
+    x: 2.5, z: -3,
+    facing: Math.PI,
+    wanderRadius: 3,
+    getLines: () => [
+      { speaker: 'Puddle', text: 'Ribbit! Mister Christian! I can jump higher than the well! Wanna see?' },
+      { speaker: 'Puddle', text: '…Okay, maybe not HIGHER. But definitely louder. RIBBIT!' },
+    ],
+  },
+  {
+    id: 'florist',
+    name: 'Clover',
+    species: 'rabbit',
+    fur: 0xe9d7c3,
+    scale: 0.92,
+    outfit: 'dress',
+    outfitColor: 0xc7ecc2,
+    x: -18, z: 4,
+    facing: Math.PI / 2,
+    wanderRadius: 3,
+    getLines: (s) =>
+      s.talkedToEvangelist
+        ? [
+            { speaker: 'Clover', text: 'Everyone\'s whispering about you, Christian. A light beyond the fields, imagine!' },
+            { speaker: 'Clover', text: 'Here — a daisy for your buttonhole. Flowers make every road shorter.' },
+          ]
+        : [
+            { speaker: 'Clover', text: 'Good day, Christian! My daisies came up lovely this spring, haven\'t they?' },
+            { speaker: 'Clover', text: 'Though… the soil\'s been trembling lately. The flowers feel it too, I think.' },
+          ],
+  },
+  {
+    id: 'cat',
+    name: 'Mr. Whiskers',
+    species: 'cat',
+    scale: 0.96,
+    outfit: 'shirt',
+    outfitColor: 0xcbb8f0,
+    x: 10, z: -6,
+    facing: Math.PI * 0.75,
+    getLines: () => [
+      { speaker: 'Mr. Whiskers', text: 'Mrrrow. You\'re blocking my sunbeam, Christian.' },
+      { speaker: 'Mr. Whiskers', text: 'A city falling down? As long as it doesn\'t fall before my nap, I really can\'t be bothered.' },
+    ],
+  },
+  // ---------------- Evangelist ----------------
+  {
     id: 'evangelist',
     name: 'Evangelist',
-    fur: 0xa89a8c, // wise silver-grey bear
+    species: 'bear',
+    fur: 0xa89a8c,
     scale: 1.15,
-    accessory: 'robe',
-    accessoryColor: PALETTE.robeWhite,
+    outfit: 'robe',
+    outfitColor: PALETTE.robeWhite,
     x: 42, z: 0,
     facing: -Math.PI / 2,
     getLines: (s) =>
@@ -184,10 +269,11 @@ const DEFS: NPCDef[] = [
 export function createNPCs(scene: THREE.Scene): NPC[] {
   return DEFS.map((def) => {
     const parts = makeBear({
+      species: def.species,
       fur: def.fur,
       scale: def.scale,
-      accessory: def.accessory,
-      accessoryColor: def.accessoryColor,
+      outfit: def.outfit,
+      outfitColor: def.outfitColor,
     });
     parts.root.position.set(def.x, 0, def.z);
     parts.root.rotation.y = def.facing;
