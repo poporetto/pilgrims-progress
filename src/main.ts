@@ -5,6 +5,7 @@ import { buildWorld, WALL } from './world';
 import { createNPCs, NPC, QuestState, DialogueLine } from './npcs';
 import { Music } from './music';
 import { WorldMap } from './worldmap';
+import { SloughScene } from './slough';
 
 // ---------------------------------------------------------------- setup
 
@@ -57,12 +58,14 @@ const quest: QuestState = {
   talkedToEvangelist: false,
   talkedToFamily: false,
   pliableFollowing: false,
+  pliableLeft: false,
   chapterComplete: false,
+  sloughComplete: false,
 };
 
 const music = new Music();
 const worldMap = new WorldMap(window.innerWidth / window.innerHeight);
-let mode: 'village' | 'map' = 'village';
+let mode: 'village' | 'map' | 'slough' = 'village';
 
 // ---------------------------------------------------------------- UI refs
 
@@ -105,22 +108,77 @@ ui.musicBtn.addEventListener('click', () => {
 
 ui.restartBtn.addEventListener('click', () => window.location.reload());
 
-// after the ending screen, continue onto the world map
+// ---------- parametrized chapter-complete screen ----------
+let endingAction: (() => void) | null = null;
+
+function showEnding(title: string, sub: string, body: string, action: () => void): void {
+  document.getElementById('ending-title')!.textContent = title;
+  document.getElementById('ending-sub')!.textContent = sub;
+  document.getElementById('ending-body')!.textContent = body;
+  endingAction = action;
+  ui.ending.style.display = 'flex';
+  ui.ending.classList.add('hidden');
+  requestAnimationFrame(() =>
+    requestAnimationFrame(() => ui.ending.classList.remove('hidden')),
+  );
+}
+
 const continueBtn = document.getElementById('continue-btn') as HTMLButtonElement;
 continueBtn.addEventListener('click', () => {
   music.blip();
   ui.ending.classList.add('hidden');
   setTimeout(() => (ui.ending.style.display = 'none'), 900);
-  // close any dialogue left open in the village
+  // close any dialogue left open
   dialogueOpen = false;
   dialogueNPC = null;
+  scriptDone = null;
   ui.dialogue.style.display = 'none';
   ui.talkBtn.style.display = 'none';
-  mode = 'map';
-  worldMap.start(quest.pliableFollowing ? ['pliable'] : []);
-  setObjective('🗺 The road east — onward to the Slough of Despond');
-  ui.promptKey.style.display = 'none';
+  endingAction?.();
+  endingAction = null;
 });
+
+function goToMap(): void {
+  mode = 'map';
+  music.setStyle('map');
+  ui.promptKey.style.display = 'none';
+  setObjective(quest.sloughComplete
+    ? '🗺 The road stretches on toward the sunrise…'
+    : '🗺 The road east — onward to the Slough of Despond');
+}
+
+// ---------- Chapter II: the Slough of Despond ----------
+const slough = new SloughScene({
+  playScript,
+  setObjective,
+  splashSound: () => music.splash(),
+  onComplete: () => {
+    quest.sloughComplete = true;
+    if (quest.pliableFollowing) quest.pliableLeft = true;
+    showEnding(
+      '🌊 Chapter II Complete',
+      'Through the Slough of Despond',
+      'Pliable turned back at the first hardship — but Christian, with Help\'s '
+      + 'strong paw, came through the mire, burden and all. The road runs on…',
+      () => {
+        worldMap.sloughDone = true;
+        worldMap.start([]);
+        worldMap.progress = 0.5;
+        goToMap();
+      },
+    );
+  },
+});
+let sloughActors: { christian: import('./bear').BearParts; pliable: import('./bear').BearParts | null } | null = null;
+
+function enterSlough(): void {
+  mode = 'slough';
+  music.setStyle('slough');
+  ui.prompt.style.display = 'none';
+  ui.talkBtn.style.display = 'none';
+  sloughActors = slough.enter(quest.pliableFollowing && !quest.pliableLeft);
+  camTarget.copy(sloughActors.christian.root.position);
+}
 
 function setObjective(text: string): void {
   ui.objective.textContent = text;
@@ -132,6 +190,20 @@ let dialogueLines: DialogueLine[] = [];
 let dialogueIndex = 0;
 let dialogueOpen = false;
 let dialogueNPC: NPC | null = null;
+let scriptDone: (() => void) | null = null;
+
+// scripted cutscene dialogue (no NPC attached)
+function playScript(lines: DialogueLine[], onDone?: () => void): void {
+  dialogueNPC = null;
+  dialogueLines = lines;
+  dialogueIndex = 0;
+  dialogueOpen = true;
+  scriptDone = onDone ?? null;
+  ui.dialogue.style.display = 'block';
+  ui.prompt.style.display = 'none';
+  if (isTouch) ui.talkBtn.style.display = 'block';
+  showLine();
+}
 
 function openDialogue(npc: NPC): void {
   dialogueNPC = npc;
@@ -166,6 +238,12 @@ function advanceDialogue(): void {
   ui.dialogue.style.display = 'none';
   const npc = dialogueNPC;
   dialogueNPC = null;
+  const done = scriptDone;
+  scriptDone = null;
+  if (done) {
+    done();
+    return;
+  }
   if (!npc) return;
   const before = quest.talkedToEvangelist;
   npc.onFinish?.(quest);
@@ -193,9 +271,14 @@ window.addEventListener('keydown', (e) => {
     e.key === 'e' || e.key === 'E' || e.key === ' ' || e.key === 'Enter'
   ) {
     if (dialogueOpen) advanceDialogue();
+    else if (mode === 'map') tryEnterFromMap();
     else tryTalk();
   }
 });
+
+function tryEnterFromMap(): void {
+  if (worldMap.spot() === 'slough' && !quest.sloughComplete) enterSlough();
+}
 window.addEventListener('keyup', (e) => keys.delete(e.code));
 // don't leave movement keys stuck when the tab loses focus mid-keypress
 window.addEventListener('blur', () => keys.clear());
@@ -240,6 +323,7 @@ function updateJoy(e: PointerEvent): void {
 
 ui.talkBtn.addEventListener('click', () => {
   if (dialogueOpen) advanceDialogue();
+  else if (mode === 'map') tryEnterFromMap();
   else tryTalk();
 });
 
@@ -394,10 +478,15 @@ function updatePlayer(dt: number, t: number): void {
     christian.root.position.distanceTo(world.lightBeam.position) < 3.4
   ) {
     quest.chapterComplete = true;
-    ui.ending.style.display = 'flex';
-    ui.ending.classList.add('hidden');
-    requestAnimationFrame(() =>
-      requestAnimationFrame(() => ui.ending.classList.remove('hidden')),
+    showEnding(
+      '✨ Chapter I Complete',
+      'Christian leaves the City of Destruction',
+      'Through the Wicket Gate and into the wide world — the first step on the '
+      + 'long road to the Celestial City…',
+      () => {
+        worldMap.start(quest.pliableFollowing ? ['pliable'] : []);
+        goToMap();
+      },
     );
   }
 }
@@ -492,17 +581,57 @@ function tick(): void {
     worldMap.update(dt, t, THREE.MathUtils.clamp(ax, -1, 1));
 
     const spot = worldMap.spot();
+    ui.prompt.style.display = spot === 'road' ? 'none' : 'block';
+    ui.promptKey.style.display = 'none';
+    if (isTouch) ui.talkBtn.style.display = 'none';
     if (spot === 'city') {
-      ui.prompt.style.display = 'block';
       ui.promptWho.textContent = '🏘 City of Destruction — Chapter I ✓';
+    } else if (spot === 'slough' && !quest.sloughComplete) {
+      ui.promptKey.style.display = isTouch ? 'none' : 'inline-block';
+      ui.promptWho.textContent = 'Enter the Slough of Despond';
+      if (isTouch) {
+        ui.talkBtn.textContent = 'Enter';
+        ui.talkBtn.style.display = 'block';
+      }
     } else if (spot === 'slough') {
-      ui.prompt.style.display = 'block';
-      ui.promptWho.textContent = '🐸 Slough of Despond — Chapter II, coming soon!';
-    } else {
-      ui.prompt.style.display = 'none';
+      ui.promptKey.style.display = 'none';
+      ui.promptWho.textContent = '🌊 Slough of Despond — Chapter II ✓';
+    } else if (spot === 'beyond') {
+      ui.promptWho.textContent = '⛩ A light in the mist… Chapter III, coming soon!';
     }
 
     renderer.render(worldMap.scene, worldMap.camera);
+    return;
+  }
+
+  if (mode === 'slough' && sloughActors) {
+    // ---- Slough of Despond mode ----
+    const sc = sloughActors.christian;
+    let mx = 0;
+    let mz = 0;
+    if (keys.has('KeyW') || keys.has('ArrowUp')) mz -= 1;
+    if (keys.has('KeyS') || keys.has('ArrowDown')) mz += 1;
+    if (keys.has('KeyA') || keys.has('ArrowLeft')) mx -= 1;
+    if (keys.has('KeyD') || keys.has('ArrowRight')) mx += 1;
+    mx += joy.x;
+    mz += joy.y;
+    const len = Math.hypot(mx, mz);
+    const factor = slough.moveFactor();
+    const moving = len > 0.15 && !dialogueOpen && factor > 0;
+    if (moving) {
+      mx /= Math.max(len, 1);
+      mz /= Math.max(len, 1);
+      sc.root.position.x += mx * SPEED * factor * dt;
+      sc.root.position.z += mz * SPEED * factor * dt;
+      sc.root.rotation.y = lerpAngle(sc.root.rotation.y, Math.atan2(mx, mz), 12 * dt);
+    }
+    slough.afterMove(moving);
+    slough.update(dt, t, moving);
+
+    camTarget.lerp(sc.root.position, Math.min(4 * dt, 1));
+    camera.position.copy(camTarget).add(camOffset);
+    camera.lookAt(camTarget.x, camTarget.y + 1.4, camTarget.z);
+    renderer.render(slough.scene, camera);
     return;
   }
 
@@ -516,7 +645,10 @@ function tick(): void {
     if (nearestNPC && !quest.chapterComplete) {
       ui.prompt.style.display = 'block';
       ui.promptWho.textContent = `Talk to ${nearestNPC.name}`;
-      if (isTouch) ui.talkBtn.style.display = 'block';
+      if (isTouch) {
+        ui.talkBtn.textContent = 'Talk';
+        ui.talkBtn.style.display = 'block';
+      }
     } else {
       ui.prompt.style.display = 'none';
       if (!dialogueOpen) ui.talkBtn.style.display = 'none';
@@ -550,4 +682,8 @@ window.addEventListener('resize', () => {
 tick();
 
 // small debug handle for testing (harmless in production)
-(window as any).__game = { christian, npcs, quest, world, openDialogue, advanceDialogue, camTarget, worldMap };
+(window as any).__game = {
+  christian, npcs, quest, world, openDialogue, advanceDialogue, camTarget,
+  worldMap, slough, enterSlough, playScript,
+  get mode() { return mode; },
+};

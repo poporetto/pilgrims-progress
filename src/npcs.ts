@@ -23,7 +23,9 @@ export interface QuestState {
   talkedToEvangelist: boolean;
   talkedToFamily: boolean;
   pliableFollowing: boolean;
+  pliableLeft: boolean;
   chapterComplete: boolean;
+  sloughComplete: boolean;
 }
 
 interface NPCDef {
