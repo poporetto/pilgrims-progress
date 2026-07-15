@@ -13,6 +13,7 @@ interface SloughCallbacks {
   playScript: (lines: DialogueLine[], onDone?: () => void) => void;
   setObjective: (text: string) => void;
   onComplete: () => void;
+  onExit: () => void; // leaving the marsh on a revisit
   splashSound: () => void;
 }
 
@@ -28,7 +29,8 @@ export class SloughScene {
   private cb: SloughCallbacks;
   private christian: BearParts;
   private pliable: BearParts | null = null;
-  private pliableFleeing = false;
+  private pliableStage: 'follow' | 'aghast' | 'clamber' | 'farewell' | 'flee' = 'follow';
+  private revisit = false;
   private help: BearParts;
   private steps: Array<[number, number]> = [
     [-3.5, 1.0], [-1, -0.6], [1.5, 1.1], [4, -0.9],
@@ -209,17 +211,37 @@ export class SloughScene {
 
   // ------------------------------------------------------------ runtime
 
-  enter(withPliable: boolean): { christian: BearParts; pliable: BearParts | null } {
+  enter(withPliable: boolean, revisit = false): { christian: BearParts; pliable: BearParts | null } {
     this.build();
+    this.revisit = revisit;
     this.phase = 'walk';
     this.sink = 0;
+    if (this.pliable) {
+      this.scene.remove(this.pliable.root);
+      this.pliable = null;
+    }
+    this.pliableStage = 'follow';
     this.christian.root.position.set(-24, 0, 0);
     this.christian.root.rotation.y = Math.PI / 2;
     this.scene.add(this.christian.root);
+    if (revisit) {
+      // Help still keeps watch on the east bank
+      this.help.root.visible = true;
+      this.help.root.position.set(18.4, 0, 2.2);
+      this.help.root.rotation.y = -Math.PI / 2;
+      this.help.armR.rotation.x = 0;
+      this.cb.setObjective('🌫 The old mire — cross east, or turn back west to the road');
+      return { christian: this.christian, pliable: null };
+    }
     if (withPliable) {
       this.pliable = makeBear({ species: 'rabbit', outfit: 'shirt', outfitColor: 0xffd6a5, scale: 0.95 });
       this.pliable.root.position.set(-26, 0, 1.5);
       this.scene.add(this.pliable.root);
+      this.cb.playScript([
+        { speaker: 'Pliable', text: 'So tell me MORE about this Celestial City! Do the crowns come in rabbit sizes? Is there clover?' },
+        { speaker: 'Christian', text: 'Ha! The book says there is no night there, and no tears… Careful, friend — the ground past those reeds looks soft.' },
+        { speaker: 'Pliable', text: 'Soft, schmoft! With GLORY ahead, who has time to look down? Hop hop — race you to the far side!' },
+      ]);
     }
     this.cb.setObjective('🌫 Cross the marsh to the east');
     return { christian: this.christian, pliable: this.pliable };
@@ -238,7 +260,10 @@ export class SloughScene {
   // returns speed multiplier for player movement this frame
   moveFactor(): number {
     const p = this.christian.root.position;
-    if (this.phase === 'stuck' || this.phase === 'rescue' || this.phase === 'epilogue') return 0;
+    if (
+      this.phase === 'fallingIn' || this.phase === 'stuck' ||
+      this.phase === 'rescue' || this.phase === 'epilogue'
+    ) return 0;
     if (!this.inBog(p.x, p.z)) return 1;
     return this.nearStep(p.x, p.z) ? 0.72 : 0.34;
   }
@@ -247,28 +272,56 @@ export class SloughScene {
   afterMove(moving: boolean): void {
     const p = this.christian.root.position;
     // world bounds — the east bank is unclimbable until Help pulls him out
-    const freed = this.phase === 'rescue' || this.phase === 'epilogue' || this.phase === 'done';
+    const freed = this.revisit ||
+      this.phase === 'rescue' || this.phase === 'epilogue' || this.phase === 'done';
     p.x = THREE.MathUtils.clamp(p.x, -28, freed ? 34 : 15.6);
     p.z = THREE.MathUtils.clamp(p.z, -16, 16);
+
+    // on a revisit, either bank leads back to the world map
+    if (this.revisit) {
+      if (p.x > 31 || p.x < -27) this.cb.onExit();
+      if (moving && this.inBog(p.x, p.z)) {
+        this.splashTimer -= 0.016;
+        if (this.splashTimer <= 0) {
+          this.splashTimer = 0.18;
+          this.spawnSplash(p.x, p.z);
+        }
+      }
+      return;
+    }
 
     if (this.phase === 'walk' && this.inBog(p.x + 1.2, p.z)) {
       this.phase = 'fallingIn';
       this.cb.splashSound();
       for (let i = 0; i < 6; i++) this.spawnSplash(p.x + Math.random(), p.z + (Math.random() - 0.5));
+      if (this.pliable) {
+        // he raced ahead — the ground gives way under both of them
+        this.pliable.root.position.set(p.x + 1.9, -0.35, p.z + 0.9);
+        this.pliable.root.rotation.y = Math.PI / 2;
+        for (let i = 0; i < 4; i++) {
+          this.spawnSplash(p.x + 1.9 + Math.random(), p.z + 0.9 + (Math.random() - 0.5));
+        }
+      }
       const lines: DialogueLine[] = this.pliable
         ? [
-            { speaker: 'Christian', text: 'Wh—whoa! The ground… it is swallowing us! Hold fast, Pliable!' },
-            { speaker: 'Pliable', text: 'Pfeh! Mud! In my EARS! Is THIS the glorious happiness you spoke of?!' },
-            { speaker: 'Christian', text: 'Pliable, wait — the way lies forward, not back—' },
-            { speaker: 'Pliable', text: 'If this is the beginning, you may keep the rest of the journey! I am going HOME. Good day!' },
+            { speaker: 'Christian', text: 'Wh—whoa! The ground — it is swallowing us! Hold fast, Pliable!' },
+            { speaker: 'Pliable', text: 'GLUB—! Mud! In my EARS! In my WHISKERS! Christian, I am DISSOLVING!' },
+            { speaker: 'Pliable', text: 'Is THIS the glorious happiness you spoke of?! Golden streets, you said! CROWNS, you said!' },
+            { speaker: 'Christian', text: 'Courage, friend! If we press on together, the far bank cannot be—' },
+            { speaker: 'Pliable', text: 'FORWARD?! Into MORE of it?! Not for every crown in every city! Out of my way!' },
           ]
         : [
             { speaker: 'Christian', text: 'Wh—whoa! The ground… it is swallowing me! This must be the mire the villagers whispered of…' },
           ];
       this.cb.playScript(lines, () => {
-        this.phase = 'crossing';
-        if (this.pliable) this.pliableFleeing = true;
-        this.cb.setObjective('🪨 Struggle across — feel for the solid Steps beneath the mire!');
+        if (this.pliable) {
+          // stay frozen while Pliable flounders back to the west bank
+          this.pliableStage = 'clamber';
+          this.cb.setObjective('😨 Pliable flounders back toward the bank nearest home…');
+        } else {
+          this.phase = 'crossing';
+          this.cb.setObjective('🪨 Struggle across — feel for the solid Steps beneath the mire!');
+        }
       });
     }
 
@@ -309,14 +362,42 @@ export class SloughScene {
     this.christian.root.position.y = -this.sink;
     animateBear(this.christian, t, moving && this.phase !== 'stuck' && this.phase !== 'rescue' && this.phase !== 'epilogue');
 
-    // Pliable: follows until the fall, then flees home
+    // Pliable: follows until the fall, clambers out on the side nearest home,
+    // gives his farewell, then bolts
     if (this.pliable) {
       const pp = this.pliable.root.position;
-      if (this.pliableFleeing) {
-        pp.x -= dt * 8;
-        pp.y = this.inBog(pp.x, pp.z) ? -0.3 : 0;
+      if (this.pliableStage === 'clamber') {
+        // flounders west through the mud, half-sunk and splashing
+        pp.x -= dt * 3.0;
+        pp.y = this.inBog(pp.x, pp.z) ? -0.42 + Math.sin(t * 11) * 0.06 : 0;
         this.pliable.root.rotation.y = -Math.PI / 2;
-        animateBear(this.pliable, t, true);
+        animateBear(this.pliable, t * 1.7, true);
+        if (this.inBog(pp.x, pp.z) && Math.random() < dt * 7) this.spawnSplash(pp.x, pp.z);
+        if (pp.x < -9.5) {
+          this.pliableStage = 'farewell';
+          pp.y = 0;
+          this.cb.playScript([
+            { speaker: 'Pliable', text: '*scrambles out, dripping* Blegh! Pfah! Mud in my ears, mud in my whiskers, mud in places a gentle-rabbit shan\'t MENTION!' },
+            { speaker: 'Pliable', text: 'If this bog is the FIRST step of your glorious journey, Christian, you may keep all the rest of it!' },
+            { speaker: 'Christian', text: 'Pliable, wait! The crowns, the city — it is all still true! One mire does not un-make it!' },
+            { speaker: 'Pliable', text: 'Then you may have my share of the crowns AND my share of the mud. I am going HOME. Farewell — and good luck to your poor back!' },
+            { speaker: 'Christian', text: '…And there he goes, hopping for home. *sigh* Then I cross alone. There must be solid footing somewhere beneath this mire…' },
+          ], () => {
+            this.pliableStage = 'flee';
+            this.phase = 'crossing';
+            this.cb.setObjective('🪨 Struggle across — feel for the solid Steps beneath the mire!');
+          });
+        }
+      } else if (this.pliableStage === 'farewell') {
+        // hops in place on the west bank, shaking the mud off
+        pp.y = Math.abs(Math.sin(t * 6)) * 0.16;
+        this.pliable.root.rotation.y = Math.PI / 2; // faces back toward Christian
+        animateBear(this.pliable, t * 2, false);
+      } else if (this.pliableStage === 'flee') {
+        pp.x -= dt * 9;
+        pp.y = 0;
+        this.pliable.root.rotation.y = -Math.PI / 2;
+        animateBear(this.pliable, t * 1.5, true);
         if (pp.x < -30) {
           this.scene.remove(this.pliable.root);
           this.pliable = null;

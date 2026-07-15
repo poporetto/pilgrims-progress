@@ -57,6 +57,7 @@ scene.add(christian.root);
 const quest: QuestState = {
   talkedToEvangelist: false,
   talkedToFamily: false,
+  chaseDone: false,
   pliableFollowing: false,
   pliableLeft: false,
   chapterComplete: false,
@@ -110,8 +111,11 @@ ui.restartBtn.addEventListener('click', () => window.location.reload());
 
 // ---------- parametrized chapter-complete screen ----------
 let endingAction: (() => void) | null = null;
+let endingOpen = false;
+let cutscene = false; // freezes the player during scripted scenes (gate chase)
 
 function showEnding(title: string, sub: string, body: string, action: () => void): void {
+  endingOpen = true;
   document.getElementById('ending-title')!.textContent = title;
   document.getElementById('ending-sub')!.textContent = sub;
   document.getElementById('ending-body')!.textContent = body;
@@ -126,6 +130,7 @@ function showEnding(title: string, sub: string, body: string, action: () => void
 const continueBtn = document.getElementById('continue-btn') as HTMLButtonElement;
 continueBtn.addEventListener('click', () => {
   music.blip();
+  endingOpen = false;
   ui.ending.classList.add('hidden');
   setTimeout(() => (ui.ending.style.display = 'none'), 900);
   // close any dialogue left open
@@ -152,6 +157,7 @@ const slough = new SloughScene({
   playScript,
   setObjective,
   splashSound: () => music.splash(),
+  onExit: () => goToMap(),
   onComplete: () => {
     quest.sloughComplete = true;
     if (quest.pliableFollowing) quest.pliableLeft = true;
@@ -171,13 +177,26 @@ const slough = new SloughScene({
 });
 let sloughActors: { christian: import('./bear').BearParts; pliable: import('./bear').BearParts | null } | null = null;
 
-function enterSlough(): void {
+function enterSlough(revisit: boolean): void {
   mode = 'slough';
   music.setStyle('slough');
   ui.prompt.style.display = 'none';
   ui.talkBtn.style.display = 'none';
-  sloughActors = slough.enter(quest.pliableFollowing && !quest.pliableLeft);
+  sloughActors = slough.enter(!revisit && quest.pliableFollowing && !quest.pliableLeft, revisit);
   camTarget.copy(sloughActors.christian.root.position);
+}
+
+// revisit the City of Destruction from the world map
+function enterVillage(): void {
+  mode = 'village';
+  music.setStyle('village');
+  christian.root.position.set(WALL.east - 5, 0, 0);
+  christian.root.rotation.y = -Math.PI / 2;
+  camTarget.copy(christian.root.position);
+  ui.prompt.style.display = 'none';
+  ui.promptKey.style.display = isTouch ? 'none' : 'inline-block';
+  if (isTouch) ui.talkBtn.style.display = 'none';
+  setObjective('🏘 Home for a visit — the shining light in the east leads back to the road');
 }
 
 function setObjective(text: string): void {
@@ -224,6 +243,8 @@ function showLine(): void {
   const line = dialogueLines[dialogueIndex];
   ui.dialogueName.textContent = line.speaker;
   ui.dialogueText.textContent = line.text;
+  // Christian's speech gets a warm brown bubble instead of pink
+  ui.dialogue.classList.toggle('christian', line.speaker === 'Christian');
 }
 
 function advanceDialogue(): void {
@@ -277,7 +298,9 @@ window.addEventListener('keydown', (e) => {
 });
 
 function tryEnterFromMap(): void {
-  if (worldMap.spot() === 'slough' && !quest.sloughComplete) enterSlough();
+  const spot = worldMap.spot();
+  if (spot === 'slough') enterSlough(quest.sloughComplete);
+  else if (spot === 'city') enterVillage();
 }
 window.addEventListener('keyup', (e) => keys.delete(e.code));
 // don't leave movement keys stuck when the tab loses focus mid-keypress
@@ -430,6 +453,32 @@ function resolveCollisions(pos: THREE.Vector3): void {
   }
 }
 
+// ---------- the gate chase: Obstinate & Pliable run after Christian ----------
+let chaseRunning = false;
+let obstinateReturning = false;
+const chaseArrived = { obstinate: false, pliable: false };
+
+const CHASE_LINES: DialogueLine[] = [
+  { speaker: 'Obstinate', text: 'CHRISTIAN! Stop right there, you great woolly fool! Come back at once!' },
+  { speaker: 'Christian', text: 'I cannot, neighbours. This city will not stand — I go to seek a country that cannot crumble. You have seen the light yonder; come with me!' },
+  { speaker: 'Obstinate', text: 'What?! Leave our friends, our comforts, our whole city — for a dream out of that book of yours?' },
+  { speaker: 'Christian', text: 'What I seek is worth more than all we would leave behind. Come and see for yourselves!' },
+  { speaker: 'Obstinate', text: 'Pah! I\'ll not be dragged on any fool\'s errand. Pliable — take his other arm. We are hauling him home.' },
+  { speaker: 'Pliable', text: 'Weeeell… actually, Obstinate… golden crowns? Streets of light? A city that never crumbles? …My paws are tingling.' },
+  { speaker: 'Pliable', text: 'I\'m going WITH him! Think of it — glory, adventure, and no more of your grumbling!' },
+  { speaker: 'Obstinate', text: 'You TOO?! Of all the—! FINE! Go drown in a bog together, the pair of you! I am going home like a SENSIBLE creature. HMPH!' },
+  { speaker: 'Pliable', text: 'Don\'t mind him. Lead the way, friend Christian — hop hop!' },
+];
+
+function startChase(): void {
+  cutscene = true;
+  chaseRunning = true;
+  chaseArrived.obstinate = false;
+  chaseArrived.pliable = false;
+  christian.root.rotation.y = -Math.PI / 2; // turns to face the shouting
+  setObjective('❗ Someone is shouting after you…');
+}
+
 let blockMessageAt = 0;
 function updatePlayer(dt: number, t: number): void {
   let mx = 0;
@@ -442,7 +491,7 @@ function updatePlayer(dt: number, t: number): void {
   mz += joy.y;
 
   const len = Math.hypot(mx, mz);
-  playerMoving = len > 0.15 && !dialogueOpen && started && !quest.chapterComplete;
+  playerMoving = len > 0.15 && !dialogueOpen && started && !endingOpen && !cutscene;
 
   if (playerMoving) {
     mx /= Math.max(len, 1);
@@ -472,22 +521,38 @@ function updatePlayer(dt: number, t: number): void {
   }
   animateBear(christian, t, playerMoving);
 
-  // reached the shining light beyond the gate → chapter complete
+  // racing for the gate the first time → Obstinate & Pliable give chase
+  // (staged on the open road so the gate towers don't hide the scene)
   if (
-    quest.talkedToEvangelist && !quest.chapterComplete &&
+    quest.talkedToEvangelist && !quest.chaseDone && !cutscene &&
+    christian.root.position.x > WALL.east - 8 &&
+    Math.abs(christian.root.position.z) < 4.5
+  ) {
+    startChase();
+  }
+
+  // reached the shining light beyond the gate
+  if (
+    quest.talkedToEvangelist && !cutscene &&
     christian.root.position.distanceTo(world.lightBeam.position) < 3.4
   ) {
-    quest.chapterComplete = true;
-    showEnding(
-      '✨ Chapter I Complete',
-      'Christian leaves the City of Destruction',
-      'Through the Wicket Gate and into the wide world — the first step on the '
-      + 'long road to the Celestial City…',
-      () => {
-        worldMap.start(quest.pliableFollowing ? ['pliable'] : []);
-        goToMap();
-      },
-    );
+    if (!quest.chapterComplete) {
+      quest.chapterComplete = true;
+      showEnding(
+        '✨ Chapter I Complete',
+        'Christian leaves the City of Destruction',
+        'Obstinate turned back in disgust, but Pliable hops eagerly alongside. '
+        + 'Through the Wicket Gate and into the wide world — the first step on the '
+        + 'long road to the Celestial City…',
+        () => {
+          worldMap.start(quest.pliableFollowing && !quest.pliableLeft ? ['pliable'] : []);
+          goToMap();
+        },
+      );
+    } else if (!endingOpen) {
+      // just visiting — walk back into the light to rejoin the road
+      goToMap();
+    }
   }
 }
 
@@ -512,6 +577,49 @@ function updateNPCs(dt: number, t: number): void {
     const ws = wanderState[i];
     const isTalking = dialogueOpen && dialogueNPC === npc;
 
+    // gate chase: the pair sprint after Christian
+    if (chaseRunning && (npc.id === 'obstinate' || npc.id === 'pliable')) {
+      const pos = npc.parts.root.position;
+      const tx = christian.root.position.x - 2.6;
+      const tz = christian.root.position.z + (npc.id === 'pliable' ? 1.4 : -1.2);
+      const dx = tx - pos.x;
+      const dz = tz - pos.z;
+      const d = Math.hypot(dx, dz);
+      if (d > 0.25) {
+        const step = Math.min(10.5 * dt, d);
+        pos.x += (dx / d) * step;
+        pos.z += (dz / d) * step;
+        npc.parts.root.rotation.y = Math.atan2(dx, dz);
+        animateBear(npc.parts, t * 1.4 + i, true);
+      } else {
+        chaseArrived[npc.id as 'obstinate' | 'pliable'] = true;
+        const fx = christian.root.position.x - pos.x;
+        const fz = christian.root.position.z - pos.z;
+        npc.parts.root.rotation.y = Math.atan2(fx, fz);
+        animateBear(npc.parts, t + i, false);
+      }
+      return;
+    }
+
+    // Obstinate stomps back home after the argument
+    if (npc.id === 'obstinate' && obstinateReturning) {
+      const pos = npc.parts.root.position;
+      const dx = npc.position.x - pos.x;
+      const dz = npc.position.z - pos.z;
+      const d = Math.hypot(dx, dz);
+      if (d > 0.25) {
+        pos.x += (dx / d) * 3.6 * dt;
+        pos.z += (dz / d) * 3.6 * dt;
+        npc.parts.root.rotation.y = Math.atan2(dx, dz);
+        animateBear(npc.parts, t + i, true);
+      } else {
+        obstinateReturning = false;
+        npc.parts.root.rotation.y = npc.facing;
+        animateBear(npc.parts, t + i, false);
+      }
+      return;
+    }
+
     // Pliable tags along once persuaded
     if (npc.id === 'pliable' && quest.pliableFollowing && !isTalking) {
       const pos = npc.parts.root.position;
@@ -530,7 +638,7 @@ function updateNPCs(dt: number, t: number): void {
       return;
     }
 
-    if (!npc.wanderRadius || isTalking) {
+    if (!npc.wanderRadius || isTalking || cutscene) {
       animateBear(npc.parts, t + i * 1.7, false);
       return;
     }
@@ -559,6 +667,18 @@ function updateNPCs(dt: number, t: number): void {
     }
     animateBear(npc.parts, t + i * 1.7, ws.moving);
   });
+
+  // both pursuers caught up → the persuasion scene
+  if (chaseRunning && chaseArrived.obstinate && chaseArrived.pliable && !dialogueOpen) {
+    chaseRunning = false;
+    playScript(CHASE_LINES, () => {
+      quest.chaseDone = true;
+      quest.pliableFollowing = true;
+      obstinateReturning = true;
+      cutscene = false;
+      setObjective('✨ On to the shining light — Pliable comes too!');
+    });
+  }
 }
 
 // ---------------------------------------------------------------- loop
@@ -585,19 +705,20 @@ function tick(): void {
     ui.promptKey.style.display = 'none';
     if (isTouch) ui.talkBtn.style.display = 'none';
     if (spot === 'city') {
-      ui.promptWho.textContent = '🏘 City of Destruction — Chapter I ✓';
-    } else if (spot === 'slough' && !quest.sloughComplete) {
+      ui.promptWho.textContent = '🏘 Visit the City of Destruction';
+    } else if (spot === 'slough') {
+      ui.promptWho.textContent = quest.sloughComplete
+        ? '🌊 Revisit the Slough of Despond'
+        : 'Enter the Slough of Despond';
+    } else if (spot === 'beyond') {
+      ui.promptWho.textContent = '⛩ A light in the mist… Chapter III, coming soon!';
+    }
+    if (spot === 'city' || spot === 'slough') {
       ui.promptKey.style.display = isTouch ? 'none' : 'inline-block';
-      ui.promptWho.textContent = 'Enter the Slough of Despond';
       if (isTouch) {
         ui.talkBtn.textContent = 'Enter';
         ui.talkBtn.style.display = 'block';
       }
-    } else if (spot === 'slough') {
-      ui.promptKey.style.display = 'none';
-      ui.promptWho.textContent = '🌊 Slough of Despond — Chapter II ✓';
-    } else if (spot === 'beyond') {
-      ui.promptWho.textContent = '⛩ A light in the mist… Chapter III, coming soon!';
     }
 
     renderer.render(worldMap.scene, worldMap.camera);
@@ -617,7 +738,7 @@ function tick(): void {
     mz += joy.y;
     const len = Math.hypot(mx, mz);
     const factor = slough.moveFactor();
-    const moving = len > 0.15 && !dialogueOpen && factor > 0;
+    const moving = len > 0.15 && !dialogueOpen && !endingOpen && factor > 0;
     if (moving) {
       mx /= Math.max(len, 1);
       mz /= Math.max(len, 1);
@@ -642,7 +763,7 @@ function tick(): void {
 
     // interact prompt
     nearestNPC = dialogueOpen ? null : findNearestNPC();
-    if (nearestNPC && !quest.chapterComplete) {
+    if (nearestNPC && !endingOpen && !cutscene) {
       ui.prompt.style.display = 'block';
       ui.promptWho.textContent = `Talk to ${nearestNPC.name}`;
       if (isTouch) {

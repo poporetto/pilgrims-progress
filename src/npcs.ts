@@ -22,6 +22,7 @@ export interface NPC {
 export interface QuestState {
   talkedToEvangelist: boolean;
   talkedToFamily: boolean;
+  chaseDone: boolean;
   pliableFollowing: boolean;
   pliableLeft: boolean;
   chapterComplete: boolean;
@@ -124,11 +125,17 @@ const DEFS: NPCDef[] = [
     outfitColor: 0x9db8a1,
     x: 4, z: 4.5,
     facing: -Math.PI / 3,
-    getLines: () => [
-      { speaker: 'Obstinate', text: 'Hmph. Still going on about the city falling down, Christian?' },
-      { speaker: 'Obstinate', text: 'This is the finest city anyone could want! Acorns in the market, mud by the river…' },
-      { speaker: 'Obstinate', text: 'Leave if you like — but no sensible creature will go with you. Hmph!' },
-    ],
+    getLines: (s) =>
+      s.chaseDone
+        ? [
+            { speaker: 'Obstinate', text: 'Oh. So you\'ve come crawling back, have you? …No? Just VISITING? Hmph.' },
+            { speaker: 'Obstinate', text: 'Moonbeams and fairy-gold. Mark my words, Christian — no good ever came of leaving a perfectly fine city.' },
+          ]
+        : [
+            { speaker: 'Obstinate', text: 'Hmph. Still going on about the city falling down, Christian?' },
+            { speaker: 'Obstinate', text: 'This is the finest city anyone could want! Acorns in the market, mud by the river…' },
+            { speaker: 'Obstinate', text: 'Leave if you like — but no sensible creature will go with you. Hmph!' },
+          ],
   },
   {
     id: 'pliable',
@@ -141,24 +148,25 @@ const DEFS: NPCDef[] = [
     facing: Math.PI,
     wanderRadius: 3,
     getLines: (s) =>
-      s.pliableFollowing
+      s.pliableLeft
         ? [
-            { speaker: 'Pliable', text: 'Lead on, Christian! Crowns of gold, here we come — hop hop!' },
+            { speaker: 'Pliable', text: 'Ah— Christian! You made it out of that dreadful bog, then. *ahem* …You\'re not cross with me, are you?' },
+            { speaker: 'Pliable', text: 'The mud, you see. It was in my EARS. A gentle-rabbit has his limits! …But do write when you reach that golden city.' },
           ]
-        : s.talkedToEvangelist
+        : s.pliableFollowing
           ? [
-              { speaker: 'Pliable', text: 'A shining light?! And a Wicket Gate?! Ooooh, tell me EVERYTHING.' },
-              { speaker: 'Christian', text: 'Evangelist says beyond the gate lies the way to the Celestial City — where no city ever crumbles.' },
-              { speaker: 'Pliable', text: 'Golden streets? Crowns? No crumbling?! That settles it — I\'m coming with you!' },
-              { speaker: 'Pliable', text: 'Well, what are we standing about for? Lead the way, friend!' },
+              { speaker: 'Pliable', text: 'Lead on, Christian! Crowns of gold, here we come — hop hop!' },
             ]
-          : [
-              { speaker: 'Pliable', text: 'Oh, hello Christian! Don\'t mind old Obstinate — he grumbles at clouds, too.' },
-              { speaker: 'Pliable', text: 'A Celestial City, all gold and light? If it\'s real, I\'d love to see it… I think.' },
-            ],
-    onFinish: (s) => {
-      if (s.talkedToEvangelist) s.pliableFollowing = true;
-    },
+          : s.talkedToEvangelist
+            ? [
+                { speaker: 'Pliable', text: 'A shining light?! And a Wicket Gate?! Ooooh, tell me EVERYTHING.' },
+                { speaker: 'Christian', text: 'Evangelist says beyond the gate lies the way to the Celestial City — where no city ever crumbles.' },
+                { speaker: 'Pliable', text: 'Golden streets… crowns… no crumbling… It sounds marvellous. And far. And possibly muddy. Oh, I can\'t decide!' },
+              ]
+            : [
+                { speaker: 'Pliable', text: 'Oh, hello Christian! Don\'t mind old Obstinate — he grumbles at clouds, too.' },
+                { speaker: 'Pliable', text: 'A Celestial City, all gold and light? If it\'s real, I\'d love to see it… I think.' },
+              ],
   },
   {
     id: 'baker',
