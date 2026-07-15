@@ -71,6 +71,7 @@ const quest: QuestState = {
   sloughComplete: false,
   moralityDone: false,
   wicketDone: false,
+  interpreterDone: false,
 };
 
 const music = new Music();
@@ -95,6 +96,8 @@ const ui = {
   startBtn: document.getElementById('start-btn')! as HTMLButtonElement,
   ending: document.getElementById('ending')!,
   restartBtn: document.getElementById('restart-btn')! as HTMLButtonElement,
+  debugBtn: document.getElementById('debug-btn')! as HTMLButtonElement,
+  debugPanel: document.getElementById('debug-panel')! as HTMLElement,
 };
 
 const isTouch = window.matchMedia('(pointer: coarse)').matches;
@@ -232,14 +235,20 @@ const wicket = new WicketGateScene({
   onExit: () => goToMap(),
   rumbleSound: () => music.rumble(),
   blipSound: () => music.blip(),
+  setMusic: (style) => music.setStyle(style),
   onComplete: () => {
     quest.wicketDone = true;
+    quest.interpreterDone = true;
     showEnding(
       '⛩ Chapter IV Complete',
-      'Through the Wicket Gate',
+      'The Wicket Gate and the House of the Interpreter',
       'Goodwill the great lion drew Christian through the Gate, out of the reach of '
-      + 'Beelzebub\'s arrows, and set his feet on the straight and narrow King\'s Highway. '
-      + 'Somewhere ahead lies the place of deliverance, where the burden falls of itself…',
+      + 'Beelzebub\'s arrows, and set his feet on the King\'s Highway. There, in a '
+      + 'cottage by the road, the Interpreter — a wise old owl — showed him six sights '
+      + 'to carry in his heart: the dust and the water, Passion and Patience, the fire '
+      + 'and the hidden oil, the armed man at the palace gate, the caged professor, and '
+      + 'the dream of judgment. Somewhere ahead now lies the place of deliverance, where '
+      + 'the burden falls of itself…',
       () => {
         worldMap.start([]);
         worldMap.road = 'main';
@@ -418,6 +427,41 @@ window.addEventListener('keydown', (e) => {
   worldMap.road = 'main';
   worldMap.progress = quest.moralityDone ? worldMap.forkT : worldMap.sloughT;
   goToMap();
+});
+
+// ---------- debug chapter-select panel ----------
+function debugEnsureStarted(): void {
+  if (started) return;
+  started = true;
+  music.start();
+  ui.titleScreen.classList.add('hidden');
+  setTimeout(() => (ui.titleScreen.style.display = 'none'), 400);
+}
+
+ui.debugBtn.addEventListener('click', () => {
+  ui.debugPanel.classList.toggle('open');
+});
+
+ui.debugPanel.addEventListener('click', (e) => {
+  const btn = (e.target as HTMLElement).closest('button[data-jump]') as HTMLButtonElement | null;
+  if (!btn) return;
+  const jump = btn.dataset.jump!;
+  ui.debugPanel.classList.remove('open');
+  debugEnsureStarted();
+  dialogueOpen = false;
+  dialogueNPC = null;
+  scriptDone = null;
+  endingOpen = false;
+  cutscene = false;
+  ui.dialogue.style.display = 'none';
+  ui.ending.style.display = 'none';
+  if (jump === 'village') enterVillage();
+  else if (jump === 'slough') enterSlough(false);
+  else if (jump === 'morality') enterMorality(false);
+  else if (jump === 'wicket-approach') enterWicket(false);
+  else if (jump === 'wicket-highway') { enterWicket(false); wicket.debugSkip('highway'); }
+  else if (jump === 'interpreter') { enterWicket(false); wicket.debugSkip('house'); }
+  else if (jump === 'map') { worldMap.start([]); worldMap.road = 'main'; goToMap(); }
 });
 
 // touch joystick

@@ -35,6 +35,33 @@
     }
     #music-btn:active { transform: translateY(2px); box-shadow: 0 2px 0 rgba(91,74,63,0.15); }
 
+    /* ---------- Debug chapter select ---------- */
+    #debug-btn {
+      position: fixed; top: 12px; right: 66px; z-index: 20;
+      width: 46px; height: 46px; border-radius: 50%;
+      border: 3px solid #cbbfae; background: var(--paper);
+      font-size: 18px; cursor: pointer; opacity: 0.75;
+      box-shadow: 0 4px 0 rgba(91, 74, 63, 0.15);
+    }
+    #debug-btn:active { transform: translateY(2px); box-shadow: 0 2px 0 rgba(91,74,63,0.15); }
+    #debug-panel {
+      position: fixed; top: 64px; right: 12px; z-index: 25;
+      background: var(--paper); border: 3px solid #cbbfae; border-radius: 14px;
+      padding: 10px; display: none; flex-direction: column; gap: 6px;
+      box-shadow: 0 4px 0 rgba(91, 74, 63, 0.15); max-width: 230px;
+    }
+    #debug-panel.open { display: flex; }
+    #debug-panel .label {
+      font-size: 11px; font-weight: bold; opacity: 0.55; text-transform: uppercase;
+      margin: 4px 2px 0;
+    }
+    #debug-panel button {
+      font-family: inherit; font-size: 13px; text-align: left;
+      background: #fff; border: 2px solid #e3d9c9; border-radius: 8px;
+      padding: 6px 10px; cursor: pointer; color: var(--ink);
+    }
+    #debug-panel button:active { background: var(--accent2); }
+
     /* ---------- Interact prompt ---------- */
     #prompt {
       position: fixed; bottom: 150px; left: 50%; transform: translateX(-50%);
@@ -121,13 +148,25 @@
     .hidden { opacity: 0; pointer-events: none; }
     #ending { display: none; }
   </style>
-  <script type="module" crossorigin src="./assets/index-D5Ddx2HL.js"></script>
+  <script type="module" crossorigin src="./assets/index-CiV_NQDX.js"></script>
 </head>
 <body>
   <div id="app"></div>
 
   <div id="objective">🐻 Say goodbye, then find Evangelist</div>
   <button id="music-btn" title="Toggle music">🎵</button>
+  <button id="debug-btn" title="Jump to a chapter">🐞</button>
+  <div id="debug-panel">
+    <div class="label">Jump to chapter</div>
+    <button data-jump="village">I · City of Destruction</button>
+    <button data-jump="slough">II · Slough of Despond</button>
+    <button data-jump="morality">III · Worldly Wiseman &amp; Sinai</button>
+    <button data-jump="wicket-approach">IV · Wicket Gate (approach)</button>
+    <button data-jump="wicket-highway">IV · King's Highway</button>
+    <button data-jump="interpreter">IV · House of the Interpreter</button>
+    <div class="label">Or</div>
+    <button data-jump="map">World Map</button>
+  </div>
   <div id="prompt"><span class="key">E</span><span class="who"></span></div>
 
   <div id="dialogue">

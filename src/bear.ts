@@ -5,7 +5,7 @@ import { PALETTE } from './palette';
 // (stubby legs, round body, oversized head); species swap out ears, snouts
 // and tails, and everyone wears clothes.
 
-export type Species = 'bear' | 'pig' | 'frog' | 'rabbit' | 'cat' | 'lion';
+export type Species = 'bear' | 'pig' | 'frog' | 'rabbit' | 'cat' | 'lion' | 'owl';
 export type Outfit = 'shirt' | 'dress' | 'apron' | 'robe' | 'overalls' | 'none';
 
 export interface CharacterOptions {
@@ -67,6 +67,7 @@ const DEFAULT_FUR: Record<Species, number> = {
   rabbit: 0xf3ead9,
   cat: 0xc8bfb4,
   lion: 0xd9a860,
+  owl: 0x8a7864,
 };
 
 const BELLY: Record<Species, number> = {
@@ -76,6 +77,7 @@ const BELLY: Record<Species, number> = {
   rabbit: 0xfdf8ee,
   cat: 0xede7dd,
   lion: 0xf0dcbb,
+  owl: 0xe8ddc9,
 };
 
 const LION_MANE = 0xb0793a;
@@ -124,7 +126,7 @@ export function makeBear(opts: CharacterOptions = {}): BearParts {
     body.add(block(0.14, 0.14, 0.55, fur, 0.2, 0.28, -0.52));
     body.add(block(0.22, 0.22, 0.22, LION_MANE, 0.2, 0.28, -0.84));
   }
-  // frogs have no tail
+  // frogs and owls have no visible tail
 
   // --- arms ---
   const makeArm = (side: number) => {
@@ -204,6 +206,19 @@ export function makeBear(opts: CharacterOptions = {}): BearParts {
     // gentle golden muzzle
     head.add(block(0.44, 0.32, 0.2, PALETTE.snout, 0, 0.26, 0.47));
     head.add(block(0.16, 0.12, 0.08, PALETTE.nose, 0, 0.35, 0.58));
+  } else if (species === 'owl') {
+    // pointed ear tufts
+    const tuftL = block(0.14, 0.3, 0.1, fur, -0.28, 1.02, -0.04);
+    tuftL.rotation.z = 0.2;
+    head.add(tuftL);
+    const tuftR = block(0.14, 0.3, 0.1, fur, 0.28, 1.02, -0.04);
+    tuftR.rotation.z = -0.2;
+    head.add(tuftR);
+    // big round facial disks framing the eyes
+    head.add(block(0.36, 0.36, 0.08, belly, -0.24, 0.5, 0.42));
+    head.add(block(0.36, 0.36, 0.08, belly, 0.24, 0.5, 0.42));
+    // small hooked beak
+    head.add(block(0.16, 0.16, 0.16, 0xe8a23a, 0, 0.32, 0.5));
   }
 
   // eyes (frogs already have theirs on top)

@@ -30,6 +30,7 @@ export interface QuestState {
   sloughComplete: boolean;
   moralityDone: boolean;
   wicketDone: boolean;
+  interpreterDone: boolean;
 }
 
 interface NPCDef {

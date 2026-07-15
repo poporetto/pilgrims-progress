@@ -4,7 +4,7 @@
 //   map     — adventurous but mellow travelling tune (arpeggios + shaker)
 //   slough  — slow minor murk (low pad, sparse notes, water drips)
 
-export type MusicStyle = 'village' | 'map' | 'slough' | 'sinai' | 'gate';
+export type MusicStyle = 'village' | 'map' | 'slough' | 'sinai' | 'gate' | 'interpreter';
 
 interface StyleDef {
   bpm: number;
@@ -68,6 +68,18 @@ const STYLES: Record<MusicStyle, StyleDef> = {
       [98.0, 146.83, 246.94, 293.66],
     ],
     scale: [392.0, 440.0, 523.25, 587.33, 659.25, 783.99],
+  },
+  interpreter: {
+    bpm: 68,
+    // Fmaj7 – Dm7 – Gm7 – C : a cosy, curious storybook mood
+    // (shares the soft-pluck scheduling branch with 'sinai'/'gate')
+    chords: [
+      [87.31, 130.81, 164.81, 246.94],
+      [73.42, 110.0, 146.83, 220.0],
+      [98.0, 146.83, 174.61, 233.08],
+      [130.81, 164.81, 196.0, 261.63],
+    ],
+    scale: [349.23, 392.0, 440.0, 493.88, 523.25, 587.33],
   },
 };
 
