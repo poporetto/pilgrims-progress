@@ -196,19 +196,21 @@ export function makeBear(opts: CharacterOptions = {}): BearParts {
   // --- clothes ---
   const outfit = opts.outfit ?? 'none';
   const oc = opts.outfitColor ?? PALETTE.dressRose;
+  // NB: outfit shells must not share faces with the body/tummy blocks
+  // (body top sits at y 0.79, tummy front at z 0.33) or they z-fight.
   if (outfit === 'shirt') {
-    body.add(block(0.98, 0.52, 0.66, oc, 0, 0.52, 0));
+    body.add(block(0.98, 0.52, 0.7, oc, 0, 0.52, 0));
     // sleeves on the upper arms
     armL.add(block(0.32, 0.28, 0.36, oc, 0, -0.1, 0));
     armR.add(block(0.32, 0.28, 0.36, oc, 0, -0.1, 0));
   } else if (outfit === 'dress') {
     body.add(block(1.0, 0.5, 0.68, oc, 0, 0.12, 0));
-    body.add(block(0.96, 0.4, 0.64, oc, 0, 0.52, 0));
+    body.add(block(0.96, 0.4, 0.7, oc, 0, 0.52, 0));
     body.add(block(0.5, 0.16, 0.06, 0xffffff, 0, 0.68, 0.34)); // collar
     armL.add(block(0.32, 0.24, 0.36, oc, 0, -0.08, 0));
     armR.add(block(0.32, 0.24, 0.36, oc, 0, -0.08, 0));
   } else if (outfit === 'apron') {
-    body.add(block(0.98, 0.5, 0.66, 0xfaf3e3, 0, 0.5, 0)); // shirt under the apron
+    body.add(block(0.98, 0.5, 0.7, 0xfaf3e3, 0, 0.5, 0)); // shirt under the apron
     armL.add(block(0.32, 0.26, 0.36, 0xfaf3e3, 0, -0.1, 0));
     armR.add(block(0.32, 0.26, 0.36, 0xfaf3e3, 0, -0.1, 0));
     body.add(block(0.62, 0.6, 0.08, oc, 0, 0.32, 0.32));
@@ -219,7 +221,7 @@ export function makeBear(opts: CharacterOptions = {}): BearParts {
     body.add(block(0.12, 0.4, 0.06, oc, -0.22, 0.72, 0.3)); // straps
     body.add(block(0.12, 0.4, 0.06, oc, 0.22, 0.72, 0.3));
   } else if (outfit === 'robe') {
-    body.add(block(1.02, 0.86, 0.66, oc, 0, 0.36, 0));
+    body.add(block(1.02, 0.9, 0.7, oc, 0, 0.36, 0));
     body.add(block(0.3, 0.1, 0.06, PALETTE.robeGold, 0, 0.66, 0.34)); // clasp
     armL.add(block(0.34, 0.4, 0.38, oc, 0, -0.14, 0));
     armR.add(block(0.34, 0.4, 0.38, oc, 0, -0.14, 0));

@@ -6,9 +6,13 @@ import { createNPCs, NPC, QuestState, DialogueLine } from './npcs';
 import { Music } from './music';
 import { WorldMap } from './worldmap';
 import { SloughScene } from './slough';
-import { InterpreterScene } from './interpreter';
+import { MoralityScene } from './morality';
 
 // ---------------------------------------------------------------- setup
+
+// dev only: a hot update must never stack a second game instance (two tick
+// loops sharing one dialogue DOM = ghost dialogue) — always hard-reload.
+(import.meta as any).hot?.accept(() => window.location.reload());
 
 const app = document.getElementById('app')!;
 const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -64,12 +68,12 @@ const quest: QuestState = {
   pliableLeft: false,
   chapterComplete: false,
   sloughComplete: false,
-  interpreterDone: false,
+  moralityDone: false,
 };
 
 const music = new Music();
 const worldMap = new WorldMap(window.innerWidth / window.innerHeight);
-let mode: 'village' | 'map' | 'slough' | 'interpreter' = 'village';
+let mode: 'village' | 'map' | 'slough' | 'morality' = 'village';
 
 // ---------------------------------------------------------------- UI refs
 
@@ -150,10 +154,10 @@ function goToMap(): void {
   mode = 'map';
   music.setStyle('map');
   ui.promptKey.style.display = 'none';
-  setObjective(quest.interpreterDone
-    ? '🗺 The road climbs on toward the Hill Difficulty…'
+  setObjective(quest.moralityDone
+    ? '🗺 The long road east lies open — on toward the Wicket Gate!'
     : quest.sloughComplete
-      ? '🗺 The road east — onward to the House of the Interpreter'
+      ? '🗺 East to the crossroad — a smooth byway and a barred road'
       : '🗺 The road east — onward to the Slough of Despond');
 }
 
@@ -182,37 +186,39 @@ const slough = new SloughScene({
 });
 let sloughActors: { christian: import('./bear').BearParts; pliable: import('./bear').BearParts | null } | null = null;
 
-// ---------- Chapter III: the House of the Interpreter ----------
-const interpreter = new InterpreterScene({
+// ---------- Chapter III: Mr. Worldly Wiseman & Mount Sinai ----------
+const morality = new MoralityScene({
   playScript,
   setObjective,
   onExit: () => goToMap(),
+  rumbleSound: () => music.rumble(),
   onComplete: () => {
-    quest.interpreterDone = true;
+    quest.moralityDone = true;
     showEnding(
-      '🏚 Chapter III Complete',
-      'The House of the Interpreter',
-      'A room swept into choking dust, then settled still by a sprinkle of water — '
-      + 'the Law and the Gospel, side by side. Christian carries the lesson onward, '
-      + 'toward the Hill Difficulty…',
+      '⛰ Chapter III Complete',
+      'Mr. Worldly Wiseman and Mount Sinai',
+      'The smooth byway led only beneath the burning mountain of the Law. '
+      + 'Evangelist unmasked the flatterer, and Christian turned back to the true '
+      + 'way — the long road east lies open at last…',
       () => {
-        worldMap.interpreterDone = true;
+        worldMap.moralityDone = true;
+        worldMap.road = 'main';
+        worldMap.progress = worldMap.forkT;
         worldMap.start([]);
-        worldMap.progress = worldMap.interpreterT;
         goToMap();
       },
     );
   },
 });
-let interpreterActors: { christian: import('./bear').BearParts } | null = null;
+let moralityActors: { christian: import('./bear').BearParts } | null = null;
 
-function enterInterpreter(revisit: boolean): void {
-  mode = 'interpreter';
-  music.setStyle('interpreter');
+function enterMorality(revisit: boolean): void {
+  mode = 'morality';
+  music.setStyle('sinai');
   ui.prompt.style.display = 'none';
   ui.talkBtn.style.display = 'none';
-  interpreterActors = interpreter.enter(revisit);
-  camTarget.copy(interpreterActors.christian.root.position);
+  moralityActors = morality.enter(revisit);
+  camTarget.copy(moralityActors.christian.root.position);
 }
 
 function enterSlough(revisit: boolean): void {
@@ -339,13 +345,38 @@ function tryEnterFromMap(): void {
   const spot = worldMap.spot();
   if (spot === 'slough') enterSlough(quest.sloughComplete);
   else if (spot === 'city') enterVillage();
-  else if (spot === 'interpreter') enterInterpreter(quest.interpreterDone);
+  else if (spot === 'morality') enterMorality(quest.moralityDone);
 }
 window.addEventListener('keyup', (e) => keys.delete(e.code));
 // don't leave movement keys stuck when the tab loses focus mid-keypress
 window.addEventListener('blur', () => keys.clear());
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) keys.clear();
+});
+
+// hidden playtest skip-keys: 9 = chapters I–II done (map at the slough),
+// 8 = chapter III done too (map at the crossroad, long road open)
+window.addEventListener('keydown', (e) => {
+  if (e.code !== 'Digit9' && e.code !== 'Digit8') return;
+  if (dialogueOpen || endingOpen) return;
+  Object.assign(quest, {
+    talkedToEvangelist: true, talkedToFamily: true, chaseDone: true,
+    pliableFollowing: true, chapterComplete: true,
+    sloughComplete: true, pliableLeft: true,
+  });
+  quest.moralityDone = e.code === 'Digit8';
+  if (!started) {
+    started = true;
+    music.start();
+    ui.titleScreen.classList.add('hidden');
+    setTimeout(() => (ui.titleScreen.style.display = 'none'), 400);
+  }
+  worldMap.sloughDone = true;
+  worldMap.moralityDone = quest.moralityDone;
+  worldMap.start([]);
+  worldMap.road = 'main';
+  worldMap.progress = quest.moralityDone ? worldMap.forkT : worldMap.sloughT;
+  goToMap();
 });
 
 // touch joystick
@@ -682,10 +713,11 @@ function updateNPCs(dt: number, t: number): void {
     const isTalking = dialogueOpen && dialogueNPC === npc;
 
     // gate chase: the pair sprint after Christian
+    // (both stop NORTH-west of him so the dialogue panel can't hide them)
     if (chaseRunning && (npc.id === 'obstinate' || npc.id === 'pliable')) {
       const pos = npc.parts.root.position;
-      const tx = christian.root.position.x - 2.6;
-      const tz = christian.root.position.z + (npc.id === 'pliable' ? 1.4 : -1.2);
+      const tx = christian.root.position.x - (npc.id === 'pliable' ? 1.3 : 2.6);
+      const tz = christian.root.position.z - (npc.id === 'pliable' ? 2.3 : 1.1);
       const dx = tx - pos.x;
       const dz = tz - pos.z;
       const d = Math.hypot(dx, dz);
@@ -797,12 +829,20 @@ function tick(): void {
   if (mode === 'map') {
     // ---- world map mode ----
     let ax = 0;
+    let az = 0;
     if (keys.has('KeyD') || keys.has('ArrowRight')) ax += 1;
     if (keys.has('KeyA') || keys.has('ArrowLeft')) ax -= 1;
-    if (keys.has('KeyW') || keys.has('ArrowUp')) ax += 1; // "onward" = east
-    if (keys.has('KeyS') || keys.has('ArrowDown')) ax -= 1;
+    if (keys.has('KeyS') || keys.has('ArrowDown')) az += 1; // south = the byway at the crossroad
+    if (keys.has('KeyW') || keys.has('ArrowUp')) az -= 1;
     ax += joy.x;
-    worldMap.update(dt, t, THREE.MathUtils.clamp(ax, -1, 1));
+    az += joy.y;
+    worldMap.update(dt, t, THREE.MathUtils.clamp(ax, -1, 1), THREE.MathUtils.clamp(az, -1, 1));
+
+    // the barred east road just shunted Christian onto the smooth byway
+    if (worldMap.justDiverted) {
+      worldMap.justDiverted = false;
+      setObjective('🎩 The east road is barred — a smooth byway curves aside toward Morality…');
+    }
 
     const spot = worldMap.spot();
     ui.prompt.style.display = spot === 'road' ? 'none' : 'block';
@@ -814,14 +854,18 @@ function tick(): void {
       ui.promptWho.textContent = quest.sloughComplete
         ? '🌊 Revisit the Slough of Despond'
         : 'Enter the Slough of Despond';
-    } else if (spot === 'interpreter') {
-      ui.promptWho.textContent = quest.interpreterDone
-        ? '🏚 Revisit the House of the Interpreter'
-        : 'Knock at the House of the Interpreter';
+    } else if (spot === 'morality') {
+      ui.promptWho.textContent = quest.moralityDone
+        ? '⛰ Revisit the foot of Mount Sinai'
+        : 'Enter the pleasant village of Morality';
+    } else if (spot === 'fork') {
+      ui.promptWho.textContent = quest.moralityDone
+        ? '🪧 A crossroad — east: the true way · press S for the byway'
+        : '🪧 A crossroad — the east road is barred…';
     } else if (spot === 'beyond') {
       ui.promptWho.textContent = '⛩ A light in the mist… Chapter IV, coming soon!';
     }
-    if (spot === 'city' || spot === 'slough' || spot === 'interpreter') {
+    if (spot === 'city' || spot === 'slough' || spot === 'morality') {
       ui.promptKey.style.display = isTouch ? 'none' : 'inline-block';
       if (isTouch) {
         ui.talkBtn.textContent = 'Enter';
@@ -864,9 +908,9 @@ function tick(): void {
     return;
   }
 
-  if (mode === 'interpreter' && interpreterActors) {
-    // ---- House of the Interpreter mode ----
-    const ic = interpreterActors.christian;
+  if (mode === 'morality' && moralityActors) {
+    // ---- Worldly Wiseman & Mount Sinai mode ----
+    const mc = moralityActors.christian;
     let mx = 0;
     let mz = 0;
     if (keys.has('KeyW') || keys.has('ArrowUp')) mz -= 1;
@@ -876,22 +920,22 @@ function tick(): void {
     mx += joy.x;
     mz += joy.y;
     const len = Math.hypot(mx, mz);
-    const factor = interpreter.moveFactor();
+    const factor = morality.moveFactor();
     const moving = len > 0.15 && !dialogueOpen && !endingOpen && factor > 0;
     if (moving) {
       mx /= Math.max(len, 1);
       mz /= Math.max(len, 1);
-      ic.root.position.x += mx * SPEED * factor * dt;
-      ic.root.position.z += mz * SPEED * factor * dt;
-      ic.root.rotation.y = lerpAngle(ic.root.rotation.y, Math.atan2(mx, mz), 12 * dt);
+      mc.root.position.x += mx * SPEED * factor * dt;
+      mc.root.position.z += mz * SPEED * factor * dt;
+      mc.root.rotation.y = lerpAngle(mc.root.rotation.y, Math.atan2(mx, mz), 12 * dt);
     }
-    interpreter.afterMove();
-    interpreter.update(dt, t, moving);
+    morality.afterMove();
+    morality.update(dt, t, moving);
 
-    camTarget.lerp(ic.root.position, Math.min(4 * dt, 1));
+    camTarget.lerp(mc.root.position, Math.min(4 * dt, 1));
     camera.position.copy(camTarget).add(camOffset);
     camera.lookAt(camTarget.x, camTarget.y + 1.4, camTarget.z);
-    renderer.render(interpreter.scene, camera);
+    renderer.render(morality.scene, camera);
     return;
   }
 
@@ -947,6 +991,6 @@ tick();
 // small debug handle for testing (harmless in production)
 (window as any).__game = {
   christian, npcs, quest, world, openDialogue, advanceDialogue, camTarget,
-  worldMap, slough, enterSlough, interpreter, enterInterpreter, playScript,
+  worldMap, slough, enterSlough, morality, enterMorality, playScript, goToMap,
   get mode() { return mode; },
 };

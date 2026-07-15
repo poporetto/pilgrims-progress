@@ -37,6 +37,7 @@ export class SloughScene {
     [6.5, 0.9], [9, -1.0], [11.5, 0.7], [13.5, -0.5],
   ];
   private sink = 0;
+  private struggle = 0; // extra sinking that builds while standing still in the mire
   private wisps: THREE.Mesh[] = [];
   private bubbles: Array<{ mesh: THREE.Mesh; phase: number }> = [];
   private splashes: Array<{ mesh: THREE.Mesh; m: THREE.MeshBasicMaterial; life: number; vx: number; vz: number }> = [];
@@ -216,6 +217,7 @@ export class SloughScene {
     this.revisit = revisit;
     this.phase = 'walk';
     this.sink = 0;
+    this.struggle = 0;
     if (this.pliable) {
       this.scene.remove(this.pliable.root);
       this.pliable = null;
@@ -235,7 +237,8 @@ export class SloughScene {
     }
     if (withPliable) {
       this.pliable = makeBear({ species: 'rabbit', outfit: 'shirt', outfitColor: 0xffd6a5, scale: 0.95 });
-      this.pliable.root.position.set(-26, 0, 1.5);
+      // keep him north of Christian so the dialogue panel never hides him
+      this.pliable.root.position.set(-26, 0, -1.4);
       this.scene.add(this.pliable.root);
       this.cb.playScript([
         { speaker: 'Pliable', text: 'So tell me MORE about this Celestial City! Do the crowns come in rabbit sizes? Is there clover?' },
@@ -296,10 +299,11 @@ export class SloughScene {
       for (let i = 0; i < 6; i++) this.spawnSplash(p.x + Math.random(), p.z + (Math.random() - 0.5));
       if (this.pliable) {
         // he raced ahead — the ground gives way under both of them
-        this.pliable.root.position.set(p.x + 1.9, -0.35, p.z + 0.9);
+        // (north of Christian, clear of the dialogue panel)
+        this.pliable.root.position.set(p.x + 1.9, -0.35, p.z - 1.2);
         this.pliable.root.rotation.y = Math.PI / 2;
         for (let i = 0; i < 4; i++) {
-          this.spawnSplash(p.x + 1.9 + Math.random(), p.z + 0.9 + (Math.random() - 0.5));
+          this.spawnSplash(p.x + 1.9 + Math.random(), p.z - 1.2 + (Math.random() - 0.5));
         }
       }
       const lines: DialogueLine[] = this.pliable
@@ -320,7 +324,7 @@ export class SloughScene {
           this.cb.setObjective('😨 Pliable flounders back toward the bank nearest home…');
         } else {
           this.phase = 'crossing';
-          this.cb.setObjective('🪨 Struggle across — feel for the solid Steps beneath the mire!');
+          this.cb.setObjective('🪨 Keep moving or the mire pulls you under — rest on the solid Steps!');
         }
       });
     }
@@ -353,13 +357,37 @@ export class SloughScene {
 
     // sinking: knee-deep off the Steps, ankle-deep on them
     let sinkTarget = 0;
-    if (this.inBog(p.x, p.z) && this.phase !== 'done') {
-      sinkTarget = this.nearStep(p.x, p.z) ? 0.16 : 0.5;
+    const inMire = this.inBog(p.x, p.z);
+    const onStep = this.nearStep(p.x, p.z);
+    if (inMire && this.phase !== 'done') {
+      sinkTarget = onStep ? 0.16 : 0.5;
       if (this.phase === 'stuck') sinkTarget = 0.62;
     }
+    // the mire pulls idle pilgrims under — keep moving, or rest on the Steps
+    if (this.phase === 'crossing' && !this.revisit && inMire && !onStep) {
+      this.struggle = moving
+        ? Math.max(0, this.struggle - dt * 0.6)
+        : Math.min(0.85, this.struggle + dt * 0.32);
+    } else {
+      this.struggle = Math.max(0, this.struggle - dt * 1.6);
+    }
+    sinkTarget += this.struggle;
     if (this.phase === 'rescue' || this.phase === 'epilogue') sinkTarget = this.rescueT > 1 ? 0 : 0.62;
     this.sink += (sinkTarget - this.sink) * Math.min(dt * 3, 1);
     this.christian.root.position.y = -this.sink;
+
+    // pulled under! dragged back to the western bank, sputtering
+    if (this.phase === 'crossing' && !this.revisit && this.sink > 1.05) {
+      this.struggle = 0;
+      this.sink = 0.2;
+      this.christian.root.position.set(-8.5, 0, THREE.MathUtils.clamp(p.z, -6, 6) * 0.4);
+      this.christian.root.rotation.y = Math.PI / 2;
+      this.cb.splashSound();
+      this.cb.playScript([
+        { speaker: 'Christian', text: '*GLUB—!* The mire closes over his ears. Sputtering mud, he claws his way back to the western bank.' },
+        { speaker: 'Christian', text: 'It pulls hardest when I stand still… Keep moving, and catch your breath on the solid Steps!' },
+      ]);
+    }
     animateBear(this.christian, t, moving && this.phase !== 'stuck' && this.phase !== 'rescue' && this.phase !== 'epilogue');
 
     // Pliable: follows until the fall, clambers out on the side nearest home,
@@ -385,7 +413,7 @@ export class SloughScene {
           ], () => {
             this.pliableStage = 'flee';
             this.phase = 'crossing';
-            this.cb.setObjective('🪨 Struggle across — feel for the solid Steps beneath the mire!');
+            this.cb.setObjective('🪨 Keep moving or the mire pulls you under — rest on the solid Steps!');
           });
         }
       } else if (this.pliableStage === 'farewell') {
@@ -443,9 +471,11 @@ export class SloughScene {
           { speaker: 'Help', text: 'So it goes with every pilgrim. Here — give me your paw!' },
           { speaker: 'Help', text: '*HEAVE!*' },
         ], () => {
-          // hauled out onto the bank
+          // hauled out onto the bank, at Help's left, the two face to face
           this.rescueT = 2;
-          this.christian.root.position.set(18.4, 0, 0);
+          this.christian.root.position.set(16.5, 0, -0.5);
+          this.christian.root.rotation.y = Math.PI / 2; // faces Help
+          this.help.armR.rotation.x = 0;
           this.sink = 0;
           this.cb.splashSound();
           this.cb.playScript([

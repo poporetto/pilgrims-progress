@@ -4,7 +4,7 @@
 //   map     — adventurous but mellow travelling tune (arpeggios + shaker)
 //   slough  — slow minor murk (low pad, sparse notes, water drips)
 
-export type MusicStyle = 'village' | 'map' | 'slough' | 'interpreter';
+export type MusicStyle = 'village' | 'map' | 'slough' | 'sinai';
 
 interface StyleDef {
   bpm: number;
@@ -46,16 +46,16 @@ const STYLES: Record<MusicStyle, StyleDef> = {
     ],
     scale: [220.0, 246.94, 261.63, 329.63, 392.0, 440.0], // A minor-ish, low
   },
-  interpreter: {
-    bpm: 64,
-    // Fmaj7 – Dm7 – Bbmaj7(ish) – Am7 (warm, fireside, thoughtful)
+  sinai: {
+    bpm: 66,
+    // Am – Em – F – E : pleasant on the surface, uneasy underneath
     chords: [
-      [174.61, 220.0, 261.63, 329.63],
-      [146.83, 220.0, 261.63, 293.66],
-      [130.81, 196.0, 246.94, 293.66],
-      [110.0, 174.61, 220.0, 261.63],
+      [110.0, 164.81, 220.0, 261.63],
+      [82.41, 123.47, 164.81, 196.0],
+      [87.31, 130.81, 174.61, 220.0],
+      [82.41, 123.47, 164.81, 207.65],
     ],
-    scale: [349.23, 392.0, 440.0, 523.25, 587.33, 659.25],
+    scale: [329.63, 349.23, 392.0, 440.0, 493.88, 523.25],
   },
 };
 
@@ -157,6 +157,35 @@ export class Music {
     g.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
     src.connect(f).connect(g).connect(this.master);
     src.start(t);
+  }
+
+  // deep mountain rumble for Mount Sinai's fire and thunder
+  rumble(): void {
+    if (!this.ctx || !this.master || !this.enabled || !this.noiseBuf) return;
+    const t = this.ctx.currentTime;
+    const src = this.ctx.createBufferSource();
+    src.buffer = this.noiseBuf;
+    const f = this.ctx.createBiquadFilter();
+    f.type = 'lowpass';
+    f.frequency.setValueAtTime(140, t);
+    f.frequency.exponentialRampToValueAtTime(60, t + 0.8);
+    const g = this.ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(0.4, t + 0.08);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 1.0);
+    src.connect(f).connect(g).connect(this.master);
+    src.start(t);
+    // a low ominous tone underneath
+    const osc = this.ctx.createOscillator();
+    const og = this.ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(55, t);
+    osc.frequency.exponentialRampToValueAtTime(38, t + 0.9);
+    og.gain.setValueAtTime(0.12, t);
+    og.gain.exponentialRampToValueAtTime(0.001, t + 1.0);
+    osc.connect(og).connect(this.master);
+    osc.start(t);
+    osc.stop(t + 1.1);
   }
 
   private barLen(): number {
@@ -297,7 +326,7 @@ export class Music {
         osc.stop(td + 0.25);
       }
     } else {
-      // interpreter: warm fireside pad, slow unhurried plucks, no percussion
+      // sinai: gentle plucks over minor chords — a pretty road with a shadow on it
       this.pad(t0, chord, barLen, 0.05, 'sine');
       for (let i = 0; i < 8; i++) {
         if (i % 2 !== 0 || Math.random() > 0.6) continue;
