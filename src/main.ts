@@ -6,6 +6,7 @@ import { createNPCs, NPC, QuestState, DialogueLine } from './npcs';
 import { Music } from './music';
 import { WorldMap } from './worldmap';
 import { SloughScene } from './slough';
+import { InterpreterScene } from './interpreter';
 
 // ---------------------------------------------------------------- setup
 
@@ -63,11 +64,12 @@ const quest: QuestState = {
   pliableLeft: false,
   chapterComplete: false,
   sloughComplete: false,
+  interpreterDone: false,
 };
 
 const music = new Music();
 const worldMap = new WorldMap(window.innerWidth / window.innerHeight);
-let mode: 'village' | 'map' | 'slough' = 'village';
+let mode: 'village' | 'map' | 'slough' | 'interpreter' = 'village';
 
 // ---------------------------------------------------------------- UI refs
 
@@ -148,9 +150,11 @@ function goToMap(): void {
   mode = 'map';
   music.setStyle('map');
   ui.promptKey.style.display = 'none';
-  setObjective(quest.sloughComplete
-    ? '🗺 The road stretches on toward the sunrise…'
-    : '🗺 The road east — onward to the Slough of Despond');
+  setObjective(quest.interpreterDone
+    ? '🗺 The road climbs on toward the Hill Difficulty…'
+    : quest.sloughComplete
+      ? '🗺 The road east — onward to the House of the Interpreter'
+      : '🗺 The road east — onward to the Slough of Despond');
 }
 
 // ---------- Chapter II: the Slough of Despond ----------
@@ -170,13 +174,46 @@ const slough = new SloughScene({
       () => {
         worldMap.sloughDone = true;
         worldMap.start([]);
-        worldMap.progress = 0.5;
+        worldMap.progress = worldMap.sloughT;
         goToMap();
       },
     );
   },
 });
 let sloughActors: { christian: import('./bear').BearParts; pliable: import('./bear').BearParts | null } | null = null;
+
+// ---------- Chapter III: the House of the Interpreter ----------
+const interpreter = new InterpreterScene({
+  playScript,
+  setObjective,
+  onExit: () => goToMap(),
+  onComplete: () => {
+    quest.interpreterDone = true;
+    showEnding(
+      '🏚 Chapter III Complete',
+      'The House of the Interpreter',
+      'A room swept into choking dust, then settled still by a sprinkle of water — '
+      + 'the Law and the Gospel, side by side. Christian carries the lesson onward, '
+      + 'toward the Hill Difficulty…',
+      () => {
+        worldMap.interpreterDone = true;
+        worldMap.start([]);
+        worldMap.progress = worldMap.interpreterT;
+        goToMap();
+      },
+    );
+  },
+});
+let interpreterActors: { christian: import('./bear').BearParts } | null = null;
+
+function enterInterpreter(revisit: boolean): void {
+  mode = 'interpreter';
+  music.setStyle('interpreter');
+  ui.prompt.style.display = 'none';
+  ui.talkBtn.style.display = 'none';
+  interpreterActors = interpreter.enter(revisit);
+  camTarget.copy(interpreterActors.christian.root.position);
+}
 
 function enterSlough(revisit: boolean): void {
   mode = 'slough';
@@ -302,6 +339,7 @@ function tryEnterFromMap(): void {
   const spot = worldMap.spot();
   if (spot === 'slough') enterSlough(quest.sloughComplete);
   else if (spot === 'city') enterVillage();
+  else if (spot === 'interpreter') enterInterpreter(quest.interpreterDone);
 }
 window.addEventListener('keyup', (e) => keys.delete(e.code));
 // don't leave movement keys stuck when the tab loses focus mid-keypress
@@ -776,10 +814,14 @@ function tick(): void {
       ui.promptWho.textContent = quest.sloughComplete
         ? '🌊 Revisit the Slough of Despond'
         : 'Enter the Slough of Despond';
+    } else if (spot === 'interpreter') {
+      ui.promptWho.textContent = quest.interpreterDone
+        ? '🏚 Revisit the House of the Interpreter'
+        : 'Knock at the House of the Interpreter';
     } else if (spot === 'beyond') {
-      ui.promptWho.textContent = '⛩ A light in the mist… Chapter III, coming soon!';
+      ui.promptWho.textContent = '⛩ A light in the mist… Chapter IV, coming soon!';
     }
-    if (spot === 'city' || spot === 'slough') {
+    if (spot === 'city' || spot === 'slough' || spot === 'interpreter') {
       ui.promptKey.style.display = isTouch ? 'none' : 'inline-block';
       if (isTouch) {
         ui.talkBtn.textContent = 'Enter';
@@ -819,6 +861,37 @@ function tick(): void {
     camera.position.copy(camTarget).add(camOffset);
     camera.lookAt(camTarget.x, camTarget.y + 1.4, camTarget.z);
     renderer.render(slough.scene, camera);
+    return;
+  }
+
+  if (mode === 'interpreter' && interpreterActors) {
+    // ---- House of the Interpreter mode ----
+    const ic = interpreterActors.christian;
+    let mx = 0;
+    let mz = 0;
+    if (keys.has('KeyW') || keys.has('ArrowUp')) mz -= 1;
+    if (keys.has('KeyS') || keys.has('ArrowDown')) mz += 1;
+    if (keys.has('KeyA') || keys.has('ArrowLeft')) mx -= 1;
+    if (keys.has('KeyD') || keys.has('ArrowRight')) mx += 1;
+    mx += joy.x;
+    mz += joy.y;
+    const len = Math.hypot(mx, mz);
+    const factor = interpreter.moveFactor();
+    const moving = len > 0.15 && !dialogueOpen && !endingOpen && factor > 0;
+    if (moving) {
+      mx /= Math.max(len, 1);
+      mz /= Math.max(len, 1);
+      ic.root.position.x += mx * SPEED * factor * dt;
+      ic.root.position.z += mz * SPEED * factor * dt;
+      ic.root.rotation.y = lerpAngle(ic.root.rotation.y, Math.atan2(mx, mz), 12 * dt);
+    }
+    interpreter.afterMove();
+    interpreter.update(dt, t, moving);
+
+    camTarget.lerp(ic.root.position, Math.min(4 * dt, 1));
+    camera.position.copy(camTarget).add(camOffset);
+    camera.lookAt(camTarget.x, camTarget.y + 1.4, camTarget.z);
+    renderer.render(interpreter.scene, camera);
     return;
   }
 
@@ -874,6 +947,6 @@ tick();
 // small debug handle for testing (harmless in production)
 (window as any).__game = {
   christian, npcs, quest, world, openDialogue, advanceDialogue, camTarget,
-  worldMap, slough, enterSlough, playScript,
+  worldMap, slough, enterSlough, interpreter, enterInterpreter, playScript,
   get mode() { return mode; },
 };

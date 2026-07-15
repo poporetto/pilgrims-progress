@@ -4,20 +4,27 @@ import { makeBear, animateBear, BearParts, block, mat } from './bear';
 
 // The overworld: a miniature diorama of floating islands over pastel sea.
 // Christian's mini walks a winding plank road City of Destruction → Slough
-// of Despond → (a mist-wrapped island yet to be named); party members trail
-// behind him.
+// of Despond → House of the Interpreter → (a mist-wrapped island yet to be
+// named); party members trail behind him.
 
-export type MapSpot = 'city' | 'road' | 'slough' | 'beyond';
+export type MapSpot = 'city' | 'road' | 'slough' | 'interpreter' | 'beyond';
 
 const CITY_X = -13;
 const SLOUGH_X = 0;
-const BEYOND_X = 13;
+const INTERPRETER_X = 13;
+const BEYOND_X = 26;
 
 export class WorldMap {
   scene = new THREE.Scene();
   camera: THREE.PerspectiveCamera;
-  progress = 0.02; // 0 = City of Destruction, 0.5 = Slough, 1 = beyond
+  progress = 0.02; // 0 = City of Destruction … 1 = the misty island beyond
   sloughDone = false;
+  interpreterDone = false;
+  // t-parameters along the curve nearest each island, resolved after build
+  cityT = 0.02;
+  sloughT = 0.33;
+  interpreterT = 0.66;
+  beyondT = 0.97;
   private curve: THREE.CatmullRomCurve3;
   private christian: BearParts;
   private followers: BearParts[] = [];
@@ -40,8 +47,15 @@ export class WorldMap {
       new THREE.Vector3(SLOUGH_X, 0.62, 0),
       new THREE.Vector3(4, 0.62, -1.2),
       new THREE.Vector3(8, 0.62, 1.2),
+      new THREE.Vector3(INTERPRETER_X, 0.62, 0.3),
+      new THREE.Vector3(17, 0.62, -1.0),
+      new THREE.Vector3(21, 0.62, 1.0),
       new THREE.Vector3(BEYOND_X - 2, 0.62, 0.3),
     ]);
+    this.cityT = this.tForX(CITY_X);
+    this.sloughT = this.tForX(SLOUGH_X);
+    this.interpreterT = this.tForX(INTERPRETER_X);
+    this.beyondT = this.tForX(BEYOND_X);
 
     this.christian = makeBear({
       species: 'bear', fur: PALETTE.bearBrown,
@@ -51,6 +65,17 @@ export class WorldMap {
   }
 
   // ------------------------------------------------------------ helpers
+
+  private tForX(targetX: number): number {
+    let bestT = 0;
+    let bestD = Infinity;
+    for (let i = 0; i <= 300; i++) {
+      const tt = i / 300;
+      const d = Math.abs(this.curve.getPointAt(tt).x - targetX);
+      if (d < bestD) { bestD = d; bestT = tt; }
+    }
+    return bestT;
+  }
 
   private label(text: string, x: number, y: number, color = '#5b4a3f'): void {
     const canvas = document.createElement('canvas');
@@ -214,6 +239,25 @@ export class WorldMap {
     slough.add(dead);
     this.label('Slough of Despond', SLOUGH_X, 4.4);
 
+    // ---------- House of the Interpreter island ----------
+    const interp = this.island(INTERPRETER_X, 8.5, 7.5, 0x9ec7a8);
+    interp.add(this.miniTree(-3.0, 2.0));
+    interp.add(this.miniTree(3.0, -1.8, true));
+    interp.add(this.miniTree(-2.6, -2.2));
+    const cottage = new THREE.Group();
+    cottage.add(block(1.8, 1.0, 1.3, 0x8a6f52, 0, 0.9, 0));
+    cottage.add(block(2.0, 0.4, 1.5, PALETTE.roofPeach, 0, 1.5, 0));
+    cottage.add(block(1.6, 0.2, 1.1, PALETTE.roofPeach, 0, 1.8, 0));
+    const cottageGlow = new THREE.Mesh(
+      new THREE.BoxGeometry(0.3, 0.3, 0.06),
+      new THREE.MeshBasicMaterial({ color: 0xfff3b8, transparent: true, opacity: 0.85 }),
+    );
+    cottageGlow.position.set(0.5, 0.85, 0.66);
+    cottage.add(cottageGlow);
+    cottage.position.set(0.3, 0, 0.4);
+    interp.add(cottage);
+    this.label('House of the Interpreter', INTERPRETER_X, 4.4);
+
     // ---------- the misty island beyond ----------
     const beyond = this.island(BEYOND_X, 8, 7, 0x9ec7a8);
     beyond.add(this.miniTree(-2.6, 1.8));
@@ -247,7 +291,8 @@ export class WorldMap {
       const p = this.curve.getPointAt(t);
       const tan = this.curve.getTangentAt(t);
       const nearIsland = Math.min(
-        Math.abs(p.x - CITY_X), Math.abs(p.x - SLOUGH_X), Math.abs(p.x - BEYOND_X),
+        Math.abs(p.x - CITY_X), Math.abs(p.x - SLOUGH_X),
+        Math.abs(p.x - INTERPRETER_X), Math.abs(p.x - BEYOND_X),
       ) < 4.0;
       if (nearIsland) {
         const stone = block(0.5, 0.1, 0.6, PALETTE.path, p.x, p.y - 0.02, p.z);
@@ -310,16 +355,18 @@ export class WorldMap {
   }
 
   spot(): MapSpot {
-    if (this.progress < 0.07) return 'city';
-    if (Math.abs(this.progress - 0.5) < 0.05) return 'slough';
-    if (this.progress > 0.93) return 'beyond';
+    if (this.progress < this.cityT + 0.05) return 'city';
+    if (Math.abs(this.progress - this.sloughT) < 0.05) return 'slough';
+    if (Math.abs(this.progress - this.interpreterT) < 0.05) return 'interpreter';
+    if (this.progress > this.beyondT - 0.04) return 'beyond';
     return 'road';
   }
 
   private placeAt(obj: THREE.Object3D, t: number): void {
     const p = this.curve.getPointAt(THREE.MathUtils.clamp(t, 0, 1));
     const nearIsland = Math.min(
-      Math.abs(p.x - CITY_X), Math.abs(p.x - SLOUGH_X), Math.abs(p.x - BEYOND_X),
+      Math.abs(p.x - CITY_X), Math.abs(p.x - SLOUGH_X),
+      Math.abs(p.x - INTERPRETER_X), Math.abs(p.x - BEYOND_X),
     ) < 4.0;
     obj.position.set(p.x, nearIsland ? p.y : 0.57, p.z);
   }
@@ -328,7 +375,9 @@ export class WorldMap {
     if (!this.built) return;
     this.moving = Math.abs(axisX) > 0.15;
     if (this.moving) {
-      const maxP = this.sloughDone ? 0.955 : 0.5;
+      const maxP = this.interpreterDone
+        ? this.beyondT + 0.03
+        : (this.sloughDone ? this.interpreterT + 0.05 : this.sloughT + 0.05);
       this.progress = THREE.MathUtils.clamp(this.progress + axisX * dt * 0.075, 0.02, maxP);
       this.facing = axisX > 0 ? 1 : -1;
     }

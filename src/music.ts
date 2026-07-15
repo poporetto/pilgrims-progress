@@ -4,7 +4,7 @@
 //   map     — adventurous but mellow travelling tune (arpeggios + shaker)
 //   slough  — slow minor murk (low pad, sparse notes, water drips)
 
-export type MusicStyle = 'village' | 'map' | 'slough';
+export type MusicStyle = 'village' | 'map' | 'slough' | 'interpreter';
 
 interface StyleDef {
   bpm: number;
@@ -45,6 +45,17 @@ const STYLES: Record<MusicStyle, StyleDef> = {
       [82.41, 123.47, 164.81, 207.65],
     ],
     scale: [220.0, 246.94, 261.63, 329.63, 392.0, 440.0], // A minor-ish, low
+  },
+  interpreter: {
+    bpm: 64,
+    // Fmaj7 – Dm7 – Bbmaj7(ish) – Am7 (warm, fireside, thoughtful)
+    chords: [
+      [174.61, 220.0, 261.63, 329.63],
+      [146.83, 220.0, 261.63, 293.66],
+      [130.81, 196.0, 246.94, 293.66],
+      [110.0, 174.61, 220.0, 261.63],
+    ],
+    scale: [349.23, 392.0, 440.0, 523.25, 587.33, 659.25],
   },
 };
 
@@ -262,7 +273,7 @@ export class Music {
       this.bass(t0, chord[0] / 2, 0.12, 0.4);
       this.bass(t0 + barLen * 0.5, chord[1] / 2, 0.09, 0.4);
       this.bass(t0 + barLen * 0.75, chord[0] / 2, 0.07, 0.3);
-    } else {
+    } else if (this.style === 'slough') {
       // slough: low murky pad, rare hesitant notes, water drips
       this.pad(t0, chord, barLen, 0.05, 'sine');
       for (let i = 0; i < 8; i++) {
@@ -285,6 +296,14 @@ export class Music {
         osc.start(td);
         osc.stop(td + 0.25);
       }
+    } else {
+      // interpreter: warm fireside pad, slow unhurried plucks, no percussion
+      this.pad(t0, chord, barLen, 0.05, 'sine');
+      for (let i = 0; i < 8; i++) {
+        if (i % 2 !== 0 || Math.random() > 0.6) continue;
+        this.pluck(t0 + i * eighth, def.scale[Math.floor(Math.random() * def.scale.length)], 0.07, 1.1);
+      }
+      this.bass(t0, chord[0] / 2, 0.1, 0.7);
     }
   }
 }

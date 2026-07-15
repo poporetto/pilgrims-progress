@@ -28,6 +28,7 @@ export interface QuestState {
   pliableLeft: boolean;
   chapterComplete: boolean;
   sloughComplete: boolean;
+  interpreterDone: boolean;
 }
 
 interface NPCDef {
