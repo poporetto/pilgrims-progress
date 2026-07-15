@@ -11,9 +11,18 @@ export interface Collider {
   r: number;
 }
 
+export interface Interactable {
+  id: string;
+  name: string;
+  x: number;
+  z: number;
+  r: number; // interact range
+}
+
 export interface World {
   group: THREE.Group;
   colliders: Collider[];
+  interactables: Interactable[];
   lightBeam: THREE.Group; // shining light, hidden until Evangelist speaks
   gate: { open: boolean }; // wicket gate doors swing open once set
   update: (t: number) => void; // ambient life: smoke, butterflies, birds
@@ -149,6 +158,74 @@ function makeWashLine(): THREE.Group {
   return g;
 }
 
+interface ChickenRig { root: THREE.Group; head: THREE.Group; phase: number; }
+
+function makeChicken(color: number): { root: THREE.Group; head: THREE.Group } {
+  const root = new THREE.Group();
+  const head = new THREE.Group();
+  head.position.set(0, 0.42, 0.16);
+  root.add(block(0.32, 0.28, 0.42, color, 0, 0.32, -0.04)); // body
+  root.add(block(0.16, 0.1, 0.16, color, 0, 0.2, -0.3)); // tail nub
+  head.add(block(0.2, 0.2, 0.2, color, 0, 0, 0));
+  head.add(block(0.1, 0.06, 0.12, 0xffb347, 0, -0.02, 0.14)); // beak
+  head.add(block(0.12, 0.12, 0.04, 0xe0546a, 0, 0.12, 0.02)); // comb
+  root.add(head);
+  // thin legs
+  root.add(block(0.05, 0.16, 0.05, 0xe8a94e, -0.08, 0.08, -0.02));
+  root.add(block(0.05, 0.16, 0.05, 0xe8a94e, 0.08, 0.08, -0.02));
+  return { root, head };
+}
+
+function makeCow(): { root: THREE.Group; tail: THREE.Mesh } {
+  const g = new THREE.Group();
+  g.add(block(1.15, 0.75, 0.65, 0xfaf3e8, 0, 0.68, 0)); // body
+  // patches
+  g.add(block(0.36, 0.1, 0.4, 0x4a3d33, -0.2, 1.04, 0.05));
+  g.add(block(0.3, 0.1, 0.3, 0x4a3d33, 0.3, 0.68, -0.15));
+  const head = new THREE.Group();
+  head.position.set(0.68, 0.78, 0);
+  head.add(block(0.36, 0.34, 0.32, 0xfaf3e8, 0, 0, 0));
+  head.add(block(0.14, 0.1, 0.1, 0xf7c8d4, 0.2, -0.08, 0)); // snout
+  head.add(block(0.06, 0.14, 0.05, 0xe8dfce, 0.05, 0.18, -0.14)); // horn
+  head.add(block(0.06, 0.14, 0.05, 0xe8dfce, 0.05, 0.18, 0.14));
+  g.add(head);
+  // legs
+  for (const [lx, lz] of [[-0.4, -0.22], [-0.4, 0.22], [0.32, -0.22], [0.32, 0.22]] as const) {
+    g.add(block(0.18, 0.55, 0.18, 0xe8dfce, lx, 0.28, lz));
+  }
+  const tail = block(0.06, 0.4, 0.06, 0xfaf3e8, -0.62, 0.75, 0);
+  tail.rotation.x = 0.3;
+  g.add(tail);
+  return { root: g, tail };
+}
+
+function makePump(): THREE.Group {
+  const g = new THREE.Group();
+  g.add(block(0.5, 0.9, 0.5, 0x8a97a0, 0, 0.45, 0)); // pump body
+  g.add(block(0.6, 0.14, 0.6, 0x6f7a82, 0, 0.94, 0)); // cap
+  const handle = new THREE.Group();
+  handle.position.set(0, 0.85, -0.2);
+  handle.add(block(0.5, 0.1, 0.1, 0x6f7a82, 0, 0, -0.2));
+  g.add(handle);
+  g.add(block(0.14, 0.4, 0.14, 0x8a97a0, 0.32, 0.5, 0.2)); // spout
+  // stone trough
+  g.add(block(1.3, 0.35, 0.7, PALETTE.stone, 0.55, 0.18, 0.55));
+  g.add(block(1.1, 0.1, 0.5, PALETTE.water, 0.55, 0.35, 0.55));
+  return g;
+}
+
+function makeNest(): THREE.Group {
+  const g = new THREE.Group();
+  g.add(block(0.6, 0.24, 0.6, 0xc9a865, 0, 0.12, 0)); // straw base
+  g.add(block(0.46, 0.12, 0.46, 0xdcbb7e, 0, 0.24, 0));
+  return g;
+}
+
+function makeEgg(color: number, x: number, z: number): THREE.Mesh {
+  const e = block(0.16, 0.2, 0.16, color, x, 0.34, z);
+  return e;
+}
+
 function makeFence(len: number): THREE.Group {
   const g = new THREE.Group();
   const posts = Math.max(2, Math.round(len / 1.2));
@@ -230,6 +307,59 @@ export function buildWorld(scene: THREE.Scene): World {
   well.position.set(0, 0, 0);
   group.add(well);
   colliders.push({ x: 0, z: 0, r: 1.6 });
+
+  const interactables: Interactable[] = [
+    { id: 'well', name: 'the Well', x: 0, z: 0, r: 2.4 },
+  ];
+
+  // ---------- water pump ----------
+  const pump = makePump();
+  pump.position.set(-5, 0, -3.5);
+  group.add(pump);
+  colliders.push({ x: -5, z: -3.5, r: 0.9 });
+  interactables.push({ id: 'pump', name: 'the Water Pump', x: -5, z: -3.5, r: 2.2 });
+
+  // ---------- farmyard: chickens, nest, cow ----------
+  const chickenRigs: ChickenRig[] = [];
+  const chickenSpots: Array<[number, number, number]> = [[21.2, 19.4, 0xf3ead9], [22.4, 18.6, 0xb98a5f]];
+  chickenSpots.forEach(([x, z, color], i) => {
+    const { root, head } = makeChicken(color);
+    root.position.set(x, 0, z);
+    root.rotation.y = i * 1.4;
+    group.add(root);
+    colliders.push({ x, z, r: 0.35 });
+    chickenRigs.push({ root, head, phase: i * 2.4 });
+  });
+  const nest = makeNest();
+  nest.position.set(23.4, 0, 19.8);
+  group.add(nest);
+  nest.add(makeEgg(0xfff8ef, -0.12, 0.05));
+  nest.add(makeEgg(0xf3ead9, 0.1, -0.05));
+  nest.add(makeEgg(0xfff3e0, 0.02, 0.15));
+  colliders.push({ x: 23.4, z: 19.8, r: 0.5 });
+  interactables.push({ id: 'chickens', name: 'the Chickens', x: 21.8, z: 19, r: 2.4 });
+  interactables.push({ id: 'nest', name: 'the Nest', x: 23.4, z: 19.8, r: 1.8 });
+
+  const cowPasture = makeFence(4.4);
+  cowPasture.position.set(28, 0, 20.5);
+  group.add(cowPasture);
+  const cowPasture2 = makeFence(4.4);
+  cowPasture2.position.set(28, 0, 24.5);
+  group.add(cowPasture2);
+  const cowPasture3 = makeFence(4.4);
+  cowPasture3.position.set(25.8, 0, 22.5);
+  cowPasture3.rotation.y = Math.PI / 2;
+  group.add(cowPasture3);
+  const cowPasture4 = makeFence(4.4);
+  cowPasture4.position.set(30.2, 0, 22.5);
+  cowPasture4.rotation.y = Math.PI / 2;
+  group.add(cowPasture4);
+  const cowRig = makeCow();
+  cowRig.root.position.set(28, 0, 22.5);
+  cowRig.root.rotation.y = -0.6;
+  group.add(cowRig.root);
+  colliders.push({ x: 28, z: 22.5, r: 1.3 });
+  interactables.push({ id: 'cow', name: 'the Cow', x: 28, z: 22.5, r: 2.6 });
 
   // ---------- trees ----------
   const treeSpots: Array<[number, number, boolean]> = [
@@ -532,10 +662,17 @@ export function buildWorld(scene: THREE.Scene): World {
       b.wingL.rotation.z = flap;
       b.wingR.rotation.z = -flap;
     }
+    // chickens peck at the ground now and then
+    for (const c of chickenRigs) {
+      const cycle = (t * 0.6 + c.phase) % 4;
+      c.head.rotation.x = cycle < 0.5 ? Math.sin(cycle * Math.PI / 0.5) * 0.7 : 0;
+    }
+    // the cow's tail swishes lazily
+    cowRig.tail.rotation.z = Math.sin(t * 1.1) * 0.25;
   };
 
   scene.add(group);
-  return { group, colliders, lightBeam, gate, update };
+  return { group, colliders, interactables, lightBeam, gate, update };
 }
 
 // tiny deterministic PRNG so the village looks the same every run

@@ -23,6 +23,7 @@ export interface QuestState {
   talkedToEvangelist: boolean;
   talkedToFamily: boolean;
   chaseDone: boolean;
+  eggsCollected: number;
   pliableFollowing: boolean;
   pliableLeft: boolean;
   chapterComplete: boolean;
@@ -57,18 +58,23 @@ const DEFS: NPCDef[] = [
     outfitColor: PALETTE.dressRose,
     x: -8.5, z: -7,
     facing: Math.PI,
-    getLines: (s) =>
-      s.talkedToEvangelist
+    getLines: (s) => {
+      const eggLine: DialogueLine[] = s.eggsCollected >= 3
+        ? [{ speaker: 'Christiana', text: 'Oh — fresh eggs! Bless you, dear, breakfast will be lovely this morning. 🥚' }]
+        : [];
+      return s.talkedToEvangelist
         ? [
             { speaker: 'Christiana', text: 'You really mean to go, then… toward that light in the east?' },
             { speaker: 'Christiana', text: 'Then go safely, my dear Christian. The cubs and I will keep the hearth warm.' },
             { speaker: 'Christiana', text: 'Perhaps one day… we will follow you. 💗' },
           ]
         : [
+            ...eggLine,
             { speaker: 'Christiana', text: 'Christian, dear, you have been sighing all week over that heavy burden on your back.' },
             { speaker: 'Christiana', text: 'You keep saying our city will not stand… it frightens the cubs, you know.' },
             { speaker: 'Christiana', text: 'If you truly must find answers, they say a wise bear called Evangelist walks the east road.' },
-          ],
+          ];
+    },
     onFinish: (s) => { s.talkedToFamily = true; },
   },
   {
@@ -178,10 +184,18 @@ const DEFS: NPCDef[] = [
     outfitColor: 0xf3d9a6,
     x: -3, z: 11,
     facing: 0,
-    getLines: () => [
-      { speaker: 'Mrs. Bramble', text: 'Fresh honey-buns! Oh — Christian, dear, you look pale as flour.' },
-      { speaker: 'Mrs. Bramble', text: 'Here, imagine I gave you a bun. On the house. You\'ll need your strength, whatever it is you\'re up to.' },
-    ],
+    getLines: (s) =>
+      s.talkedToEvangelist
+        ? [
+            { speaker: 'Mrs. Bramble', text: 'Leaving us, are you? Well, I never held with any of it, but I\'ll miss your face at my counter.' },
+            { speaker: 'Christian', text: 'Thank you for all the buns, Mrs. Bramble. I won\'t forget your kindness.' },
+            { speaker: 'Mrs. Bramble', text: 'Oh, hush now, off with you before I get flour in my eyes. Go on!' },
+          ]
+        : [
+            { speaker: 'Mrs. Bramble', text: 'Fresh honey-buns! Oh — Christian, dear, you look pale as flour.' },
+            { speaker: 'Christian', text: 'I\'m well enough, Mrs. Bramble. Just… this burden. It won\'t let me rest.' },
+            { speaker: 'Mrs. Bramble', text: 'Here, imagine I gave you a bun. On the house. You\'ll need your strength, whatever it is you\'re up to.' },
+          ],
   },
   {
     id: 'farmer',
@@ -198,10 +212,12 @@ const DEFS: NPCDef[] = [
       s.talkedToEvangelist
         ? [
             { speaker: 'Old Hamlet', text: 'A light in the east, eh? My old snout smells a change in the wind…' },
+            { speaker: 'Christian', text: 'I hope it\'s a change for the better, Old Hamlet. I mean to follow it.' },
             { speaker: 'Old Hamlet', text: 'Take care on the road, lad. Mind the bog past the fields — it swallows boots whole.' },
           ]
         : [
             { speaker: 'Old Hamlet', text: 'Mornin\', Christian. Fine day for turnips. Not so fine for carryin\' great sacks about, I\'d say.' },
+            { speaker: 'Christian', text: 'It isn\'t turnips, Old Hamlet. I wish it were something I could just set down in a field.' },
             { speaker: 'Old Hamlet', text: 'You look like a pig who\'s seen the butcher\'s calendar. Whatever\'s weighing you, don\'t carry it alone.' },
           ],
   },
@@ -215,10 +231,18 @@ const DEFS: NPCDef[] = [
     x: 2.5, z: -3,
     facing: Math.PI,
     wanderRadius: 3,
-    getLines: () => [
-      { speaker: 'Puddle', text: 'Ribbit! Mister Christian! I can jump higher than the well! Wanna see?' },
-      { speaker: 'Puddle', text: '…Okay, maybe not HIGHER. But definitely louder. RIBBIT!' },
-    ],
+    getLines: (s) =>
+      s.talkedToEvangelist
+        ? [
+            { speaker: 'Puddle', text: 'Ribbit! Are you really going away, Mister Christian? All the way past the fields?' },
+            { speaker: 'Christian', text: 'All the way to a Celestial City, Puddle. I hope you\'ll come visit someday.' },
+            { speaker: 'Puddle', text: 'A CELESTIAL city?! Do the puddles there go on forever?! …I\'ll practice my jumping, just in case!' },
+          ]
+        : [
+            { speaker: 'Puddle', text: 'Ribbit! Mister Christian! I can jump higher than the well! Wanna see?' },
+            { speaker: 'Christian', text: 'Ha! Go on then, Puddle — show me your best jump.' },
+            { speaker: 'Puddle', text: '…Okay, maybe not HIGHER. But definitely louder. RIBBIT!' },
+          ],
   },
   {
     id: 'florist',
@@ -235,10 +259,12 @@ const DEFS: NPCDef[] = [
       s.talkedToEvangelist
         ? [
             { speaker: 'Clover', text: 'Everyone\'s whispering about you, Christian. A light beyond the fields, imagine!' },
+            { speaker: 'Christian', text: 'It\'s true, Clover. I mean to follow it, however far it leads.' },
             { speaker: 'Clover', text: 'Here — a daisy for your buttonhole. Flowers make every road shorter.' },
           ]
         : [
             { speaker: 'Clover', text: 'Good day, Christian! My daisies came up lovely this spring, haven\'t they?' },
+            { speaker: 'Christian', text: 'They\'re lovely, Clover. I only wish I could enjoy them without this weight on my back.' },
             { speaker: 'Clover', text: 'Though… the soil\'s been trembling lately. The flowers feel it too, I think.' },
           ],
   },
@@ -251,10 +277,18 @@ const DEFS: NPCDef[] = [
     outfitColor: 0xcbb8f0,
     x: 10, z: -6,
     facing: Math.PI * 0.75,
-    getLines: () => [
-      { speaker: 'Mr. Whiskers', text: 'Mrrrow. You\'re blocking my sunbeam, Christian.' },
-      { speaker: 'Mr. Whiskers', text: 'A city falling down? As long as it doesn\'t fall before my nap, I really can\'t be bothered.' },
-    ],
+    getLines: (s) =>
+      s.talkedToEvangelist
+        ? [
+            { speaker: 'Mr. Whiskers', text: 'Mrrrow. So you\'re actually leaving. I suppose someone has to stop worrying about the city collapsing.' },
+            { speaker: 'Christian', text: 'Will you miss me, Mr. Whiskers?' },
+            { speaker: 'Mr. Whiskers', text: '…Don\'t make it strange. Go on, then. Mind the sunbeams on your way out.' },
+          ]
+        : [
+            { speaker: 'Mr. Whiskers', text: 'Mrrrow. You\'re blocking my sunbeam, Christian.' },
+            { speaker: 'Christian', text: 'Sorry, Mr. Whiskers. I have rather a lot on my mind — and on my back.' },
+            { speaker: 'Mr. Whiskers', text: 'A city falling down? As long as it doesn\'t fall before my nap, I really can\'t be bothered.' },
+          ],
   },
   // ---------------- Evangelist ----------------
   {

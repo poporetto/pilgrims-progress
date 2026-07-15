@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { PALETTE } from './palette';
 import { makeBear, animateBear } from './bear';
-import { buildWorld, WALL } from './world';
+import { buildWorld, WALL, Interactable } from './world';
 import { createNPCs, NPC, QuestState, DialogueLine } from './npcs';
 import { Music } from './music';
 import { WorldMap } from './worldmap';
@@ -58,6 +58,7 @@ const quest: QuestState = {
   talkedToEvangelist: false,
   talkedToFamily: false,
   chaseDone: false,
+  eggsCollected: 0,
   pliableFollowing: false,
   pliableLeft: false,
   chapterComplete: false,
@@ -354,6 +355,7 @@ ui.talkBtn.addEventListener('click', () => {
 
 const TALK_RANGE = 3.2;
 let nearestNPC: NPC | null = null;
+let nearestThing: Interactable | null = null;
 
 function findNearestNPC(): NPC | null {
   let best: NPC | null = null;
@@ -368,8 +370,72 @@ function findNearestNPC(): NPC | null {
   return best;
 }
 
+function findNearestThing(): Interactable | null {
+  let best: Interactable | null = null;
+  let bestDist = Infinity;
+  for (const it of world.interactables) {
+    const d = Math.hypot(it.x - christian.root.position.x, it.z - christian.root.position.z);
+    if (d < it.r && d < bestDist) {
+      best = it;
+      bestDist = d;
+    }
+  }
+  return best;
+}
+
 function tryTalk(): void {
-  if (nearestNPC && !dialogueOpen) openDialogue(nearestNPC);
+  if (dialogueOpen) return;
+  if (nearestNPC) openDialogue(nearestNPC);
+  else if (nearestThing) triggerInteract(nearestThing);
+}
+
+// ---------- village objects: well, pump, chickens, nest, cow ----------
+const interactCounts: Record<string, number> = {};
+function nextLine(id: string, pool: DialogueLine[][]): DialogueLine[] {
+  const i = interactCounts[id] ?? 0;
+  interactCounts[id] = (i + 1) % pool.length;
+  return pool[i];
+}
+
+const WELL_LINES: DialogueLine[][] = [
+  [{ speaker: 'Christian', text: 'The village well. He leans over and sees his own tired reflection looking back.' }],
+  [{ speaker: 'Christian', text: 'The water is cool and still. For a moment, the weight on his back feels almost bearable.' }],
+  [{ speaker: 'Christian', text: 'Someone has tied a faded ribbon to the crossbeam. He wonders what they wished for.' }],
+];
+const PUMP_LINES: DialogueLine[][] = [
+  [{ speaker: 'Christian', text: 'He works the handle. Cold water gushes into the trough below.' }],
+  [{ speaker: 'Christian', text: 'Splash! A few droplets catch the morning light like tiny stars.' }],
+];
+const CHICKEN_LINES: DialogueLine[][] = [
+  [{ speaker: 'Chickens', text: 'Bawk! Bawk-bawk!' }, { speaker: 'Christian', text: 'Easy now, ladies. I only came to say good morning.' }],
+  [{ speaker: 'Chickens', text: '*peck peck peck*' }],
+];
+const COW_LINES: DialogueLine[][] = [
+  [{ speaker: 'Cow', text: 'Mooooo.' }, { speaker: 'Christian', text: 'Old Hamlet\'s cow, watching me with those big brown eyes again.' }],
+  [{ speaker: 'Cow', text: 'Mooo-oo.' }, { speaker: 'Christian', text: 'I don\'t suppose you\'d care to carry this burden a while?' }],
+];
+
+function triggerInteract(it: Interactable): void {
+  if (it.id === 'nest') {
+    if (quest.eggsCollected < 3) {
+      quest.eggsCollected++;
+      const n = quest.eggsCollected;
+      playScript([{
+        speaker: 'Christian',
+        text: n < 3
+          ? `He gently takes an egg, still warm. (${n}/3 collected)`
+          : 'He takes the last egg — the little basket is full. Time to bring these home to Christiana.',
+      }]);
+    } else {
+      playScript([{ speaker: 'Christian', text: 'The nest is empty for now. Perhaps the hens will lay more tomorrow.' }]);
+    }
+    return;
+  }
+  const pools: Record<string, DialogueLine[][]> = {
+    well: WELL_LINES, pump: PUMP_LINES, chickens: CHICKEN_LINES, cow: COW_LINES,
+  };
+  const pool = pools[it.id];
+  if (pool) playScript(nextLine(it.id, pool));
 }
 
 // ---------------------------------------------------------------- movement & camera
@@ -763,11 +829,14 @@ function tick(): void {
 
     // interact prompt
     nearestNPC = dialogueOpen ? null : findNearestNPC();
-    if (nearestNPC && !endingOpen && !cutscene) {
+    nearestThing = (dialogueOpen || nearestNPC) ? null : findNearestThing();
+    if ((nearestNPC || nearestThing) && !endingOpen && !cutscene) {
       ui.prompt.style.display = 'block';
-      ui.promptWho.textContent = `Talk to ${nearestNPC.name}`;
+      ui.promptWho.textContent = nearestNPC
+        ? `Talk to ${nearestNPC.name}`
+        : `Look at ${nearestThing!.name}`;
       if (isTouch) {
-        ui.talkBtn.textContent = 'Talk';
+        ui.talkBtn.textContent = nearestNPC ? 'Talk' : 'Look';
         ui.talkBtn.style.display = 'block';
       }
     } else {
