@@ -287,8 +287,9 @@ function showLine(): void {
   const line = dialogueLines[dialogueIndex];
   ui.dialogueName.textContent = line.speaker;
   ui.dialogueText.textContent = line.text;
-  // Christian's speech gets a warm brown bubble instead of pink
+  // Christian's speech gets a warm brown bubble; narration (empty speaker) is neutral
   ui.dialogue.classList.toggle('christian', line.speaker === 'Christian');
+  ui.dialogue.classList.toggle('narration', line.speaker === '');
 }
 
 function advanceDialogue(): void {
@@ -467,20 +468,20 @@ function nextLine(id: string, pool: DialogueLine[][]): DialogueLine[] {
 }
 
 const WELL_LINES: DialogueLine[][] = [
-  [{ speaker: 'Christian', text: 'The village well. He leans over and sees his own tired reflection looking back.' }],
-  [{ speaker: 'Christian', text: 'The water is cool and still. For a moment, the weight on his back feels almost bearable.' }],
-  [{ speaker: 'Christian', text: 'Someone has tied a faded ribbon to the crossbeam. He wonders what they wished for.' }],
+  [{ speaker: '', text: 'The village well. He leans over and sees his own tired reflection looking back.' }],
+  [{ speaker: '', text: 'The water is cool and still. For a moment, the weight on his back feels almost bearable.' }],
+  [{ speaker: '', text: 'Someone has tied a faded ribbon to the crossbeam. He wonders what they wished for.' }],
 ];
 const PUMP_LINES: DialogueLine[][] = [
-  [{ speaker: 'Christian', text: 'He works the handle. Cold water gushes into the trough below.' }],
-  [{ speaker: 'Christian', text: 'Splash! A few droplets catch the morning light like tiny stars.' }],
+  [{ speaker: '', text: 'He works the handle. Cold water gushes into the trough below.' }],
+  [{ speaker: '', text: 'Splash! A few droplets catch the morning light like tiny stars.' }],
 ];
 const CHICKEN_LINES: DialogueLine[][] = [
   [{ speaker: 'Chickens', text: 'Bawk! Bawk-bawk!' }, { speaker: 'Christian', text: 'Easy now, ladies. I only came to say good morning.' }],
   [{ speaker: 'Chickens', text: '*peck peck peck*' }],
 ];
 const COW_LINES: DialogueLine[][] = [
-  [{ speaker: 'Cow', text: 'Mooooo.' }, { speaker: 'Christian', text: 'Old Hamlet\'s cow, watching me with those big brown eyes again.' }],
+  [{ speaker: 'Cow', text: 'Mooooo.' }, { speaker: '', text: 'Old Hamlet\'s cow, watching him with those big brown eyes again.' }],
   [{ speaker: 'Cow', text: 'Mooo-oo.' }, { speaker: 'Christian', text: 'I don\'t suppose you\'d care to carry this burden a while?' }],
 ];
 
@@ -490,13 +491,13 @@ function triggerInteract(it: Interactable): void {
       quest.eggsCollected++;
       const n = quest.eggsCollected;
       playScript([{
-        speaker: 'Christian',
+        speaker: '',
         text: n < 3
           ? `He gently takes an egg, still warm. (${n}/3 collected)`
           : 'He takes the last egg — the little basket is full. Time to bring these home to Christiana.',
       }]);
     } else {
-      playScript([{ speaker: 'Christian', text: 'The nest is empty for now. Perhaps the hens will lay more tomorrow.' }]);
+      playScript([{ speaker: '', text: 'The nest is empty for now. Perhaps the hens will lay more tomorrow.' }]);
     }
     return;
   }

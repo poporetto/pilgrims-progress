@@ -17,7 +17,9 @@ interface SloughCallbacks {
   splashSound: () => void;
 }
 
-type Phase = 'walk' | 'fallingIn' | 'crossing' | 'stuck' | 'rescue' | 'epilogue' | 'done';
+type Phase = 'walk' | 'fallingIn' | 'crossing' | 'stuck' | 'rescue' | 'epilogue' | 'freeroam' | 'done';
+
+const LIGHT_X = 40; // the shining way out, past the east bank
 
 const BOG_CX = 5;   // bog ellipse centre/size
 const BOG_RX = 11.5;
@@ -44,6 +46,7 @@ export class SloughScene {
   private splashTimer = 0;
   private rescueT = 0;
   private built = false;
+  private lightBeam: THREE.Group | null = null;
 
   constructor(cb: SloughCallbacks) {
     this.cb = cb;
@@ -208,6 +211,48 @@ export class SloughScene {
     // walking staff
     this.help.armR.add(block(0.14, 2.2, 0.14, PALETTE.woodDark, 0.1, -0.6, 0.2));
     s.add(this.help.root);
+
+    // ---------- the way out: a path east from the bank, into daylight ----------
+    for (let i = 0; i < 12; i++) {
+      const px = 20 + i * 1.8;
+      s.add(block(2.6, 0.12, 3.2, PALETTE.path, px, 0.06, Math.sin(i * 0.5) * 0.5));
+    }
+    // the marsh gives way to green, sunlit meadow near the light
+    for (const [tx, tz, blossom] of [
+      [26, -5, true], [30, 5, false], [34, -6, false], [37, 6, true],
+    ] as const) {
+      const tree = new THREE.Group();
+      tree.add(block(0.5, 1.6, 0.5, PALETTE.trunk, 0, 0.8, 0));
+      tree.add(block(1.9, 1.3, 1.9, blossom ? PALETTE.leafPink : PALETTE.leaf, 0, 2.2, 0));
+      tree.add(block(1.2, 0.9, 1.2, blossom ? PALETTE.leafPink : PALETTE.leaf, 0, 3.1, 0));
+      tree.position.set(tx, 0, tz);
+      s.add(tree);
+    }
+
+    // the shining light at the far end — the way onward, as at the Wicket Gate
+    const lightBeam = new THREE.Group();
+    const beamMat = new THREE.MeshBasicMaterial({ color: 0xffd94a, transparent: true, opacity: 0.8, fog: false });
+    const beam = new THREE.Mesh(new THREE.BoxGeometry(2.6, 40, 2.6), beamMat);
+    beam.position.y = 20;
+    lightBeam.add(beam);
+    const beamInner = new THREE.Mesh(
+      new THREE.BoxGeometry(1.3, 44, 1.3),
+      new THREE.MeshBasicMaterial({ color: 0xfffbe0, transparent: true, opacity: 0.95, fog: false }),
+    );
+    beamInner.position.y = 22;
+    lightBeam.add(beamInner);
+    const starMat = new THREE.MeshBasicMaterial({ color: 0xffe87a, fog: false });
+    const star = new THREE.Mesh(new THREE.BoxGeometry(3.4, 3.4, 3.4), starMat);
+    star.position.y = 42;
+    star.rotation.set(Math.PI / 4, 0, Math.PI / 4);
+    lightBeam.add(star);
+    const glow = new THREE.PointLight(0xffe87a, 3.5, 40);
+    glow.position.y = 4;
+    lightBeam.add(glow);
+    lightBeam.position.set(LIGHT_X, 0, 0);
+    lightBeam.visible = false;
+    s.add(lightBeam);
+    this.lightBeam = lightBeam;
   }
 
   // ------------------------------------------------------------ runtime
@@ -227,14 +272,16 @@ export class SloughScene {
     this.christian.root.rotation.y = Math.PI / 2;
     this.scene.add(this.christian.root);
     if (revisit) {
-      // Help still keeps watch on the east bank
+      // Help still keeps watch on the east bank; the way out still shines
       this.help.root.visible = true;
       this.help.root.position.set(18.4, 0, 2.2);
       this.help.root.rotation.y = -Math.PI / 2;
       this.help.armR.rotation.x = 0;
-      this.cb.setObjective('🌫 The old mire — cross east, or turn back west to the road');
+      if (this.lightBeam) this.lightBeam.visible = true;
+      this.cb.setObjective('🌫 The old mire — cross east toward the light, or turn back west to the road');
       return { christian: this.christian, pliable: null };
     }
+    if (this.lightBeam) this.lightBeam.visible = false;
     if (withPliable) {
       this.pliable = makeBear({ species: 'rabbit', outfit: 'shirt', outfitColor: 0xffd6a5, scale: 0.95 });
       // keep him north of Christian so the dialogue panel never hides him
@@ -276,13 +323,14 @@ export class SloughScene {
     const p = this.christian.root.position;
     // world bounds — the east bank is unclimbable until Help pulls him out
     const freed = this.revisit ||
-      this.phase === 'rescue' || this.phase === 'epilogue' || this.phase === 'done';
-    p.x = THREE.MathUtils.clamp(p.x, -28, freed ? 34 : 15.6);
+      this.phase === 'rescue' || this.phase === 'epilogue' ||
+      this.phase === 'freeroam' || this.phase === 'done';
+    p.x = THREE.MathUtils.clamp(p.x, -28, freed ? LIGHT_X + 4 : 15.6);
     p.z = THREE.MathUtils.clamp(p.z, -16, 16);
 
-    // on a revisit, either bank leads back to the world map
+    // on a revisit, either the west bank or the light leads back to the world map
     if (this.revisit) {
-      if (p.x > 31 || p.x < -27) this.cb.onExit();
+      if (p.x > LIGHT_X - 2 || p.x < -27) this.cb.onExit();
       if (moving && this.inBog(p.x, p.z)) {
         this.splashTimer -= 0.016;
         if (this.splashTimer <= 0) {
@@ -291,6 +339,12 @@ export class SloughScene {
         }
       }
       return;
+    }
+
+    // freeroam: walk out through the meadow toward the shining light
+    if (this.phase === 'freeroam' && p.x > LIGHT_X - 3) {
+      this.phase = 'done';
+      this.cb.onComplete();
     }
 
     if (this.phase === 'walk' && this.inBog(p.x + 1.2, p.z)) {
@@ -485,11 +539,18 @@ export class SloughScene {
             { speaker: 'Christian', text: 'And Pliable… he struggled out on the side nearest home.' },
             { speaker: 'Help', text: 'Aye. Many turn back at the first mire. But you came through, burden and all. Go on, Christian — the true Gate is not far now.' },
           ], () => {
-            this.phase = 'done';
-            this.cb.onComplete();
+            this.phase = 'freeroam';
+            if (this.lightBeam) this.lightBeam.visible = true;
+            this.cb.setObjective('✨ Follow the light out of the Slough');
           });
         });
       }
+    }
+
+    // the shining way out, pulsing gently
+    if (this.lightBeam && this.lightBeam.visible) {
+      const s = 1 + Math.sin(t * 2.4) * 0.12;
+      this.lightBeam.scale.set(s, 1, s);
     }
 
     // ambient
