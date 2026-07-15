@@ -5,7 +5,7 @@ import { PALETTE } from './palette';
 // (stubby legs, round body, oversized head); species swap out ears, snouts
 // and tails, and everyone wears clothes.
 
-export type Species = 'bear' | 'pig' | 'frog' | 'rabbit' | 'cat';
+export type Species = 'bear' | 'pig' | 'frog' | 'rabbit' | 'cat' | 'lion';
 export type Outfit = 'shirt' | 'dress' | 'apron' | 'robe' | 'overalls' | 'none';
 
 export interface CharacterOptions {
@@ -66,6 +66,7 @@ const DEFAULT_FUR: Record<Species, number> = {
   frog: 0xa4d97c,
   rabbit: 0xf3ead9,
   cat: 0xc8bfb4,
+  lion: 0xd9a860,
 };
 
 const BELLY: Record<Species, number> = {
@@ -74,7 +75,10 @@ const BELLY: Record<Species, number> = {
   frog: 0xd6eec0,
   rabbit: 0xfdf8ee,
   cat: 0xede7dd,
+  lion: 0xf0dcbb,
 };
+
+const LION_MANE = 0xb0793a;
 
 export function makeBear(opts: CharacterOptions = {}): BearParts {
   const species = opts.species ?? 'bear';
@@ -115,6 +119,10 @@ export function makeBear(opts: CharacterOptions = {}): BearParts {
   } else if (species === 'cat') {
     body.add(block(0.14, 0.14, 0.5, fur, 0.2, 0.3, -0.5));
     body.add(block(0.14, 0.3, 0.14, fur, 0.2, 0.5, -0.72));
+  } else if (species === 'lion') {
+    // long tail with a dark tuft
+    body.add(block(0.14, 0.14, 0.55, fur, 0.2, 0.28, -0.52));
+    body.add(block(0.22, 0.22, 0.22, LION_MANE, 0.2, 0.28, -0.84));
   }
   // frogs have no tail
 
@@ -182,6 +190,20 @@ export function makeBear(opts: CharacterOptions = {}): BearParts {
     }
     head.add(block(0.3, 0.2, 0.14, 0xffffff, 0, 0.24, 0.44));
     head.add(block(0.1, 0.08, 0.06, 0xe58a9b, 0, 0.32, 0.52));
+  } else if (species === 'lion') {
+    // a thick mane framing the whole face (kept clear of the head's faces
+    // — head spans x ±0.475, y -0.01..0.81, z ±0.4 — to avoid z-fighting)
+    head.add(block(1.3, 1.2, 0.34, LION_MANE, 0, 0.4, -0.44));   // big ruff behind
+    head.add(block(1.24, 0.3, 0.62, LION_MANE, 0, 0.97, -0.12)); // crown tuft
+    head.add(block(0.3, 1.06, 0.62, LION_MANE, -0.62, 0.38, -0.12)); // side ruffs
+    head.add(block(0.3, 1.06, 0.62, LION_MANE, 0.62, 0.38, -0.12));
+    head.add(block(0.9, 0.26, 0.6, LION_MANE, 0, -0.15, -0.1));  // chin ruff
+    // little round ears peeking from the mane
+    head.add(block(0.24, 0.24, 0.18, fur, -0.42, 1.06, 0.02));
+    head.add(block(0.24, 0.24, 0.18, fur, 0.42, 1.06, 0.02));
+    // gentle golden muzzle
+    head.add(block(0.44, 0.32, 0.2, PALETTE.snout, 0, 0.26, 0.47));
+    head.add(block(0.16, 0.12, 0.08, PALETTE.nose, 0, 0.35, 0.58));
   }
 
   // eyes (frogs already have theirs on top)

@@ -29,6 +29,7 @@ export interface QuestState {
   chapterComplete: boolean;
   sloughComplete: boolean;
   moralityDone: boolean;
+  wicketDone: boolean;
 }
 
 interface NPCDef {

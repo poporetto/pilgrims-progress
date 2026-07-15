@@ -7,6 +7,7 @@ import { Music } from './music';
 import { WorldMap } from './worldmap';
 import { SloughScene } from './slough';
 import { MoralityScene } from './morality';
+import { WicketGateScene } from './wicketgate';
 
 // ---------------------------------------------------------------- setup
 
@@ -69,11 +70,12 @@ const quest: QuestState = {
   chapterComplete: false,
   sloughComplete: false,
   moralityDone: false,
+  wicketDone: false,
 };
 
 const music = new Music();
 const worldMap = new WorldMap(window.innerWidth / window.innerHeight);
-let mode: 'village' | 'map' | 'slough' | 'morality' = 'village';
+let mode: 'village' | 'map' | 'slough' | 'morality' | 'wicket' = 'village';
 
 // ---------------------------------------------------------------- UI refs
 
@@ -154,11 +156,13 @@ function goToMap(): void {
   mode = 'map';
   music.setStyle('map');
   ui.promptKey.style.display = 'none';
-  setObjective(quest.moralityDone
-    ? '🗺 The long road east lies open — on toward the Wicket Gate!'
-    : quest.sloughComplete
-      ? '🗺 East to the crossroad — a smooth byway and a barred road'
-      : '🗺 The road east — onward to the Slough of Despond');
+  setObjective(quest.wicketDone
+    ? '🗺 The place of deliverance lies ahead — Chapter V, coming soon…'
+    : quest.moralityDone
+      ? '🗺 The long road east lies open — on toward the Wicket Gate!'
+      : quest.sloughComplete
+        ? '🗺 East to the crossroad — a smooth byway and a barred road'
+        : '🗺 The road east — onward to the Slough of Despond');
 }
 
 // ---------- Chapter II: the Slough of Despond ----------
@@ -219,6 +223,41 @@ function enterMorality(revisit: boolean): void {
   ui.talkBtn.style.display = 'none';
   moralityActors = morality.enter(revisit);
   camTarget.copy(moralityActors.christian.root.position);
+}
+
+// ---------- Chapter IV: the Wicket Gate ----------
+const wicket = new WicketGateScene({
+  playScript,
+  setObjective,
+  onExit: () => goToMap(),
+  rumbleSound: () => music.rumble(),
+  blipSound: () => music.blip(),
+  onComplete: () => {
+    quest.wicketDone = true;
+    showEnding(
+      '⛩ Chapter IV Complete',
+      'Through the Wicket Gate',
+      'Goodwill the great lion drew Christian through the Gate, out of the reach of '
+      + 'Beelzebub\'s arrows, and set his feet on the straight and narrow King\'s Highway. '
+      + 'Somewhere ahead lies the place of deliverance, where the burden falls of itself…',
+      () => {
+        worldMap.start([]);
+        worldMap.road = 'main';
+        worldMap.progress = worldMap.beyondT;
+        goToMap();
+      },
+    );
+  },
+});
+let wicketActors: { christian: import('./bear').BearParts } | null = null;
+
+function enterWicket(revisit: boolean): void {
+  mode = 'wicket';
+  music.setStyle('gate');
+  ui.prompt.style.display = 'none';
+  ui.talkBtn.style.display = 'none';
+  wicketActors = wicket.enter(revisit);
+  camTarget.copy(wicketActors.christian.root.position);
 }
 
 function enterSlough(revisit: boolean): void {
@@ -347,6 +386,7 @@ function tryEnterFromMap(): void {
   if (spot === 'slough') enterSlough(quest.sloughComplete);
   else if (spot === 'city') enterVillage();
   else if (spot === 'morality') enterMorality(quest.moralityDone);
+  else if (spot === 'beyond') enterWicket(quest.wicketDone);
 }
 window.addEventListener('keyup', (e) => keys.delete(e.code));
 // don't leave movement keys stuck when the tab loses focus mid-keypress
@@ -864,9 +904,11 @@ function tick(): void {
         ? '🪧 A crossroad — east: the true way · press S for the byway'
         : '🪧 A crossroad — the east road is barred…';
     } else if (spot === 'beyond') {
-      ui.promptWho.textContent = '⛩ A light in the mist… Chapter IV, coming soon!';
+      ui.promptWho.textContent = quest.wicketDone
+        ? '⛩ Revisit the Wicket Gate'
+        : '⛩ Knock at the Wicket Gate';
     }
-    if (spot === 'city' || spot === 'slough' || spot === 'morality') {
+    if (spot === 'city' || spot === 'slough' || spot === 'morality' || spot === 'beyond') {
       ui.promptKey.style.display = isTouch ? 'none' : 'inline-block';
       if (isTouch) {
         ui.talkBtn.textContent = 'Enter';
@@ -940,6 +982,37 @@ function tick(): void {
     return;
   }
 
+  if (mode === 'wicket' && wicketActors) {
+    // ---- Wicket Gate mode ----
+    const wc = wicketActors.christian;
+    let mx = 0;
+    let mz = 0;
+    if (keys.has('KeyW') || keys.has('ArrowUp')) mz -= 1;
+    if (keys.has('KeyS') || keys.has('ArrowDown')) mz += 1;
+    if (keys.has('KeyA') || keys.has('ArrowLeft')) mx -= 1;
+    if (keys.has('KeyD') || keys.has('ArrowRight')) mx += 1;
+    mx += joy.x;
+    mz += joy.y;
+    const len = Math.hypot(mx, mz);
+    const factor = wicket.moveFactor();
+    const moving = len > 0.15 && !dialogueOpen && !endingOpen && factor > 0;
+    if (moving) {
+      mx /= Math.max(len, 1);
+      mz /= Math.max(len, 1);
+      wc.root.position.x += mx * SPEED * factor * dt;
+      wc.root.position.z += mz * SPEED * factor * dt;
+      wc.root.rotation.y = lerpAngle(wc.root.rotation.y, Math.atan2(mx, mz), 12 * dt);
+    }
+    wicket.afterMove();
+    wicket.update(dt, t, moving);
+
+    camTarget.lerp(wc.root.position, Math.min(4 * dt, 1));
+    camera.position.copy(camTarget).add(camOffset);
+    camera.lookAt(camTarget.x, camTarget.y + 1.4, camTarget.z);
+    renderer.render(wicket.scene, camera);
+    return;
+  }
+
   // ---- village mode ----
   if (started) {
     updatePlayer(dt, t);
@@ -992,6 +1065,7 @@ tick();
 // small debug handle for testing (harmless in production)
 (window as any).__game = {
   christian, npcs, quest, world, openDialogue, advanceDialogue, camTarget,
-  worldMap, slough, enterSlough, morality, enterMorality, playScript, goToMap,
+  worldMap, slough, enterSlough, morality, enterMorality,
+  wicket, enterWicket, playScript, goToMap,
   get mode() { return mode; },
 };

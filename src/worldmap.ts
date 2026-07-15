@@ -344,7 +344,7 @@ export class WorldMap {
       s.add(m);
       this.mist.push(m);
     }
-    this.label('? ? ?', BEYOND.x, BEYOND.z, 4.4, '#8b9aa8');
+    this.label('Wicket Gate', BEYOND.x, BEYOND.z, 4.4);
 
     // ---------- both roads: stones on land, plank bridges over water ----------
     this.buildRoad(this.mainCurve, 72);
