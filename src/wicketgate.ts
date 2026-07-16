@@ -21,6 +21,9 @@ interface WicketCallbacks {
   rumbleSound: () => void; // reused as the castle's menacing thrum
   blipSound: () => void;
   setMusic?: (style: 'gate' | 'interpreter') => void;
+  // a brief screen fade to mask the cut between outdoor road and indoor hall;
+  // `mid` runs once the screen is fully covered, then the fade lifts again
+  fade?: (mid: () => void) => void;
 }
 
 type Phase =
@@ -29,16 +32,19 @@ type Phase =
 
 const GATE_X = 10;       // the wall + wicket gate
 const CASTLE = new THREE.Vector3(17, 0, -15); // Beelzebub's castle, NE of the gate
-const HIGHWAY_END = 50;  // the glow at the end of the narrow way
+const HIGHWAY_END = 100; // the glow at the end of the narrow way — well over 2x the original walk
 
 // ---------- the House of the Interpreter, just off the King's Highway ----------
-const COTTAGE_X = 32;                       // where the cottage sits on the highway
-const DOOR_POS = new THREE.Vector3(COTTAGE_X, 0, 4.3);
+// on the south (near/foreground) side of the road, so it's impossible to miss
+const COTTAGE_X = 40;                       // further out — a longer stretch of highway first
+const DOOR_POS = new THREE.Vector3(COTTAGE_X, 0, -4.3);
 // the six vignette rooms are built far away on the same X axis — the simplest
 // way to cut from outdoor road to indoor hall without swapping scenes
 const IX = 150;
 const STATIONS = [IX + 10, IX + 24, IX + 38, IX + 52, IX + 66, IX + 80];
 const HOUSE_EXIT_X = IX + 92;
+const HOUSE_HALF = 5.5;   // half-width of the hall — roomy enough to see everyone clearly
+const HOUSE_WIDTH = HOUSE_HALF * 2;
 
 const HOUSE_GREET_LINES: DialogueLine[] = [
   { speaker: '', text: 'A little way past the Gate, off the King\'s Highway, stands a cottage of warm timber with smoke curling from its chimney — the House of the Interpreter.' },
@@ -46,18 +52,23 @@ const HOUSE_GREET_LINES: DialogueLine[] = [
   { speaker: 'Christian', text: 'Gladly, sir. I have long wished for someone who could make plain the things I only half understand.' },
 ];
 
+// the dusty room's script is split in two so the dust cloud and the water
+// sprinkle can be timed to the dialogue itself, rather than just ambient haze
+const DUST_LINES_A: DialogueLine[] = [
+  { speaker: '', text: 'The first room is thick with dust — years of it, settled over every beam and floorboard.' },
+  { speaker: 'Interpreter', text: 'Sweep it, if you please.' },
+  { speaker: '', text: 'A servant sweeps hard. The dust billows up in choking clouds until neither pilgrim can draw breath.' },
+  { speaker: 'Christian', text: '*coughing* Enough! Stop, I beg you!' },
+];
+const DUST_LINES_B: DialogueLine[] = [
+  { speaker: 'Interpreter', text: 'Now — bring water, and sprinkle the floor before you sweep.' },
+  { speaker: '', text: 'The second servant scatters water first. This time the broom leaves the room clean and sweet.' },
+  { speaker: 'Interpreter', text: 'The dust is sin, hidden deep in the heart of a man. The broom is the Law — it stirs sin up and shows it plainly, but has no power to take it away.' },
+  { speaker: 'Interpreter', text: 'The water is the Gospel. Grace alone settles the dust of sin and truly cleanses the heart.' },
+  { speaker: 'Christian', text: 'Then the Law can only show me my filth — never wash me of it. I begin to see why I could not rest at Sinai.' },
+];
+
 const VIGNETTES: DialogueLine[][] = [
-  [ // 1. the dusty room
-    { speaker: '', text: 'The first room is thick with dust — years of it, settled over every beam and floorboard.' },
-    { speaker: 'Interpreter', text: 'Sweep it, if you please.' },
-    { speaker: '', text: 'A servant sweeps hard. The dust billows up in choking clouds until neither pilgrim can draw breath.' },
-    { speaker: 'Christian', text: '*coughing* Enough! Stop, I beg you!' },
-    { speaker: 'Interpreter', text: 'Now — bring water, and sprinkle the floor before you sweep.' },
-    { speaker: '', text: 'The second servant scatters water first. This time the broom leaves the room clean and sweet.' },
-    { speaker: 'Interpreter', text: 'The dust is sin, hidden deep in the heart of a man. The broom is the Law — it stirs sin up and shows it plainly, but has no power to take it away.' },
-    { speaker: 'Interpreter', text: 'The water is the Gospel. Grace alone settles the dust of sin and truly cleanses the heart.' },
-    { speaker: 'Christian', text: 'Then the Law can only show me my filth — never wash me of it. I begin to see why I could not rest at Sinai.' },
-  ],
   [ // 2. the two children
     { speaker: '', text: 'In the next room sit two small boys, side by side, though nothing else about them is alike.' },
     { speaker: 'Interpreter', text: 'This one is named Passion. That one, Patience.' },
@@ -131,9 +142,25 @@ export class WicketGateScene {
   // ---------- the House of the Interpreter ----------
   private interpreter: BearParts;
   private houseGreeted = false;
+  private houseCalledOut = false; // he's called out once if Christian walks straight past
   private stationIndex = 0;
-  private dustMotes: THREE.Mesh[] = [];
+  private dust: Array<{ mesh: THREE.Mesh; mat: THREE.MeshBasicMaterial; life: number; baseX: number; baseZ: number }> = [];
+  private dustBurst = 0;       // current dust-cloud intensity (0..1)
+  private dustBurstTarget = 0; // where it's lerping toward
+  private sprinkle: Array<{ mesh: THREE.Mesh; mat: THREE.MeshBasicMaterial; active: boolean; vy: number }> = [];
+  private sprinkleT = 0; // seconds remaining of the water-sprinkle effect
+  private sprinkleTimer = 0;
   private fireMotes: THREE.Mesh[] = [];
+  private devilArm: THREE.Group | null = null; // pours water, endlessly
+  private christArm: THREE.Group | null = null; // pours oil, unseen, behind the wall
+  private cottageDoor: THREE.Group | null = null;
+  private houseDoorOpen = false;
+  private exitDoor: THREE.Group | null = null;
+  private exitDoorOpen = false;
+  private exitDoorMat: THREE.MeshLambertMaterial | null = null;
+  // the Interpreter walks (rather than teleports) between vignettes
+  private interpreterTarget: THREE.Vector3 | null = null;
+  private interpreterFaceOnArrive = 0;
 
   constructor(cb: WicketCallbacks) {
     this.cb = cb;
@@ -310,17 +337,17 @@ export class WicketGateScene {
     }
 
     // ---------- the King's Highway: straight and narrow, hedged both sides ----------
-    for (let i = 0; i < 16; i++) {
+    for (let i = 0; i < 38; i++) {
       const px = GATE_X + 2 + i * 2.5;
       const path = block(2.5, 0.12, 2.6, 0xeee3c4, px, 0.06, 0);
       path.castShadow = false;
       s.add(path);
-      // a gap in the north hedge lets Christian step aside to the cottage door
+      // a gap in the south hedge lets Christian step aside to the cottage door
       const nearCottageGap = Math.abs(px - COTTAGE_X) < 3.5;
       // trimmed hedges close on either hand — turn neither left nor right
       if (i % 1 === 0) {
-        if (!nearCottageGap) s.add(block(2.5, 0.9, 0.8, 0x7fae74, px, 0.45, 2.1));
-        s.add(block(2.5, 0.9, 0.8, 0x7fae74, px, 0.45, -2.1));
+        s.add(block(2.5, 0.9, 0.8, 0x7fae74, px, 0.45, 2.1));
+        if (!nearCottageGap) s.add(block(2.5, 0.9, 0.8, 0x7fae74, px, 0.45, -2.1));
       }
       if (i % 3 === 1 && !nearCottageGap) {
         s.add(block(0.5, 0.4, 0.5, PALETTE.grassDark, px, 1.05, 2.1));
@@ -328,10 +355,10 @@ export class WicketGateScene {
       }
     }
     // flowers dotting the highway's verge — a kinder country already
-    for (let i = 0; i < 14; i++) {
+    for (let i = 0; i < 34; i++) {
       const f = block(0.18, 0.18, 0.18,
         [PALETTE.flowerYellow, PALETTE.flowerPink, PALETTE.flowerBlue][i % 3],
-        GATE_X + 3 + Math.random() * 34, 0.98, (Math.random() > 0.5 ? 2.1 : -2.1));
+        GATE_X + 3 + Math.random() * 84, 0.98, (Math.random() > 0.5 ? 2.1 : -2.1));
       f.castShadow = false;
       s.add(f);
     }
@@ -371,8 +398,8 @@ export class WicketGateScene {
     this.goodwill.root.visible = false;
     s.add(this.goodwill.root);
 
-    // the Interpreter waits unseen until Christian reaches the cottage door
-    this.interpreter.root.visible = false;
+    // the Interpreter stands outside his door — buildCottage() below places
+    // and reveals him
     s.add(this.interpreter.root);
 
     this.buildCottage();
@@ -384,64 +411,101 @@ export class WicketGateScene {
   private buildCottage(): void {
     const s = this.scene;
     const cx = COTTAGE_X;
+    const cz = -6.5; // the near (foreground/"top of screen") side of the highway
     const cottage = new THREE.Group();
     cottage.add(block(4.2, 2.6, 3.6, PALETTE.wallCream, 0, 1.3, 0));
     cottage.add(block(4.6, 1.5, 4.0, PALETTE.roofPeach, 0, 3.35, 0));
-    cottage.add(block(0.5, 0.9, 0.5, PALETTE.woodDark, 1.5, 3.6, -0.2)); // chimney
-    cottage.add(block(0.9, 1.7, 0.14, PALETTE.woodDark, 0, 0.85, -1.81)); // door
-    cottage.add(block(0.9, 0.16, 0.3, 0x8a6f52, 0, 1.66, -1.9)); // lintel
-    cottage.add(block(0.7, 0.7, 0.1, PALETTE.wallMint, -1.4, 1.6, -1.81)); // window
-    cottage.add(block(0.7, 0.7, 0.1, PALETTE.wallMint, 1.4, 1.6, -1.81));
-    cottage.position.set(cx, 0, 6.5);
+    cottage.add(block(0.5, 0.9, 0.5, PALETTE.woodDark, 1.5, 3.6, 0.2)); // chimney
+    cottage.add(block(0.9, 0.16, 0.3, 0x8a6f52, 0, 1.66, 1.9)); // lintel
+    cottage.add(block(0.7, 0.7, 0.1, PALETTE.wallMint, -1.4, 1.6, 1.81)); // window
+    cottage.add(block(0.7, 0.7, 0.1, PALETTE.wallMint, 1.4, 1.6, 1.81));
+    cottage.position.set(cx, 0, cz);
     s.add(cottage);
+    // the door swings open on a hinge as Christian is welcomed in
+    const doorPivot = new THREE.Group();
+    doorPivot.position.set(cx - 0.45, 0, cz + 1.81);
+    doorPivot.add(block(0.9, 1.7, 0.14, PALETTE.woodDark, 0.45, 0.85, 0));
+    s.add(doorPivot);
+    this.cottageDoor = doorPivot;
     // a short path from the highway gap up to the door
     for (let i = 0; i < 4; i++) {
-      s.add(block(1.4, 0.1, 1.2, PALETTE.path, cx, 0.05, 2.6 + i * 1.1));
+      s.add(block(1.4, 0.1, 1.2, PALETTE.path, cx, 0.05, -2.6 - i * 1.1));
     }
     // a little sign: THE HOUSE OF THE INTERPRETER
     const sign = new THREE.Group();
     sign.add(block(0.12, 1.2, 0.12, PALETTE.woodDark, 0, 0.6, 0));
     sign.add(block(1.6, 0.6, 0.1, PALETTE.wallCream, 0, 1.1, 0));
-    sign.position.set(cx - 2.3, 0, 3.2);
-    sign.rotation.y = 0.5;
+    sign.position.set(cx - 2.3, 0, -3.2);
+    sign.rotation.y = -0.5;
     s.add(sign);
+    // the Interpreter waits outside his door, visible from the road —
+    // walk up and greet him to be shown inside
+    this.interpreter.root.position.set(cx, 0, cz + 3.2);
+    this.interpreter.root.rotation.y = 0; // facing the highway
+    this.interpreter.root.visible = true;
   }
 
   private buildHouseInterior(): void {
     const s = this.scene;
     const midX = IX + 46;
-    // long corridor floor & walls, offset far from the outdoor scene on the
-    // same axis — cheapest way to cut indoors without swapping THREE.Scenes
-    s.add(block(96, 0.2, 6.6, PALETTE.wood, midX, -0.1, 0));
-    s.add(block(96, 2.6, 0.3, PALETTE.wallCream, midX, 1.3, -3.3));
-    s.add(block(96, 2.6, 0.3, PALETTE.wallCream, midX, 1.3, 3.3));
+    // a roomy hall, offset far from the outdoor scene on the same axis —
+    // cheapest way to cut indoors without swapping THREE.Scenes
+    s.add(block(96, 0.2, HOUSE_WIDTH, PALETTE.wood, midX, -0.1, 0));
+    s.add(block(96, 3.1, 0.3, PALETTE.wallCream, midX, 1.55, -HOUSE_HALF));
+    s.add(block(96, 3.1, 0.3, PALETTE.wallCream, midX, 1.55, HOUSE_HALF));
     for (let i = 0; i < 10; i++) {
       const lx = IX + 4 + i * 9.5;
       const lamp = new THREE.Group();
-      lamp.add(block(0.14, 1.9, 0.14, PALETTE.woodDark, 0, 0.95, 0));
-      const bulb = block(0.3, 0.3, 0.3, PALETTE.light, 0, 1.95, 0);
+      lamp.add(block(0.14, 2.1, 0.14, PALETTE.woodDark, 0, 1.05, 0));
+      const bulb = block(0.32, 0.32, 0.32, PALETTE.light, 0, 2.15, 0);
       bulb.material = new THREE.MeshLambertMaterial({
         color: PALETTE.light, emissive: 0xfff0b0, emissiveIntensity: 0.5,
       });
       lamp.add(bulb);
-      lamp.position.set(lx, 0, i % 2 === 0 ? -3.0 : 3.0);
+      lamp.position.set(lx, 0, i % 2 === 0 ? -HOUSE_HALF + 0.4 : HOUSE_HALF - 0.4);
       s.add(lamp);
     }
+
+    // small partition walls between rooms — just enough to read as separate
+    // spaces, with a gap down the centre of the hall to walk through
+    const PARTITION_COLORS = [PALETTE.wallPink, PALETTE.wallMint, PALETTE.wallLilac];
+    const GAP = 1.5;
+    const span = HOUSE_HALF - GAP;
+    const partitionXs = [
+      IX + 3,
+      ...STATIONS.slice(1).map((sx, i) => (STATIONS[i] + sx) / 2),
+      HOUSE_EXIT_X - 6,
+    ];
+    partitionXs.forEach((wx, i) => {
+      const color = PARTITION_COLORS[i % PARTITION_COLORS.length];
+      s.add(block(0.22, 2.2, span, color, wx, 1.1, -(GAP + HOUSE_HALF) / 2));
+      s.add(block(0.22, 2.2, span, color, wx, 1.1, (GAP + HOUSE_HALF) / 2));
+    });
 
     // 1. the dusty room (south alcove)
     {
       const x = STATIONS[0];
-      s.add(block(2.8, 0.05, 2.6, 0xcbb98a, x, 0.03, -1.8));
-      const broom = block(0.12, 1.5, 0.12, PALETTE.woodDark, x - 0.6, 0.75, -1.6);
+      s.add(block(3.2, 0.05, 3.0, 0xcbb98a, x, 0.03, -3.2));
+      const broom = block(0.12, 1.5, 0.12, PALETTE.woodDark, x - 0.8, 0.75, -2.8);
       broom.rotation.z = 0.35;
       s.add(broom);
-      s.add(block(0.4, 0.3, 0.4, PALETTE.stone, x + 0.7, 0.15, -1.9)); // water bucket
-      for (let i = 0; i < 8; i++) {
-        const m = new THREE.MeshBasicMaterial({ color: 0xd9caa3, transparent: true, opacity: 0.35 });
-        const mote = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.2, 0.2), m);
-        mote.position.set(x + (Math.random() - 0.5) * 2.2, 0.4 + Math.random() * 1.3, -1.8 + (Math.random() - 0.5) * 2);
+      s.add(block(0.4, 0.3, 0.4, PALETTE.stone, x + 0.9, 0.15, -3.4)); // water bucket
+      for (let i = 0; i < 22; i++) {
+        const m = new THREE.MeshBasicMaterial({ color: 0xd9caa3, transparent: true, opacity: 0 });
+        const mote = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.18, 0.18), m);
+        const baseX = x + (Math.random() - 0.5) * 2.8;
+        const baseZ = -3.2 + (Math.random() - 0.5) * 2.4;
+        mote.position.set(baseX, 0.3, baseZ);
         s.add(mote);
-        this.dustMotes.push(mote);
+        this.dust.push({ mesh: mote, mat: m, life: Math.random(), baseX, baseZ });
+      }
+      // water droplets, held in reserve for the sprinkle that settles the dust
+      for (let i = 0; i < 16; i++) {
+        const m = new THREE.MeshBasicMaterial({ color: 0xaed8f0, transparent: true, opacity: 0 });
+        const drop = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.16, 0.07), m);
+        drop.visible = false;
+        s.add(drop);
+        this.sprinkle.push({ mesh: drop, mat: m, active: false, vy: 0 });
       }
     }
 
@@ -449,96 +513,136 @@ export class WicketGateScene {
     {
       const x = STATIONS[1];
       const passion = makeBear({ species: 'bear', outfit: 'shirt', outfitColor: 0xe8834a, scale: 0.68 });
-      passion.root.position.set(x - 0.7, 0, 1.5);
+      passion.root.position.set(x - 0.7, 0, 1.7);
       passion.root.rotation.y = 0.3;
       s.add(passion.root);
       const patience = makeBear({ species: 'bear', outfit: 'dress', outfitColor: PALETTE.dressLeaf, scale: 0.68 });
-      patience.root.position.set(x + 0.9, 0, 2.1);
+      patience.root.position.set(x + 0.9, 0, 2.2);
       patience.root.rotation.y = -0.4;
       s.add(patience.root);
       // Passion's scattered, wasted toys
-      for (const [tx, tz, c] of [[-1.4, 1.0, 0xffe08a], [-0.2, 0.9, 0xffb3c6], [-1.0, 2.0, 0xaecbff]] as const) {
+      for (const [tx, tz, c] of [[-1.4, 1.2, 0xffe08a], [-0.2, 1.1, 0xffb3c6], [-1.0, 2.1, 0xaecbff]] as const) {
         s.add(block(0.24, 0.24, 0.24, c, x + tx, 0.12, tz));
       }
       // Patience's unopened, waiting chest
-      s.add(block(0.5, 0.36, 0.36, PALETTE.woodDark, x + 0.9, 0.18, 2.7));
+      s.add(block(0.5, 0.36, 0.36, PALETTE.woodDark, x + 0.9, 0.18, 2.8));
     }
 
     // 3. the fire against the wall (south alcove)
     {
       const x = STATIONS[2];
-      s.add(block(0.3, 2.0, 2.4, PALETTE.stone, x, 1.0, -2.0)); // the dividing wall
+      s.add(block(0.3, 2.0, 2.8, PALETTE.stone, x, 1.0, -3.4)); // the dividing wall
       for (let i = 0; i < 6; i++) {
         const m = new THREE.MeshBasicMaterial({ color: i % 2 === 0 ? 0xff8a3d : 0xffc35c });
         const mesh = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.5 + Math.random() * 0.4, 0.3), m);
-        mesh.position.set(x + (Math.random() - 0.5) * 0.7, 0.3, -1.1 + (Math.random() - 0.5) * 0.4);
+        mesh.position.set(x + (Math.random() - 0.5) * 0.7, 0.3, -2.4 + (Math.random() - 0.5) * 0.4);
         s.add(mesh);
         this.fireMotes.push(mesh);
       }
       const devil = makeBear({ species: 'cat', outfit: 'none', fur: 0x5a5464, scale: 0.9 });
-      devil.root.position.set(x, 0, -0.3);
+      devil.root.position.set(x, 0, -1.4);
       devil.root.rotation.y = Math.PI;
+      devil.armR.add(block(0.26, 0.34, 0.22, 0x4a4440, 0, -0.5, 0.16)); // pail, carried in hand
       s.add(devil.root);
-      s.add(block(0.24, 0.4, 0.24, 0x4a4440, x, 0.9, -0.5)); // his water pail, tipped
+      this.devilArm = devil.armR;
       const christ = makeBear({ species: 'lion', outfit: 'robe', outfitColor: PALETTE.robeWhite, scale: 0.85 });
-      christ.root.position.set(x, 0, -2.9);
+      christ.root.position.set(x, 0, -4.4);
+      christ.armR.add(block(0.22, 0.3, 0.2, PALETTE.robeGold, 0, -0.5, 0.16)); // oil jug, carried in hand
       s.add(christ.root);
-      s.add(block(0.22, 0.34, 0.22, PALETTE.robeGold, x, 0.85, -2.7)); // his oil jug, hidden behind the wall
+      this.christArm = christ.armR;
     }
 
     // 4. the armed man and the palace (north alcove)
     {
       const x = STATIONS[3];
-      s.add(block(2.6, 2.8, 0.3, PALETTE.roofLilac, x, 1.4, 2.6)); // palace facade
-      s.add(block(2.8, 0.3, 0.4, PALETTE.robeGold, x, 2.85, 2.6)); // cornice
-      s.add(block(0.9, 1.7, 0.3, 0xfff6c9, x, 0.85, 2.45)); // glowing doorway
+      s.add(block(2.6, 2.8, 0.3, PALETTE.roofLilac, x, 1.4, 4.2)); // palace facade
+      s.add(block(2.8, 0.3, 0.4, PALETTE.robeGold, x, 2.85, 4.2)); // cornice
+      s.add(block(0.9, 1.7, 0.3, 0xfff6c9, x, 0.85, 4.05)); // glowing doorway
       for (const gx of [-1.1, 1.1]) {
         const guard = makeBear({ species: 'pig', outfit: 'overalls', outfitColor: 0x5a5464, scale: 0.9 });
-        guard.root.position.set(x + gx, 0, 1.6);
+        guard.root.position.set(x + gx, 0, 3.0);
         guard.root.rotation.y = Math.PI;
         s.add(guard.root);
       }
       const knight = makeBear({ species: 'bear', outfit: 'shirt', outfitColor: 0x8a8f9a, scale: 0.95 });
-      knight.root.position.set(x, 0, 0.2);
+      knight.root.position.set(x, 0, 1.2);
       s.add(knight.root);
-      const sword = block(0.1, 0.1, 0.9, 0xd8d3cc, x + 0.4, 0.7, 0.2);
+      const sword = block(0.1, 0.1, 0.9, 0xd8d3cc, x + 0.4, 0.7, 1.2);
       sword.rotation.x = 0.3;
       s.add(sword);
     }
 
-    // 5. the man in the iron cage (south alcove)
+    // 5. the man in the iron cage (south alcove) — bars on all four sides,
+    // tucked into a real corner where the back wall meets the room's edge
     {
-      const x = STATIONS[4];
-      for (let i = -3; i <= 3; i++) {
-        s.add(block(0.06, 1.6, 0.06, 0x2c2a30, x + i * 0.32, 0.8, -1.6));
+      const cx = STATIONS[4] - 4;
+      const cz = -(HOUSE_HALF - 0.9);
+      const HW = 0.8;
+      const HD = 0.7;
+      const BARH = 1.6;
+      s.add(block(HW * 2, 0.05, HD * 2, 0x3a3640, cx, 0.03, cz)); // cage floor
+      const barMat = 0x2c2a30;
+      for (const bx of [-0.8, -0.4, 0, 0.4, 0.8]) {
+        s.add(block(0.06, BARH, 0.06, barMat, cx + bx, BARH / 2, cz - HD)); // back bars
+        s.add(block(0.06, BARH, 0.06, barMat, cx + bx, BARH / 2, cz + HD)); // front bars
       }
-      s.add(block(1.1, 0.06, 0.06, 0x2c2a30, x, 1.55, -1.6));
+      for (const bz of [-0.45, 0, 0.45]) {
+        s.add(block(0.06, BARH, 0.06, barMat, cx - HW, BARH / 2, cz + bz)); // left side
+        s.add(block(0.06, BARH, 0.06, barMat, cx + HW, BARH / 2, cz + bz)); // right side
+      }
+      // top rails tying the bars together
+      s.add(block(HW * 2 + 0.1, 0.06, 0.06, barMat, cx, BARH, cz - HD));
+      s.add(block(HW * 2 + 0.1, 0.06, 0.06, barMat, cx, BARH, cz + HD));
+      s.add(block(0.06, 0.06, HD * 2 + 0.1, barMat, cx - HW, BARH, cz));
+      s.add(block(0.06, 0.06, HD * 2 + 0.1, barMat, cx + HW, BARH, cz));
       const caged = makeBear({ species: 'bear', outfit: 'none', fur: 0x8f887e, scale: 0.9 });
-      caged.root.position.set(x, 0, -1.6);
+      caged.root.position.set(cx, 0, cz);
       caged.root.rotation.x = 0.2; // bowed head
+      // small round glasses, worn low on the snout
+      caged.head.add(block(0.16, 0.14, 0.05, 0x2c2a30, -0.24, 0.5, 0.44));
+      caged.head.add(block(0.16, 0.14, 0.05, 0x2c2a30, 0.24, 0.5, 0.44));
+      caged.head.add(block(0.2, 0.04, 0.04, 0x2c2a30, 0, 0.5, 0.44)); // bridge
       s.add(caged.root);
     }
 
-    // 6. the dream of judgment (north alcove)
+    // 6. the dream of judgment (north alcove) — a longer bed, sitting bolt upright
     {
       const x = STATIONS[5];
-      s.add(block(1.4, 0.3, 0.9, PALETTE.woodDark, x, 0.3, 1.8)); // bed frame
-      s.add(block(1.3, 0.2, 0.8, 0xeef2ff, x, 0.5, 1.8)); // blanket
+      const bz = 3.0;
+      s.add(block(1.1, 0.3, 2.2, PALETTE.woodDark, x, 0.3, bz)); // longer bed frame
+      s.add(block(1.0, 0.2, 2.0, 0xeef2ff, x, 0.5, bz)); // blanket
+      s.add(block(0.5, 0.18, 0.4, 0xfff6e8, x, 0.6, bz - 0.95)); // pillow
       const dreamer = makeBear({ species: 'rabbit', outfit: 'none', scale: 0.85 });
-      dreamer.root.position.set(x, 0.35, 1.55);
+      dreamer.root.position.set(x, 0.55, bz);
       s.add(dreamer.root);
       // a pale, distant throne-shape hinting at the vision
       const throneMat = new THREE.MeshBasicMaterial({ color: 0xfdfdf6, transparent: true, opacity: 0.5 });
       const throne = new THREE.Mesh(new THREE.BoxGeometry(0.9, 1.8, 0.5), throneMat);
-      throne.position.set(x, 1.2, 3.0);
+      throne.position.set(x, 1.2, HOUSE_HALF - 0.6);
       s.add(throne);
     }
 
-    // the exit door, back out to the highway and the far light
-    const exitDoor = new THREE.Group();
-    exitDoor.add(block(0.9, 1.9, 0.2, PALETTE.woodDark, 0, 0.95, 0));
-    exitDoor.position.set(HOUSE_EXIT_X, 0, 0);
-    s.add(exitDoor);
+    // an end wall closes off the hall, with a doorway gap in the middle —
+    // the wall panels run flush out to the side walls, so the door is
+    // properly set into an opening rather than floating in space
+    const DOOR_GAP = 1.0;
+    s.add(block(0.3, 3.0, HOUSE_HALF - DOOR_GAP, PALETTE.wallCream,
+      HOUSE_EXIT_X, 1.5, (HOUSE_HALF + DOOR_GAP) / 2));
+    s.add(block(0.3, 3.0, HOUSE_HALF - DOOR_GAP, PALETTE.wallCream,
+      HOUSE_EXIT_X, 1.5, -(HOUSE_HALF + DOOR_GAP) / 2));
+    s.add(block(0.3, 0.4, DOOR_GAP * 2 + 0.3, PALETTE.wallCream, HOUSE_EXIT_X, 3.2, 0)); // lintel
+    // a real door on a hinge, filling the doorway, swinging open once the
+    // farewell is said, and fading in behind Christian once he's stepped out
+    const doorMat = new THREE.MeshLambertMaterial({ color: PALETTE.woodDark, transparent: true, opacity: 1 });
+    const exitDoorPivot = new THREE.Group();
+    exitDoorPivot.position.set(HOUSE_EXIT_X, 0, -DOOR_GAP);
+    const exitPanel = new THREE.Mesh(new THREE.BoxGeometry(0.14, 1.9, DOOR_GAP * 1.85), doorMat);
+    exitPanel.position.set(0, 0.95, DOOR_GAP * 0.925);
+    exitPanel.castShadow = true;
+    exitDoorPivot.add(exitPanel);
+    s.add(exitDoorPivot);
+    this.exitDoor = exitDoorPivot;
+    this.exitDoorMat = doorMat;
   }
 
   // ------------------------------------------------------------ runtime
@@ -549,12 +653,21 @@ export class WicketGateScene {
     this.mutterIndex = 0;
     this.volleyT = 0;
     this.houseGreeted = revisit; // revisiting skips the Interpreter's House
+    this.houseCalledOut = false;
+    this.dustBurst = 0;
+    this.dustBurstTarget = 0;
+    this.sprinkleT = 0;
     this.stationIndex = STATIONS.length;
+    this.houseDoorOpen = false;
+    this.exitDoorOpen = false;
+    this.interpreterTarget = null;
     for (const a of this.arrows) { a.active = false; a.g.visible = false; }
     this.christian.root.position.set(-60, 0, 0);
     this.christian.root.rotation.y = Math.PI / 2;
     this.scene.add(this.christian.root);
-    this.interpreter.root.visible = false;
+    // back to his post outside the cottage door
+    this.interpreter.root.position.set(COTTAGE_X, 0, -6.5 + 3.2);
+    this.interpreter.root.rotation.y = 0;
     if (revisit) {
       this.phase = 'done';
       this.doorOpen = true;
@@ -584,7 +697,7 @@ export class WicketGateScene {
     this.phase = 'freeroam';
     this.houseGreeted = target === 'house';
     this.stationIndex = target === 'house' ? 0 : STATIONS.length;
-    this.interpreter.root.visible = target === 'house';
+    this.interpreterTarget = null;
     if (target === 'house') {
       this.christian.root.position.set(IX, 0, 0);
       this.christian.root.rotation.y = Math.PI / 2;
@@ -595,43 +708,91 @@ export class WicketGateScene {
     } else {
       this.christian.root.position.set(GATE_X + 4, 0, 0);
       this.christian.root.rotation.y = Math.PI / 2;
+      this.interpreter.root.position.set(COTTAGE_X, 0, -6.5 + 3.2);
+      this.interpreter.root.rotation.y = 0;
       this.cb.setMusic?.('gate');
       this.cb.setObjective('✨ Walk the straight and narrow way, toward the light');
     }
   }
 
   moveFactor(): number {
-    return (
-      this.phase === 'knock' || this.phase === 'volley' ||
-      this.phase === 'houseGreet' || this.phase === 'houseExit'
-    ) ? 0 : 1;
+    // houseExit stays free-moving — Christian walks himself out through the door
+    return (this.phase === 'knock' || this.phase === 'volley' || this.phase === 'houseGreet') ? 0 : 1;
+  }
+
+  // Christian can't walk through the Interpreter (or Goodwill) — a soft push-out
+  private resolvePeopleCollision(p: THREE.Vector3): void {
+    const R = 0.8;
+    for (const other of [this.interpreter, this.goodwill]) {
+      if (!other.root.visible) continue;
+      const dx = p.x - other.root.position.x;
+      const dz = p.z - other.root.position.z;
+      const d = Math.hypot(dx, dz);
+      if (d < R && d > 0.0001) {
+        p.x = other.root.position.x + (dx / d) * R;
+        p.z = other.root.position.z + (dz / d) * R;
+      }
+    }
   }
 
   afterMove(): void {
     const p = this.christian.root.position;
+    this.resolvePeopleCollision(p);
 
     // ---------- inside the House of the Interpreter ----------
-    if (this.phase === 'house') {
-      p.z = THREE.MathUtils.clamp(p.z, -3, 3);
-      p.x = THREE.MathUtils.clamp(p.x, IX - 2, HOUSE_EXIT_X + 2);
-      if (this.stationIndex < STATIONS.length && p.x > STATIONS[this.stationIndex] - 2) {
-        const idx = this.stationIndex;
-        this.stationIndex++;
-        this.interpreter.root.position.set(STATIONS[idx] - 1, 0, p.z >= 0 ? -1 : 1);
-        this.interpreter.root.rotation.y = p.z >= 0 ? Math.PI : 0;
-        this.cb.playScript(VIGNETTES[idx]);
+    if (this.phase === 'house' || this.phase === 'houseExit') {
+      p.z = THREE.MathUtils.clamp(p.z, -HOUSE_HALF + 0.8, HOUSE_HALF - 0.8);
+      p.x = THREE.MathUtils.clamp(p.x, IX - 2, HOUSE_EXIT_X + 3);
+
+      if (this.phase === 'house') {
+        if (this.stationIndex < STATIONS.length && p.x > STATIONS[this.stationIndex] - 2) {
+          const idx = this.stationIndex;
+          this.stationIndex++;
+          // he walks to stand opposite Christian, facing him — never teleporting
+          const side = p.z >= 0 ? -1.6 : 1.6;
+          this.interpreterTarget = new THREE.Vector3(STATIONS[idx] - 1, 0, side);
+          this.interpreterFaceOnArrive = p.z >= 0 ? 0 : Math.PI;
+          if (idx === 0) {
+            // the dusty room: fill it with a choking cloud, then settle it
+            // with a sprinkle of water, timed to the dialogue
+            this.dustBurstTarget = 1;
+            this.cb.playScript(DUST_LINES_A, () => {
+              this.dustBurstTarget = 0;
+              this.sprinkleT = 1.6;
+              this.cb.playScript(DUST_LINES_B);
+            });
+          } else {
+            this.cb.playScript(VIGNETTES[idx - 1]);
+          }
+          return;
+        }
+        if (this.stationIndex >= STATIONS.length && p.x > HOUSE_EXIT_X - 4) {
+          this.phase = 'houseExit';
+          const side = p.z >= 0 ? -1.6 : 1.6;
+          this.interpreterTarget = new THREE.Vector3(HOUSE_EXIT_X - 2, 0, side);
+          this.interpreterFaceOnArrive = p.z >= 0 ? 0 : Math.PI;
+          this.exitDoorOpen = true; // the exit door swings open
+          this.cb.playScript(FAREWELL_LINES, () => {
+            this.cb.setObjective('🚪 Walk out through the door, back to the King\'s Highway');
+          });
+        }
         return;
       }
-      if (this.stationIndex >= STATIONS.length && p.x > HOUSE_EXIT_X - 3) {
-        this.phase = 'houseExit';
-        this.cb.playScript(FAREWELL_LINES, () => {
-          this.christian.root.position.set(COTTAGE_X, 0, 4.0);
-          this.christian.root.rotation.y = Math.PI;
-          this.interpreter.root.visible = false;
+
+      // houseExit: the farewell is said (or being said) — once Christian
+      // actually walks through the open door, cut back outside
+      if (p.x > HOUSE_EXIT_X + 1.5) {
+        const leave = () => {
+          this.christian.root.position.set(COTTAGE_X, 0, -6.5 + 4.3);
+          this.christian.root.rotation.y = 0; // turns back toward the highway
+          this.exitDoorOpen = false;
+          this.houseDoorOpen = false; // the cottage door swings shut behind him
           this.phase = 'freeroam';
           this.cb.setMusic?.('gate');
           this.cb.setObjective('✨ Walk the straight and narrow way, toward the light');
-        });
+        };
+        if (this.cb.fade) this.cb.fade(leave);
+        else leave();
       }
       return;
     }
@@ -644,7 +805,7 @@ export class WicketGateScene {
     }
     if (p.x > GATE_X + 1) {
       const nearCottage = Math.abs(p.x - COTTAGE_X) < 4;
-      p.z = THREE.MathUtils.clamp(p.z, -1.6, nearCottage ? 6.5 : 1.6);
+      p.z = THREE.MathUtils.clamp(p.z, nearCottage ? -6.5 : -1.6, 1.6);
     }
     p.x = THREE.MathUtils.clamp(p.x, -62, HIGHWAY_END + 3);
 
@@ -654,22 +815,38 @@ export class WicketGateScene {
     }
 
     // ---------- the cottage door: Christian is welcomed into the House ----------
-    if (this.phase === 'freeroam' && !this.houseGreeted && p.distanceTo(DOOR_POS) < 2.2) {
+    if (this.phase === 'freeroam' && !this.houseGreeted && p.distanceTo(DOOR_POS) < 2.4) {
       this.houseGreeted = true;
       this.phase = 'houseGreet';
-      this.interpreter.root.visible = true;
-      this.interpreter.root.position.set(COTTAGE_X, 0, 4.6);
-      this.interpreter.root.rotation.y = Math.PI;
+      this.houseDoorOpen = true; // the door swings open as the greeting plays out
+      this.christian.root.rotation.y = Math.PI; // faces the cottage/Interpreter
+      this.interpreter.root.rotation.y = 0; // faces Christian
       this.cb.playScript(HOUSE_GREET_LINES, () => {
-        this.phase = 'house';
-        this.stationIndex = 0;
-        this.christian.root.position.set(IX, 0, 0);
-        this.christian.root.rotation.y = Math.PI / 2;
-        this.interpreter.root.position.set(IX + 3, 0, 1.2);
-        this.cb.setMusic?.('interpreter');
-        this.cb.setObjective('🏚 The House of the Interpreter — walk on to see what he shows you');
+        const enterHouse = () => {
+          this.phase = 'house';
+          this.stationIndex = 0;
+          this.christian.root.position.set(IX, 0, 0);
+          this.christian.root.rotation.y = Math.PI / 2;
+          this.interpreter.root.position.set(IX + 3, 0, 1.2);
+          this.interpreter.root.rotation.y = -Math.PI / 2;
+          this.cb.setMusic?.('interpreter');
+          this.cb.setObjective('🏚 The House of the Interpreter — walk on to see what he shows you');
+        };
+        if (this.cb.fade) this.cb.fade(enterHouse);
+        else enterHouse();
       });
       return;
+    }
+
+    // the Interpreter calls out if Christian walks straight past his door
+    if (
+      this.phase === 'freeroam' && !this.houseGreeted && !this.houseCalledOut &&
+      p.x > COTTAGE_X + 5
+    ) {
+      this.houseCalledOut = true;
+      this.cb.playScript([
+        { speaker: 'Interpreter', text: 'Christian! Christian — over here! Will you not stop a moment at an old owl\'s door?' },
+      ]);
     }
 
     // ---------- roadside doubts on the long approach ----------
@@ -746,12 +923,76 @@ export class WicketGateScene {
     if (!this.built) return;
     animateBear(this.christian, t, moving && this.moveFactor() > 0);
     if (this.goodwill.root.visible) animateBear(this.goodwill, t + 0.7, false);
-    if (this.interpreter.root.visible) animateBear(this.interpreter, t + 1.1, false);
 
-    // dust motes hazing in the first room of the House
-    for (let i = 0; i < this.dustMotes.length; i++) {
-      const m = this.dustMotes[i].material as THREE.MeshBasicMaterial;
-      m.opacity = 0.2 + 0.25 * Math.abs(Math.sin(t * 1.3 + i));
+    // the Interpreter walks (never teleports) between vignettes, and always
+    // turns to face Christian once he arrives. While the House's rooms are in
+    // play, he routes through the centre gap first rather than cutting
+    // diagonally through a partition wall, then steps aside at the very end.
+    if (this.interpreterTarget) {
+      const ip = this.interpreter.root.position;
+      const dx = this.interpreterTarget.x - ip.x;
+      const xClose = Math.abs(dx) < 0.3;
+      const inHouse = this.phase === 'house' || this.phase === 'houseExit';
+      const stepZTarget = (!inHouse || xClose) ? this.interpreterTarget.z : 0;
+      const dz = stepZTarget - ip.z;
+      const d = Math.hypot(dx, dz);
+      if (d > 0.12) {
+        const step = Math.min(9 * dt, d);
+        ip.x += (dx / d) * step;
+        ip.z += (dz / d) * step;
+        this.interpreter.root.rotation.y = Math.atan2(dx, dz);
+        animateBear(this.interpreter, t + 1.1, true);
+      } else if (xClose) {
+        ip.set(this.interpreterTarget.x, 0, this.interpreterTarget.z);
+        this.interpreter.root.rotation.y = this.interpreterFaceOnArrive;
+        this.interpreterTarget = null;
+        animateBear(this.interpreter, t + 1.1, false);
+      } else {
+        animateBear(this.interpreter, t + 1.1, false);
+      }
+    } else {
+      animateBear(this.interpreter, t + 1.1, false);
+    }
+
+    // the dust cloud billows up while it's being swept, and clears away once
+    // the water is sprinkled — timed to the dialogue, not just ambient haze
+    this.dustBurst += (this.dustBurstTarget - this.dustBurst) * Math.min(dt * 1.6, 1);
+    for (const d of this.dust) {
+      if (this.dustBurst > 0.02) {
+        d.life += dt * (0.4 + this.dustBurst * 1.6);
+        if (d.life >= 1) {
+          d.life -= 1;
+          d.mesh.position.set(d.baseX, 0.3, d.baseZ);
+        }
+        d.mesh.position.y += dt * (0.4 + this.dustBurst * 0.6);
+      }
+      d.mat.opacity = this.dustBurst * 0.55 * Math.sin(d.life * Math.PI);
+    }
+    // the water sprinkle: droplets rain down briefly, settling the dust
+    if (this.sprinkleT > 0) {
+      this.sprinkleT -= dt;
+      this.sprinkleTimer -= dt;
+      if (this.sprinkleTimer <= 0) {
+        this.sprinkleTimer = 0.03;
+        const drop = this.sprinkle.find((sp) => !sp.active);
+        if (drop) {
+          const stX = STATIONS[0] + (Math.random() - 0.5) * 2.8;
+          const stZ = -3.2 + (Math.random() - 0.5) * 2.4;
+          drop.active = true;
+          drop.vy = 3.5 + Math.random();
+          drop.mesh.position.set(stX, 1.8 + Math.random() * 0.4, stZ);
+          drop.mesh.visible = true;
+          drop.mat.opacity = 0.85;
+        }
+      }
+    }
+    for (const drop of this.sprinkle) {
+      if (!drop.active) continue;
+      drop.mesh.position.y -= drop.vy * dt;
+      if (drop.mesh.position.y <= 0.05) {
+        drop.active = false;
+        drop.mesh.visible = false;
+      }
     }
     // the fire that never goes out
     for (let i = 0; i < this.fireMotes.length; i++) {
@@ -759,12 +1000,30 @@ export class WicketGateScene {
       const s = 0.85 + 0.3 * Math.abs(Math.sin(t * 6 + i * 1.7));
       mesh.scale.set(1, s, 1);
     }
+    // the devil endlessly tips his pail; Christ, unseen, endlessly tips his oil
+    if (this.devilArm) this.devilArm.rotation.x = -0.9 + Math.sin(t * 2.2) * 0.5;
+    if (this.christArm) this.christArm.rotation.x = -0.9 + Math.sin(t * 1.8 + 1) * 0.5;
 
     // the gate doors swing
     const doorTarget = this.doorOpen ? 1.7 : 0;
     if (this.doorL && this.doorR) {
       this.doorL.rotation.y += (-doorTarget - this.doorL.rotation.y) * 0.06;
       this.doorR.rotation.y += (doorTarget - this.doorR.rotation.y) * 0.06;
+    }
+    // the cottage door swings open to welcome Christian in, and shut behind him
+    if (this.cottageDoor) {
+      const cDoorTarget = this.houseDoorOpen ? -2.1 : 0;
+      this.cottageDoor.rotation.y += (cDoorTarget - this.cottageDoor.rotation.y) * 0.08;
+    }
+    // the far door out of the hall swings open once the farewell is said,
+    // and fades gently between solid and translucent as it opens/shuts
+    if (this.exitDoor) {
+      const eDoorTarget = this.exitDoorOpen ? -2.1 : 0;
+      this.exitDoor.rotation.y += (eDoorTarget - this.exitDoor.rotation.y) * 0.08;
+      if (this.exitDoorMat) {
+        const opTarget = this.exitDoorOpen ? 0.75 : 1;
+        this.exitDoorMat.opacity += (opTarget - this.exitDoorMat.opacity) * 0.05;
+      }
     }
 
     // castle windows pulse balefully

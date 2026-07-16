@@ -98,7 +98,18 @@ const ui = {
   restartBtn: document.getElementById('restart-btn')! as HTMLButtonElement,
   debugBtn: document.getElementById('debug-btn')! as HTMLButtonElement,
   debugPanel: document.getElementById('debug-panel')! as HTMLElement,
+  fade: document.getElementById('fade')! as HTMLElement,
 };
+
+// a brief screen fade to mask an instant scene cut (e.g. stepping through a
+// doorway into an interior built far away on the same axis)
+function fadeTransition(mid: () => void, holdMs = 420): void {
+  ui.fade.classList.add('show');
+  window.setTimeout(() => {
+    mid();
+    requestAnimationFrame(() => ui.fade.classList.remove('show'));
+  }, holdMs);
+}
 
 const isTouch = window.matchMedia('(pointer: coarse)').matches;
 if (isTouch) {
@@ -177,6 +188,16 @@ const slough = new SloughScene({
   onComplete: () => {
     quest.sloughComplete = true;
     if (quest.pliableFollowing) quest.pliableLeft = true;
+    // Pliable turned for home at the first hardship — he's gone for good now,
+    // not just quietly idling somewhere back in the village
+    if (quest.pliableLeft) {
+      const idx = npcs.findIndex((n) => n.id === 'pliable');
+      if (idx !== -1) {
+        scene.remove(npcs[idx].parts.root);
+        npcs.splice(idx, 1);
+        wanderState.splice(idx, 1); // keep it aligned with npcs by index
+      }
+    }
     showEnding(
       '🌊 Chapter II Complete',
       'Through the Slough of Despond',
@@ -236,6 +257,7 @@ const wicket = new WicketGateScene({
   rumbleSound: () => music.rumble(),
   blipSound: () => music.blip(),
   setMusic: (style) => music.setStyle(style),
+  fade: (mid) => fadeTransition(mid),
   onComplete: () => {
     quest.wicketDone = true;
     quest.interpreterDone = true;
@@ -250,6 +272,11 @@ const wicket = new WicketGateScene({
       + 'the dream of judgment. Somewhere ahead now lies the place of deliverance, where '
       + 'the burden falls of itself…',
       () => {
+        // reaching this point always implies the Slough and Morality are behind
+        // us too — without this the map's "barred road" clamp snaps progress
+        // straight back to the Slough the moment you try to move
+        worldMap.sloughDone = true;
+        worldMap.moralityDone = true;
         worldMap.start([]);
         worldMap.road = 'main';
         worldMap.progress = worldMap.beyondT;
@@ -455,6 +482,15 @@ ui.debugPanel.addEventListener('click', (e) => {
   cutscene = false;
   ui.dialogue.style.display = 'none';
   ui.ending.style.display = 'none';
+  // debug jumps skip the map entirely, so make sure its "how far can I walk"
+  // flags agree with wherever we're jumping to — otherwise a later visit to
+  // the map can snap Christian's progress back to an earlier chapter
+  if (jump === 'morality' || jump === 'wicket-approach' || jump === 'wicket-highway' || jump === 'interpreter') {
+    worldMap.sloughDone = true;
+  }
+  if (jump === 'wicket-approach' || jump === 'wicket-highway' || jump === 'interpreter') {
+    worldMap.moralityDone = true;
+  }
   if (jump === 'village') enterVillage();
   else if (jump === 'slough') enterSlough(false);
   else if (jump === 'morality') enterMorality(false);
@@ -596,6 +632,7 @@ function triggerInteract(it: Interactable): void {
 
 const SPEED = 7;
 const camOffset = new THREE.Vector3(0, 13, 13);
+const HOUSE_CAM_OFFSET = new THREE.Vector3(0, 7.5, 7.5); // closer view inside the Interpreter's House
 const camTarget = new THREE.Vector3();
 let playerMoving = false;
 
@@ -841,8 +878,8 @@ function updateNPCs(dt: number, t: number): void {
       return;
     }
 
-    // Pliable tags along once persuaded
-    if (npc.id === 'pliable' && quest.pliableFollowing && !isTalking) {
+    // Pliable tags along once persuaded — but stops the moment he's left at the Slough
+    if (npc.id === 'pliable' && quest.pliableFollowing && !quest.pliableLeft && !isTalking) {
       const pos = npc.parts.root.position;
       const dx = christian.root.position.x - pos.x;
       const dz = christian.root.position.z - pos.z;
@@ -1050,8 +1087,9 @@ function tick(): void {
     wicket.afterMove();
     wicket.update(dt, t, moving);
 
+    const inHouse = wicket.phase === 'house' || wicket.phase === 'houseGreet' || wicket.phase === 'houseExit';
     camTarget.lerp(wc.root.position, Math.min(4 * dt, 1));
-    camera.position.copy(camTarget).add(camOffset);
+    camera.position.copy(camTarget).add(inHouse ? HOUSE_CAM_OFFSET : camOffset);
     camera.lookAt(camTarget.x, camTarget.y + 1.4, camTarget.z);
     renderer.render(wicket.scene, camera);
     return;

@@ -352,12 +352,13 @@ export class SloughScene {
       this.cb.splashSound();
       for (let i = 0; i < 6; i++) this.spawnSplash(p.x + Math.random(), p.z + (Math.random() - 0.5));
       if (this.pliable) {
-        // he raced ahead — the ground gives way under both of them
-        // (north of Christian, clear of the dialogue panel)
-        this.pliable.root.position.set(p.x + 1.9, -0.35, p.z - 1.2);
+        // he was already racing just ahead — the ground gives way under
+        // both of them right where he stands, no snapping into place
+        const pp = this.pliable.root.position;
+        pp.y = -0.35;
         this.pliable.root.rotation.y = Math.PI / 2;
         for (let i = 0; i < 4; i++) {
-          this.spawnSplash(p.x + 1.9 + Math.random(), p.z - 1.2 + (Math.random() - 0.5));
+          this.spawnSplash(pp.x + Math.random(), pp.z + (Math.random() - 0.5));
         }
       }
       const lines: DialogueLine[] = this.pliable
@@ -485,12 +486,18 @@ export class SloughScene {
           this.pliable = null;
         }
       } else if (this.phase === 'walk') {
-        const dx = p.x - pp.x;
-        const dz = p.z - pp.z;
+        // he races just ahead and to the north of Christian (not trailing
+        // behind), so that when the ground gives way he's already right
+        // there — no need to snap him into place
+        const tx = p.x + 1.9;
+        const tz = p.z - 1.2;
+        const dx = tx - pp.x;
+        const dz = tz - pp.z;
         const d = Math.hypot(dx, dz);
-        if (d > 2.1) {
-          pp.x += (dx / d) * dt * 6.4;
-          pp.z += (dz / d) * dt * 6.4;
+        if (d > 0.15) {
+          const step = Math.min(dt * 6.4, d);
+          pp.x += (dx / d) * step;
+          pp.z += (dz / d) * step;
           this.pliable.root.rotation.y = Math.atan2(dx, dz);
           animateBear(this.pliable, t + 0.4, true);
         } else {
