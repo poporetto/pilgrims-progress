@@ -41,7 +41,7 @@ const LIGHT_X = 40;
 const FORK_X = -14;   // where the road splits in three
 const HILL_X0 = -8;   // foot of the slope
 const HILL_X1 = 14;   // the summit
-const HILL_H = 9;
+const HILL_H = 5;     // a gentler rise — steep to the eye, kind to the paws
 const ARBOR = new THREE.Vector3(3, 0, -2.2);
 const SUMMIT_TRIGGER = 14.5;
 
@@ -175,12 +175,14 @@ export class HillScene {
 
     // ---------- the hill: broad grassy steps up to a long summit ridge ----------
     const stepColors = [0x9ede97, PALETTE.grass, 0xa8e6a3];
-    const STEPS = 8;
+    // many shallow steps, each topped at the height of its WESTERN edge, so
+    // every slab sits at or below where Christian walks — no clipping into it
+    const STEPS = 16;
     for (let i = 0; i < STEPS; i++) {
       const x0 = HILL_X0 + (i * (HILL_X1 - HILL_X0)) / STEPS;
       const x1 = HILL_X0 + ((i + 1) * (HILL_X1 - HILL_X0)) / STEPS;
-      const h = Math.max(this.groundY((x0 + x1) / 2 + 1), 0.4);
-      const slab = block(x1 - x0 + 0.6, h, 26, stepColors[i % 3], (x0 + x1) / 2, h / 2, 0);
+      const h = Math.max(this.groundY(x0 + 0.01), 0.3);
+      const slab = block(x1 - x0 + 0.4, h, 26, stepColors[i % 3], (x0 + x1) / 2, h / 2, 0);
       slab.receiveShadow = true;
       s.add(slab);
     }

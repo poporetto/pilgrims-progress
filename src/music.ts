@@ -4,7 +4,7 @@
 //   map     — adventurous but mellow travelling tune (arpeggios + shaker)
 //   slough  — slow minor murk (low pad, sparse notes, water drips)
 
-export type MusicStyle = 'village' | 'map' | 'slough' | 'sinai' | 'gate' | 'interpreter' | 'cross';
+export type MusicStyle = 'village' | 'map' | 'slough' | 'sinai' | 'gate' | 'interpreter' | 'cross' | 'fair';
 
 interface StyleDef {
   bpm: number;
@@ -80,6 +80,17 @@ const STYLES: Record<MusicStyle, StyleDef> = {
       [130.81, 196.0, 261.63, 392.0],
     ],
     scale: [523.25, 587.33, 659.25, 783.99, 880.0, 1046.5],
+  },
+  fair: {
+    bpm: 112,
+    // C – E7 – F – G : glittering carnival bustle, a little too bright
+    chords: [
+      [130.81, 164.81, 196.0, 261.63],
+      [82.41, 164.81, 207.65, 246.94],
+      [87.31, 174.61, 220.0, 261.63],
+      [98.0, 146.83, 196.0, 246.94],
+    ],
+    scale: [523.25, 587.33, 659.25, 698.46, 783.99, 880.0],
   },
   interpreter: {
     bpm: 68,
@@ -320,7 +331,7 @@ export class Music {
       }
       this.bass(t0, chord[0] / 2);
       this.bass(t0 + barLen / 2, chord[0] / 2);
-    } else if (this.style === 'map') {
+    } else if (this.style === 'map' || this.style === 'fair') {
       this.pad(t0, chord, barLen, 0.035);
       // determined little arpeggio — the travelling motif
       const pattern = [0, 1, 2, 3, 2, 3, 1, 2];

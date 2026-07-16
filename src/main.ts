@@ -14,6 +14,8 @@ import { HillScene } from './hill';
 import { PalaceScene } from './palace';
 import { ValleyScene } from './valley';
 import { ShadowScene } from './shadow';
+import { VanityScene } from './vanity';
+import { LucreScene } from './lucre';
 
 // ---------------------------------------------------------------- setup
 
@@ -85,13 +87,15 @@ const quest: QuestState = {
   palaceDone: false,
   valleyDone: false,
   shadowDone: false,
+  vanityDone: false,
+  lucreDone: false,
 };
 
 const music = new Music();
 const worldMap = new WorldMap(window.innerWidth / window.innerHeight);
 let mode:
   | 'village' | 'map' | 'slough' | 'morality' | 'wicket' | 'cross'
-  | 'highway' | 'hill' | 'palace' | 'valley' | 'shadow' = 'village';
+  | 'highway' | 'hill' | 'palace' | 'valley' | 'shadow' | 'vanity' | 'lucre' = 'village';
 
 // ---------------------------------------------------------------- UI refs
 
@@ -185,8 +189,12 @@ function goToMap(): void {
   mode = 'map';
   music.setStyle('map');
   ui.promptKey.style.display = 'none';
-  setObjective(quest.shadowDone
-    ? '🗺 Through the Shadow with Faithful — Chapter XI, Vanity Fair, coming soon…'
+  setObjective(quest.lucreDone
+    ? '🗺 Past the silver hill — Chapter XIII, coming soon…'
+    : quest.vanityDone
+    ? '🗺 With Hopeful now — ahead, the easy Plain and the glittering Hill Lucre'
+    : quest.shadowDone
+    ? '🗺 Two pilgrims now! Gaudy banners rise ahead — the city of Vanity Fair'
     : quest.valleyDone
     ? '🗺 Apollyon is fled — but a darker valley waits: the Shadow of Death…'
     : quest.palaceDone
@@ -577,6 +585,142 @@ const shadow = new ShadowScene({
 });
 let shadowActors: { christian: import('./bear').BearParts } | null = null;
 
+// ---------- Chapter XI: Vanity Fair ----------
+const vanity = new VanityScene({
+  playScript,
+  setObjective,
+  onExit: () => goToMap(),
+  rumbleSound: () => music.rumble(),
+  blipSound: () => music.blip(),
+  setMusic: (style) => music.setStyle(style),
+  fade: (mid) => fadeTransition(() => {
+    mid();
+    if (vanityActors) camTarget.copy(vanityActors.christian.root.position);
+  }),
+  onComplete: () => {
+    quest.vanityDone = true;
+    showEnding(
+      '🎪 Chapter XI Complete',
+      'Vanity Fair',
+      'Talkative talked, and could answer everything except what grace had done to '
+      + 'HIM. Then the road ran through Vanity Fair, where everything is for sale — '
+      + 'and two pilgrims who would buy nothing but the truth were mobbed, tried '
+      + 'before Lord Hate-Good, and Faithful was burned at the stake. But the fire '
+      + 'could not hold him: a chariot of light carried him straight to the King. '
+      + 'And in the crowd one young heart caught fire of a different kind — Hopeful '
+      + 'walks beside Christian now, and the road goes on…',
+      () => {
+        worldMap.sloughDone = true;
+        worldMap.moralityDone = true;
+        worldMap.wicketDone = true;
+        worldMap.crossDone = true;
+        worldMap.highwayDone = true;
+        worldMap.hillDone = true;
+        worldMap.palaceDone = true;
+        worldMap.valleyDone = true;
+        worldMap.shadowDone = true;
+        worldMap.vanityDone = true;
+        worldMap.start([]);
+        worldMap.road = 'main';
+        worldMap.progress = worldMap.vanityT;
+        goToMap();
+      },
+    );
+  },
+});
+let vanityActors: { christian: import('./bear').BearParts } | null = null;
+
+// ---------- the branching choice box ----------
+const choiceBox = document.getElementById('choice')!;
+const choiceA = document.querySelector('#choice .opt-a')! as HTMLButtonElement;
+const choiceB = document.querySelector('#choice .opt-b')! as HTMLButtonElement;
+let choiceCb: ((pick: 0 | 1) => void) | null = null;
+
+function showChoice(a: string, b: string, cb: (pick: 0 | 1) => void): void {
+  choiceA.textContent = a;
+  choiceB.textContent = b;
+  choiceCb = cb;
+  choiceBox.classList.add('open');
+}
+function pickChoice(pick: 0 | 1): void {
+  if (!choiceCb) return;
+  const cb = choiceCb;
+  choiceCb = null;
+  choiceBox.classList.remove('open');
+  music.blip();
+  cb(pick);
+}
+choiceA.addEventListener('click', () => pickChoice(0));
+choiceB.addEventListener('click', () => pickChoice(1));
+
+// ---------- Chapter XII: the Plain of Ease & the Hill Lucre ----------
+const lucre = new LucreScene({
+  playScript,
+  setObjective,
+  onExit: () => goToMap(),
+  rumbleSound: () => music.rumble(),
+  blipSound: () => music.blip(),
+  setMusic: (style) => music.setStyle(style),
+  showChoice,
+  battleUI: (show) => {
+    battleUI.classList.toggle('show', show);
+    battleUI.classList.toggle('solo', show);
+  },
+  setHP: (c) => { battleFillChr.style.width = `${Math.max(0, c)}%`; },
+  fade: (mid) => fadeTransition(() => {
+    mid();
+    if (lucreActors) camTarget.copy(lucreActors.christian.root.position);
+  }),
+  onComplete: () => {
+    quest.lucreDone = true;
+    showEnding(
+      '🧂 Chapter XII Complete',
+      'The Hill Lucre',
+      'By-ends of Fair-speech would only walk with religion in silver slippers, and '
+      + 'flounced off to his old school friends in their comfortable carriage. Then '
+      + 'Demas called from the glittering mine of Lucre — and whoever turned aside, '
+      + 'the hill swallowed: By-ends, Hold-the-world, Money-love and Save-all, never '
+      + 'seen on the way again. Past the hill, a woman of pale salt stands forever '
+      + 'half-turned toward what she left behind. Remember Lot\'s wife. Eyes east — '
+      + 'always east…',
+      () => {
+        worldMap.sloughDone = true;
+        worldMap.moralityDone = true;
+        worldMap.wicketDone = true;
+        worldMap.crossDone = true;
+        worldMap.highwayDone = true;
+        worldMap.hillDone = true;
+        worldMap.palaceDone = true;
+        worldMap.valleyDone = true;
+        worldMap.shadowDone = true;
+        worldMap.vanityDone = true;
+        worldMap.lucreDone = true;
+        worldMap.start([]);
+        worldMap.road = 'main';
+        worldMap.progress = worldMap.lucreT;
+        goToMap();
+      },
+    );
+  },
+});
+let lucreActors: { christian: import('./bear').BearParts } | null = null;
+
+function enterLucre(revisit: boolean): void {
+  mode = 'lucre';
+  ui.prompt.style.display = 'none';
+  ui.talkBtn.style.display = 'none';
+  lucreActors = lucre.enter(revisit);
+  camTarget.copy(lucreActors.christian.root.position);
+}
+
+function enterVanity(revisit: boolean): void {
+  mode = 'vanity';
+  ui.prompt.style.display = 'none';
+  ui.talkBtn.style.display = 'none';
+  vanityActors = vanity.enter(revisit);
+  camTarget.copy(vanityActors.christian.root.position);
+}
+
 function enterShadow(revisit: boolean): void {
   mode = 'shadow';
   ui.prompt.style.display = 'none';
@@ -731,6 +875,7 @@ window.addEventListener('keydown', (e) => {
     else if (mode === 'slough') slough.talkToHelp();
     else if (mode === 'hill') hill.tryPickScroll();
     else if (mode === 'valley') valley.tryAttack();
+    else if (mode === 'lucre') lucre.tryTouchPillar();
   }
 });
 
@@ -746,6 +891,8 @@ function tryEnterFromMap(): void {
   else if (spot === 'palace') enterPalace(quest.palaceDone);
   else if (spot === 'valley') enterValley(quest.valleyDone);
   else if (spot === 'shadow') enterShadow(quest.shadowDone);
+  else if (spot === 'vanity') enterVanity(quest.vanityDone);
+  else if (spot === 'lucre') enterLucre(quest.lucreDone);
 }
 window.addEventListener('keyup', (e) => keys.delete(e.code));
 // don't leave movement keys stuck when the tab loses focus mid-keypress
@@ -809,7 +956,7 @@ ui.debugPanel.addEventListener('click', (e) => {
   // flags agree with wherever we're jumping to — otherwise a later visit to
   // the map can snap Christian's progress back to an earlier chapter
   // each jump implies every earlier chapter is behind us
-  const ORDER = ['village', 'slough', 'morality', 'wicket-approach', 'cross', 'highway', 'hill', 'palace', 'valley', 'shadow'];
+  const ORDER = ['village', 'slough', 'morality', 'wicket-approach', 'cross', 'highway', 'hill', 'palace', 'valley', 'shadow', 'vanity', 'lucre'];
   const rank = ORDER.indexOf(
     jump === 'wicket-highway' || jump === 'interpreter' ? 'wicket-approach' : jump === 'map' ? 'village' : jump,
   );
@@ -821,6 +968,8 @@ ui.debugPanel.addEventListener('click', (e) => {
   if (rank >= 7) { worldMap.hillDone = true; quest.hillDone = true; }
   if (rank >= 8) { worldMap.palaceDone = true; quest.palaceDone = true; }
   if (rank >= 9) { worldMap.valleyDone = true; quest.valleyDone = true; }
+  if (rank >= 10) { worldMap.shadowDone = true; quest.shadowDone = true; }
+  if (rank >= 11) { worldMap.vanityDone = true; quest.vanityDone = true; }
   if (jump === 'village') enterVillage();
   else if (jump === 'slough') enterSlough(false);
   else if (jump === 'morality') enterMorality(false);
@@ -833,6 +982,8 @@ ui.debugPanel.addEventListener('click', (e) => {
   else if (jump === 'palace') enterPalace(false);
   else if (jump === 'valley') enterValley(false);
   else if (jump === 'shadow') enterShadow(false);
+  else if (jump === 'vanity') enterVanity(false);
+  else if (jump === 'lucre') enterLucre(false);
   else if (jump === 'map') { worldMap.start([]); worldMap.road = 'main'; goToMap(); }
 });
 
@@ -878,6 +1029,7 @@ ui.talkBtn.addEventListener('click', () => {
   else if (mode === 'slough') slough.talkToHelp();
   else if (mode === 'hill') hill.tryPickScroll();
   else if (mode === 'valley') valley.tryAttack();
+  else if (mode === 'lucre') lucre.tryTouchPillar();
 });
 
 // ---------------------------------------------------------------- interaction
@@ -1319,6 +1471,8 @@ function tick(): void {
     if (spot === 'palace' && !quest.palaceDone) { enterPalace(false); return; }
     if (spot === 'valley' && !quest.valleyDone) { enterValley(false); return; }
     if (spot === 'shadow' && !quest.shadowDone) { enterShadow(false); return; }
+    if (spot === 'vanity' && !quest.vanityDone) { enterVanity(false); return; }
+    if (spot === 'lucre' && !quest.lucreDone) { enterLucre(false); return; }
 
     ui.prompt.style.display = spot === 'road' ? 'none' : 'block';
     ui.promptKey.style.display = 'none';
@@ -1365,6 +1519,14 @@ function tick(): void {
       ui.promptWho.textContent = quest.shadowDone
         ? '🌑 Walk the Shadow valley again'
         : '🌑 Enter the Valley of the Shadow of Death';
+    } else if (spot === 'vanity') {
+      ui.promptWho.textContent = quest.vanityDone
+        ? '🎪 Pass through Vanity Fair again'
+        : '🎪 Enter the city of Vanity Fair';
+    } else if (spot === 'lucre') {
+      ui.promptWho.textContent = quest.lucreDone
+        ? '🧂 Cross the Plain of Ease again'
+        : '🧂 Cross the Plain of Ease, past the Hill Lucre';
     }
     if (spot !== 'road' && spot !== 'fork') {
       ui.promptKey.style.display = isTouch ? 'none' : 'inline-block';
@@ -1700,6 +1862,83 @@ function tick(): void {
     return;
   }
 
+  if (mode === 'vanity' && vanityActors) {
+    // ---- Vanity Fair mode ----
+    const vfc = vanityActors.christian;
+    let mx = 0;
+    let mz = 0;
+    if (keys.has('KeyW') || keys.has('ArrowUp')) mz -= 1;
+    if (keys.has('KeyS') || keys.has('ArrowDown')) mz += 1;
+    if (keys.has('KeyA') || keys.has('ArrowLeft')) mx -= 1;
+    if (keys.has('KeyD') || keys.has('ArrowRight')) mx += 1;
+    mx += joy.x;
+    mz += joy.y;
+    const len = Math.hypot(mx, mz);
+    const factor = vanity.moveFactor();
+    const moving = len > 0.15 && !dialogueOpen && !endingOpen && factor > 0;
+    if (moving) {
+      mx /= Math.max(len, 1);
+      mz /= Math.max(len, 1);
+      vfc.root.position.x += mx * SPEED * factor * dt;
+      vfc.root.position.z += mz * SPEED * factor * dt;
+      vfc.root.rotation.y = lerpAngle(vfc.root.rotation.y, Math.atan2(mx, mz), 12 * dt);
+    }
+    vanity.afterMove();
+    vanity.update(dt, t, moving);
+
+    camTarget.lerp(vfc.root.position, Math.min(4 * dt, 1));
+    camera.position.copy(camTarget).add(camOffset);
+    camera.lookAt(camTarget.x, camTarget.y + 1.4, camTarget.z);
+    renderer.render(vanity.scene, camera);
+    return;
+  }
+
+  if (mode === 'lucre' && lucreActors) {
+    // ---- Hill Lucre mode ----
+    const luc = lucreActors.christian;
+    let mx = 0;
+    let mz = 0;
+    if (keys.has('KeyW') || keys.has('ArrowUp')) mz -= 1;
+    if (keys.has('KeyS') || keys.has('ArrowDown')) mz += 1;
+    if (keys.has('KeyA') || keys.has('ArrowLeft')) mx -= 1;
+    if (keys.has('KeyD') || keys.has('ArrowRight')) mx += 1;
+    mx += joy.x;
+    mz += joy.y;
+    const len = Math.hypot(mx, mz);
+    const factor = lucre.moveFactor();
+    const choiceOpen = choiceBox.classList.contains('open');
+    const moving = len > 0.15 && !dialogueOpen && !endingOpen && !choiceOpen && factor > 0;
+    if (moving) {
+      mx /= Math.max(len, 1);
+      mz /= Math.max(len, 1);
+      luc.root.position.x += mx * SPEED * factor * dt;
+      luc.root.position.z += mz * SPEED * factor * dt;
+      luc.root.rotation.y = lerpAngle(luc.root.rotation.y, Math.atan2(mx, mz), 12 * dt);
+    }
+    lucre.afterMove(dt);
+    lucre.update(dt, t, moving);
+
+    // prompt at the pillar of salt
+    const canTouch = lucre.nearPillar() && !dialogueOpen && !endingOpen && !choiceOpen;
+    ui.prompt.style.display = canTouch ? 'block' : 'none';
+    if (canTouch) {
+      ui.promptKey.style.display = isTouch ? 'none' : 'inline-block';
+      ui.promptWho.textContent = 'Look at the statue';
+      if (isTouch) {
+        ui.talkBtn.textContent = 'Look';
+        ui.talkBtn.style.display = 'block';
+      }
+    } else if (isTouch && !dialogueOpen) {
+      ui.talkBtn.style.display = 'none';
+    }
+
+    camTarget.lerp(luc.root.position, Math.min(4 * dt, 1));
+    camera.position.copy(camTarget).add(camOffset);
+    camera.lookAt(camTarget.x, camTarget.y + 1.4, camTarget.z);
+    renderer.render(lucre.scene, camera);
+    return;
+  }
+
   // ---- village mode ----
   if (started) {
     updatePlayer(dt, t);
@@ -1754,6 +1993,7 @@ tick();
   christian, npcs, quest, world, openDialogue, advanceDialogue, camTarget,
   worldMap, slough, enterSlough, morality, enterMorality,
   wicket, enterWicket, cross, enterCross, highway, enterHighway, hill, enterHill,
-  palace, enterPalace, valley, enterValley, shadow, enterShadow, playScript, goToMap,
+  palace, enterPalace, valley, enterValley, shadow, enterShadow,
+  vanity, enterVanity, lucre, enterLucre, playScript, goToMap,
   get mode() { return mode; },
 };

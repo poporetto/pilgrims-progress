@@ -11,7 +11,7 @@ import { makeBear, animateBear, BearParts, block, mat } from './bear';
 
 export type MapSpot =
   | 'city' | 'road' | 'slough' | 'fork' | 'morality' | 'beyond' | 'cross'
-  | 'highway' | 'hill' | 'palace' | 'valley' | 'shadow';
+  | 'highway' | 'hill' | 'palace' | 'valley' | 'shadow' | 'vanity' | 'lucre';
 
 const CITY = new THREE.Vector3(-14.5, 0, 0);
 const SLOUGH = new THREE.Vector3(-3.5, 0, 0);
@@ -24,6 +24,8 @@ const HILL = new THREE.Vector3(41.5, 0, 1.5);
 const PALACE = new THREE.Vector3(49.5, 0, -1);
 const VALLEY = new THREE.Vector3(57.5, 0, 1.5);
 const SHADOW = new THREE.Vector3(65.5, 0, -0.5);
+const VANITY = new THREE.Vector3(73.5, 0, 1);
+const LUCRE = new THREE.Vector3(81.5, 0, -0.5);
 
 // island centres + how close the road must be to count as "on land"
 const ISLANDS: Array<{ c: THREE.Vector3; r: number }> = [
@@ -38,6 +40,8 @@ const ISLANDS: Array<{ c: THREE.Vector3; r: number }> = [
   { c: PALACE, r: 4.0 },
   { c: VALLEY, r: 4.0 },
   { c: SHADOW, r: 4.0 },
+  { c: VANITY, r: 4.2 },
+  { c: LUCRE, r: 4.0 },
 ];
 
 export class WorldMap {
@@ -55,18 +59,22 @@ export class WorldMap {
   palaceDone = false;
   valleyDone = false;
   shadowDone = false;
+  vanityDone = false;
+  lucreDone = false;
   justDiverted = false; // set when the barred way shunts Christian onto the byway
   // t-parameters along the main curve nearest each stop, resolved in ctor
   cityT = 0.02;
-  sloughT = 0.35;
-  forkT = 0.6;
-  beyondT = 0.72;
-  crossT = 0.78;
-  highwayT = 0.83;
-  hillT = 0.88;
-  palaceT = 0.92;
-  valleyT = 0.96;
-  shadowT = 0.99;
+  sloughT = 0.3;
+  forkT = 0.52;
+  beyondT = 0.64;
+  crossT = 0.7;
+  highwayT = 0.75;
+  hillT = 0.8;
+  palaceT = 0.84;
+  valleyT = 0.88;
+  shadowT = 0.92;
+  vanityT = 0.96;
+  lucreT = 0.99;
   private mainCurve: THREE.CatmullRomCurve3;
   private branchCurve: THREE.CatmullRomCurve3;
   private branchSpeed = 1; // t-speed scale so ground speed matches the main road
@@ -120,6 +128,12 @@ export class WorldMap {
       new THREE.Vector3(VALLEY.x - 0.6, 0.62, VALLEY.z - 0.2),
       new THREE.Vector3(61.4, 0.62, 0.6),
       new THREE.Vector3(SHADOW.x - 0.6, 0.62, SHADOW.z),
+      // …and into the glittering gates of Vanity Fair
+      new THREE.Vector3(69.4, 0.62, 0.2),
+      new THREE.Vector3(VANITY.x - 0.6, 0.62, VANITY.z - 0.2),
+      // …then out across the Plain of Ease to the Hill Lucre
+      new THREE.Vector3(77.4, 0.62, 0.4),
+      new THREE.Vector3(LUCRE.x - 0.6, 0.62, LUCRE.z),
     ]);
     this.cityT = this.tForPoint(CITY);
     this.sloughT = this.tForPoint(SLOUGH);
@@ -131,6 +145,8 @@ export class WorldMap {
     this.palaceT = this.tForPoint(PALACE);
     this.valleyT = this.tForPoint(VALLEY);
     this.shadowT = this.tForPoint(SHADOW);
+    this.vanityT = this.tForPoint(VANITY);
+    this.lucreT = this.tForPoint(LUCRE);
     // the byway begins exactly where the main road passes the crossroad,
     // so switching roads never makes Christian jump
     const forkPoint = this.mainCurve.getPointAt(this.forkT);
@@ -532,6 +548,44 @@ export class WorldMap {
     shIsle.add(lane);
     this.label('Shadow of Death', SHADOW.x, SHADOW.z, 4.4);
 
+    // ---------- Vanity Fair ----------
+    const vanIsle = this.island(VANITY.x, VANITY.z, 4.2, 0xa8d99a);
+    // a huddle of gaudy painted houses and striped stalls
+    const gaudy = [0xe06a7a, 0xf2a83a, 0x7fb8d9, 0xa06ac9, 0x6ac98a];
+    for (let i = 0; i < 4; i++) {
+      const hx = -1.6 + (i % 2) * 2.0;
+      const hz = -1.4 + Math.floor(i / 2) * 1.6;
+      vanIsle.add(block(0.95, 0.8, 0.8, 0xfaf3e3, hx, 1.0, hz));
+      vanIsle.add(block(1.1, 0.4, 0.95, gaudy[i % gaudy.length], hx, 1.6, hz));
+    }
+    // a mini stall with a striped canopy
+    vanIsle.add(block(0.8, 0.3, 0.4, PALETTE.wood, 1.6, 0.75, 0.6));
+    vanIsle.add(block(1.0, 0.08, 0.6, gaudy[0], 1.6, 1.15, 0.6));
+    vanIsle.add(block(1.0, 0.08, 0.2, 0xfaf6ec, 1.6, 1.15, 0.85));
+    // pennant pole
+    vanIsle.add(block(0.08, 1.6, 0.08, PALETTE.woodDark, 0.2, 1.4, 1.6));
+    vanIsle.add(block(0.5, 0.28, 0.05, gaudy[3], 0.5, 2.05, 1.6));
+    this.label('Vanity Fair', VANITY.x, VANITY.z, 4.6);
+
+    // ---------- the Hill Lucre ----------
+    const lucIsle = this.island(LUCRE.x, LUCRE.z, 4.0, 0x9ecf8c);
+    // the jagged silver hill with its glowing mine mouth
+    lucIsle.add(block(2.6, 1.4, 2.0, 0x9aa4b2, -0.6, 1.2, -0.8));
+    lucIsle.add(block(1.6, 1.4, 1.4, 0x8a94a2, 0.4, 2.2, -1.0));
+    lucIsle.add(block(0.9, 1.0, 0.9, 0xaab4c2, -0.2, 3.0, -0.9));
+    const mineGlow = new THREE.Mesh(
+      new THREE.BoxGeometry(0.7, 0.8, 0.12),
+      new THREE.MeshBasicMaterial({ color: 0xb8e8c9 }),
+    );
+    mineGlow.position.set(-0.6, 0.95, 0.25);
+    lucIsle.add(mineGlow);
+    // the paved way passing safely by, and the little pillar of salt
+    lucIsle.add(block(3.4, 0.1, 0.9, 0xd9c9a8, 0.4, 0.62, 1.3));
+    lucIsle.add(block(0.3, 0.8, 0.3, 0xf4f0e8, 2.2, 1.0, 0.7));
+    lucIsle.add(block(0.24, 0.24, 0.2, 0xf4f0e8, 2.24, 1.5, 0.7));
+    lucIsle.add(this.miniTree(-2.6, 1.8, true));
+    this.label('Hill Lucre', LUCRE.x, LUCRE.z, 5.0);
+
     // ---------- both roads: stones on land, plank bridges over water ----------
     this.buildRoad(this.mainCurve, 72);
     this.buildRoad(this.branchCurve, 26);
@@ -660,7 +714,9 @@ export class WorldMap {
     if (this.progress < this.cityT + 0.03) return 'city';
     if (Math.abs(this.progress - this.sloughT) < 0.03) return 'slough';
     if (Math.abs(this.progress - this.forkT) < 0.025) return 'fork';
-    if (this.progress > this.shadowT - 0.015) return 'shadow';
+    if (this.progress > this.lucreT - 0.015) return 'lucre';
+    if (Math.abs(this.progress - this.vanityT) < 0.015) return 'vanity';
+    if (Math.abs(this.progress - this.shadowT) < 0.015) return 'shadow';
     if (Math.abs(this.progress - this.valleyT) < 0.015) return 'valley';
     if (Math.abs(this.progress - this.palaceT) < 0.015) return 'palace';
     if (Math.abs(this.progress - this.hillT) < 0.015) return 'hill';
@@ -685,7 +741,11 @@ export class WorldMap {
         this.moving = true;
         // the long road east stays barred until Morality is settled;
         // the road past the Gate opens only once the Gate chapter is done
-        const maxP = this.valleyDone
+        const maxP = this.vanityDone
+          ? this.lucreT + 0.01
+          : this.shadowDone
+          ? this.vanityT + 0.01
+          : this.valleyDone
           ? this.shadowT + 0.01
           : this.palaceDone
           ? this.valleyT + 0.01

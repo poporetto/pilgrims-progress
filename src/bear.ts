@@ -5,7 +5,7 @@ import { PALETTE } from './palette';
 // (stubby legs, round body, oversized head); species swap out ears, snouts
 // and tails, and everyone wears clothes.
 
-export type Species = 'bear' | 'pig' | 'frog' | 'rabbit' | 'cat' | 'lion' | 'owl' | 'mouse' | 'sheep';
+export type Species = 'bear' | 'pig' | 'frog' | 'rabbit' | 'cat' | 'lion' | 'owl' | 'mouse' | 'sheep' | 'dog';
 export type Outfit = 'shirt' | 'dress' | 'apron' | 'robe' | 'overalls' | 'none';
 
 export interface CharacterOptions {
@@ -71,6 +71,7 @@ const DEFAULT_FUR: Record<Species, number> = {
   owl: 0x8a7864,
   mouse: 0xb8aa9c,
   sheep: 0xf3efe4,
+  dog: 0xb98f66,
 };
 
 const BELLY: Record<Species, number> = {
@@ -83,6 +84,7 @@ const BELLY: Record<Species, number> = {
   owl: 0xe8ddc9,
   mouse: 0xf3ece3,
   sheep: 0xfaf7ef,
+  dog: 0xf0e2cc,
 };
 
 const LION_MANE = 0xb0793a;
@@ -144,6 +146,12 @@ export function makeBear(opts: CharacterOptions = {}): BearParts {
     // woolly fleece over the shoulders and a stubby tail
     body.add(block(bodyW + 0.12, 0.34, bodyD + 0.12, 0xffffff, 0, 0.66, 0));
     body.add(block(0.22, 0.22, 0.18, 0xffffff, 0, 0.3, -(bodyD / 2 + 0.06)));
+  } else if (species === 'dog') {
+    // a happy upright tail, angled like mid-wag
+    const tail = block(0.16, 0.55, 0.16, fur, 0.12, 0.5, -(bodyD / 2 + 0.1));
+    tail.rotation.x = -0.45;
+    body.add(tail);
+    body.add(block(0.2, 0.2, 0.2, BELLY.dog, 0.12, 0.78, -(bodyD / 2 + 0.24))); // pale tip
   }
   // frogs and owls have no visible tail
 
@@ -252,6 +260,23 @@ export function makeBear(opts: CharacterOptions = {}): BearParts {
     // soft muzzle with a rosy nose
     head.add(block(0.36, 0.26, 0.16, 0xfaf7ef, 0, 0.24, 0.45));
     head.add(block(0.13, 0.1, 0.07, 0xe0a3ac, 0, 0.32, 0.54));
+  } else if (species === 'dog') {
+    // long floppy ears hanging DOWN the sides of the head — nothing bear about them
+    const earC = new THREE.Color(fur).multiplyScalar(0.72).getHex();
+    for (const side of [-1, 1]) {
+      const ear = block(0.24, 0.66, 0.18, earC, 0.52 * side, 0.5, -0.02);
+      ear.rotation.z = 0.18 * side;
+      head.add(ear);
+      head.add(block(0.18, 0.3, 0.12, earC, 0.6 * side, 0.14, 0.0)); // the dangling tip
+    }
+    // a proper protruding muzzle with a big black nose
+    head.add(block(0.5, 0.4, 0.38, belly, 0, 0.2, 0.52));
+    head.add(block(0.22, 0.18, 0.12, 0x2e2a28, 0, 0.34, 0.72));
+    // mouth line + a little pink tongue lolling out
+    head.add(block(0.34, 0.05, 0.06, 0x8a6f52, 0, 0.06, 0.7));
+    head.add(block(0.16, 0.07, 0.16, 0xe58a9b, 0.08, 0.0, 0.62));
+    // a brow patch above one eye, like every good mutt
+    head.add(block(0.2, 0.18, 0.06, earC, 0.24, 0.7, 0.42));
   } else if (species === 'mouse') {
     // big round ears
     head.add(block(0.3, 0.3, 0.1, fur, -0.32, 0.98, 0.02));

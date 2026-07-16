@@ -75,15 +75,10 @@ export class HighwayScene {
     this.christian.head.add(seal);
 
     // ---------- the three sleepers ----------
-    // Simple: a trusting golden retriever — golden fur, floppy ears
+    // Simple: a trusting golden retriever
     const simple = makeBear({
-      species: 'bear', fur: 0xdfb56e, outfit: 'shirt', outfitColor: 0xa8c4a2,
+      species: 'dog', fur: 0xdfb56e, outfit: 'shirt', outfitColor: 0xa8c4a2,
     });
-    for (const side of [-1, 1]) {
-      const ear = block(0.2, 0.44, 0.14, 0xc99b52, 0.42 * side, 0.7, 0.06);
-      ear.rotation.z = 0.35 * side;
-      simple.head.add(ear);
-    }
     // Sloth: an actual sloth — grey-brown shag and dark eye-mask stripes
     const sloth = makeBear({
       species: 'bear', fur: 0x9a8f7a, outfit: 'shirt', outfitColor: 0xb8aa8e,

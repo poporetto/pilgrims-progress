@@ -37,6 +37,8 @@ export interface QuestState {
   palaceDone: boolean;
   valleyDone: boolean;
   shadowDone: boolean;
+  vanityDone: boolean;
+  lucreDone: boolean;
 }
 
 interface NPCDef {
