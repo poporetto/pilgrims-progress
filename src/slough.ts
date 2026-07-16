@@ -17,13 +17,13 @@ interface SloughCallbacks {
   splashSound: () => void;
 }
 
-type Phase = 'walk' | 'fallingIn' | 'crossing' | 'stuck' | 'rescue' | 'epilogue' | 'freeroam' | 'done';
+type Phase = 'walk' | 'fallingIn' | 'crossing' | 'struggling' | 'stuck' | 'rescue' | 'epilogue' | 'freeroam' | 'done';
 
 const LIGHT_X = 40; // the shining way out, past the east bank
 
-const BOG_CX = 5;   // bog ellipse centre/size
-const BOG_RX = 11.5;
-const BOG_RZ = 8;
+const BOG_CX = 3.5; // bog ellipse centre/size — a wide, hungry mire
+const BOG_RX = 12.5;
+const BOG_RZ = 10;
 
 export class SloughScene {
   scene = new THREE.Scene();
@@ -35,16 +35,18 @@ export class SloughScene {
   private revisit = false;
   private help: BearParts;
   private steps: Array<[number, number]> = [
-    [-3.5, 1.0], [-1, -0.6], [1.5, 1.1], [4, -0.9],
-    [6.5, 0.9], [9, -1.0], [11.5, 0.7], [13.5, -0.5],
+    [-6.5, 1.0], [-3.4, -0.8], [-0.2, 1.1], [3.0, -0.9],
+    [6.2, 0.9], [9.4, -1.0], [12.6, 0.6],
   ];
   private sink = 0;
+  private stuckT = 0; // time spent thrashing at the far bank before Help comes
   private struggle = 0; // extra sinking that builds while standing still in the mire
   private wisps: THREE.Mesh[] = [];
   private bubbles: Array<{ mesh: THREE.Mesh; phase: number }> = [];
   private splashes: Array<{ mesh: THREE.Mesh; m: THREE.MeshBasicMaterial; life: number; vx: number; vz: number }> = [];
   private splashTimer = 0;
   private rescueT = 0;
+  private helpTalkCount = 0;
   private built = false;
   private lightBeam: THREE.Group | null = null;
 
@@ -106,8 +108,9 @@ export class SloughScene {
       const x = -45 + Math.random() * 90;
       const z = -35 + Math.random() * 70;
       if (this.inBog(x, z)) continue;
+      // tiny random height offsets so overlapping patches never share a face
       const p = block(0.9 + Math.random() * 1.6, 0.1, 0.9 + Math.random() * 1.6,
-        Math.random() > 0.5 ? 0x86ad7d : 0xa4c69a, x, 0.05, z);
+        Math.random() > 0.5 ? 0x86ad7d : 0xa4c69a, x, 0.04 + Math.random() * 0.03, z);
       p.castShadow = false;
       s.add(p);
     }
@@ -129,12 +132,12 @@ export class SloughScene {
         const bx = BOG_CX + Math.cos(a) * rx * (0.55 + 0.35 * Math.random());
         const bz = Math.sin(a) * rz * (0.55 + 0.35 * Math.random());
         const b = block(3 + Math.random() * 3, 0.1 + ring * 0.03, 2.5 + Math.random() * 2.5,
-          mudColors[ring], bx, 0.1 + ring * 0.03, bz);
+          mudColors[ring], bx, 0.1 + ring * 0.03 + Math.random() * 0.02, bz);
         b.castShadow = false;
         s.add(b);
       }
     }
-    const mudCore = block(BOG_RX * 1.7, 0.14, BOG_RZ * 1.7, 0x7c674c, BOG_CX, 0.1, 0);
+    const mudCore = block(BOG_RX * 1.85, 0.14, BOG_RZ * 1.7, 0x7c674c, BOG_CX, 0.1, 0);
     mudCore.castShadow = false;
     s.add(mudCore);
 
@@ -212,10 +215,12 @@ export class SloughScene {
     this.help.armR.add(block(0.14, 2.2, 0.14, PALETTE.woodDark, 0.1, -0.6, 0.2));
     s.add(this.help.root);
 
-    // ---------- the way out: a path east from the bank, into daylight ----------
-    for (let i = 0; i < 12; i++) {
-      const px = 20 + i * 1.8;
-      s.add(block(2.6, 0.12, 3.2, PALETTE.path, px, 0.06, Math.sin(i * 0.5) * 0.5));
+    // ---------- the way out: stepping stones east from the bank ----------
+    // (raised above the bank strip and never overlapping each other, so no
+    // coplanar faces flicker near Help)
+    for (let i = 0; i < 8; i++) {
+      const px = 21 + i * 2.6;
+      s.add(block(2.1, 0.12, 3.0, PALETTE.path, px, 0.13, Math.sin(i * 0.5) * 0.5));
     }
     // the marsh gives way to green, sunlit meadow near the light
     for (const [tx, tz, blossom] of [
@@ -307,11 +312,41 @@ export class SloughScene {
     d.mesh.visible = true;
   }
 
+  // Help can be spoken to again once the rescue is over
+  nearHelp(): boolean {
+    if (!this.help.root.visible) return false;
+    if (!(this.revisit || this.phase === 'freeroam' || this.phase === 'done')) return false;
+    return this.christian.root.position.distanceTo(this.help.root.position) < 3.2;
+  }
+
+  talkToHelp(): void {
+    if (!this.nearHelp()) return;
+    const p = this.christian.root.position;
+    const hp = this.help.root.position;
+    // the two turn to face each other, like every conversation in the village
+    this.help.root.rotation.y = Math.atan2(p.x - hp.x, p.z - hp.z);
+    this.christian.root.rotation.y = Math.atan2(hp.x - p.x, hp.z - p.z);
+    const pool: DialogueLine[][] = [
+      [
+        { speaker: 'Christian', text: 'Help — thank you again. I do not think I could ever have climbed out alone.' },
+        { speaker: 'Help', text: 'No pilgrim ever does, friend. That is rather the point of me.' },
+        { speaker: 'Help', text: 'Now go on toward the light — and if the road ever sinks beneath you again, remember: look for the Steps before you look for the bottom.' },
+      ],
+      [
+        { speaker: 'Christian', text: 'Do you truly stay out here, by this dreadful bog, all year round?' },
+        { speaker: 'Help', text: 'Someone must. Every day another traveller comes running from the City with fear at his heels, and fear never watches its feet.' },
+        { speaker: 'Christian', text: 'Then I am glad it is you who waits for them. Farewell, Help!' },
+      ],
+    ];
+    this.cb.playScript(pool[this.helpTalkCount % pool.length]);
+    this.helpTalkCount++;
+  }
+
   // returns speed multiplier for player movement this frame
   moveFactor(): number {
     const p = this.christian.root.position;
     if (
-      this.phase === 'fallingIn' || this.phase === 'stuck' ||
+      this.phase === 'fallingIn' || this.phase === 'struggling' || this.phase === 'stuck' ||
       this.phase === 'rescue' || this.phase === 'epilogue'
     ) return 0;
     if (!this.inBog(p.x, p.z)) return 1;
@@ -325,7 +360,7 @@ export class SloughScene {
     const freed = this.revisit ||
       this.phase === 'rescue' || this.phase === 'epilogue' ||
       this.phase === 'freeroam' || this.phase === 'done';
-    p.x = THREE.MathUtils.clamp(p.x, -28, freed ? LIGHT_X + 4 : 15.6);
+    p.x = THREE.MathUtils.clamp(p.x, -28, freed ? LIGHT_X + 4 : 14.6);
     p.z = THREE.MathUtils.clamp(p.z, -16, 16);
 
     // on a revisit, either the west bank or the light leads back to the world map
@@ -384,17 +419,12 @@ export class SloughScene {
       });
     }
 
-    if (this.phase === 'crossing' && p.x > 15.2) {
-      this.phase = 'stuck';
-      this.cb.playScript([
-        { speaker: 'Christian', text: '*pant* … The bank is right there — but I cannot climb it. This burden on my back drags me down and down…' },
-        { speaker: 'Christian', text: 'Is this how the journey ends? Stuck in the mire, within sight of the way out…?' },
-      ], () => {
-        this.phase = 'rescue';
-        this.rescueT = 0;
-        this.help.root.visible = true;
-        this.cb.setObjective('🤝 Someone is coming…');
-      });
+    if (this.phase === 'crossing' && p.x > 14.2) {
+      // he thrashes at the foot of the bank for a while before anyone comes
+      this.phase = 'struggling';
+      this.stuckT = 0;
+      this.cb.splashSound();
+      this.cb.setObjective('😰 The bank is right there — but the mire holds him fast…');
     }
 
     if (moving && this.phase === 'crossing' && this.inBog(p.x, p.z)) {
@@ -417,6 +447,8 @@ export class SloughScene {
     if (inMire && this.phase !== 'done') {
       sinkTarget = onStep ? 0.16 : 0.5;
       if (this.phase === 'stuck') sinkTarget = 0.62;
+      // while thrashing, he bobs deeper and shallower with the effort
+      if (this.phase === 'struggling') sinkTarget = 0.62 + Math.sin(t * 5) * 0.08;
     }
     // the mire pulls idle pilgrims under — keep moving, or rest on the Steps
     if (this.phase === 'crossing' && !this.revisit && inMire && !onStep) {
@@ -444,6 +476,35 @@ export class SloughScene {
       ]);
     }
     animateBear(this.christian, t, moving && this.phase !== 'stuck' && this.phase !== 'rescue' && this.phase !== 'epilogue');
+
+    // ---------- thrashing at the far bank: arms flailing, mud flying ----------
+    if (this.phase === 'struggling') {
+      this.stuckT += dt;
+      const th = Math.min(1, this.stuckT / 0.5);
+      this.christian.armL.rotation.x = Math.sin(t * 11) * 1.3 * th;
+      this.christian.armR.rotation.x = -Math.sin(t * 11 + 1.4) * 1.3 * th;
+      this.christian.root.rotation.z = Math.sin(t * 7) * 0.1 * th;
+      this.christian.root.rotation.y = Math.PI / 2 + Math.sin(t * 3.2) * 0.45 * th;
+      if (Math.random() < dt * 10) {
+        this.spawnSplash(p.x + (Math.random() - 0.5) * 1.2, p.z + (Math.random() - 0.5) * 1.2);
+      }
+      if (this.stuckT > 3.2) {
+        this.phase = 'stuck';
+        this.christian.root.rotation.z = 0;
+        this.christian.root.rotation.y = Math.PI / 2;
+        this.christian.armL.rotation.x = 0;
+        this.christian.armR.rotation.x = 0;
+        this.cb.playScript([
+          { speaker: 'Christian', text: '*pant* … The bank is right there — but I cannot climb it. This burden on my back drags me down and down…' },
+          { speaker: 'Christian', text: 'Is this how the journey ends? Stuck in the mire, within sight of the way out…?' },
+        ], () => {
+          this.phase = 'rescue';
+          this.rescueT = 0;
+          this.help.root.visible = true;
+          this.cb.setObjective('🤝 Someone is coming…');
+        });
+      }
+    }
 
     // Pliable: follows until the fall, clambers out on the side nearest home,
     // gives his farewell, then bolts

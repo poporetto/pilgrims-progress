@@ -116,6 +116,9 @@ export function makeBear(opts: CharacterOptions = {}): BearParts {
   const tummyD = opts.plump ? 0.17 : 0.1;
   body.add(block(bodyW, 0.78, bodyD, fur, 0, 0.4, 0));
   body.add(block(tummyW, 0.5, tummyD, belly, 0, 0.38, 0.28)); // tummy
+  // neck: bridges the body top (y 0.79) and the head bottom (y 1.15) so the
+  // head never looks chopped off when it sways or the character lies down
+  body.add(block(0.52, 0.44, 0.46, fur, 0, 1.0, 0));
 
   // species tails
   if (species === 'bear') {
@@ -260,7 +263,8 @@ export function makeBear(opts: CharacterOptions = {}): BearParts {
   if (outfit === 'shirt') {
     // the shell must clear the (possibly plump) body on every side, or the
     // fur pokes through and the coplanar faces flicker
-    body.add(block(opts.plump ? 1.12 : 0.98, 0.52, opts.plump ? 0.8 : 0.7, oc, 0, 0.52, 0));
+    // shell top must clear body top (body: h=0.78 at y=0.4 → top=0.79)
+    body.add(block(opts.plump ? 1.12 : 0.98, opts.plump ? 0.54 : 0.52, opts.plump ? 0.8 : 0.7, oc, 0, opts.plump ? 0.53 : 0.52, 0));
     // sleeves on the upper arms
     armL.add(block(0.32, 0.28, 0.36, oc, 0, -0.1, 0));
     armR.add(block(0.32, 0.28, 0.36, oc, 0, -0.1, 0));

@@ -9,7 +9,7 @@ import { makeBear, animateBear, BearParts, block, mat } from './bear';
 // way is barred and a smooth, pleasant byway curves south to the village of
 // Morality, where Mount Sinai broods. Party members trail behind Christian.
 
-export type MapSpot = 'city' | 'road' | 'slough' | 'fork' | 'morality' | 'beyond' | 'cross';
+export type MapSpot = 'city' | 'road' | 'slough' | 'fork' | 'morality' | 'beyond' | 'cross' | 'highway' | 'hill';
 
 const CITY = new THREE.Vector3(-14.5, 0, 0);
 const SLOUGH = new THREE.Vector3(-3.5, 0, 0);
@@ -17,6 +17,8 @@ const FORK = new THREE.Vector3(3.5, 0, 0);
 const MORALITY = new THREE.Vector3(11, 0, 7);
 const BEYOND = new THREE.Vector3(17.5, 0, -1);
 const CROSS = new THREE.Vector3(25.5, 0, 2.5);
+const HIGHWAY = new THREE.Vector3(33.5, 0, -1);
+const HILL = new THREE.Vector3(41.5, 0, 1.5);
 
 // island centres + how close the road must be to count as "on land"
 const ISLANDS: Array<{ c: THREE.Vector3; r: number }> = [
@@ -26,6 +28,8 @@ const ISLANDS: Array<{ c: THREE.Vector3; r: number }> = [
   { c: MORALITY, r: 4.2 },
   { c: BEYOND, r: 4.0 },
   { c: CROSS, r: 4.0 },
+  { c: HIGHWAY, r: 4.0 },
+  { c: HILL, r: 4.0 },
 ];
 
 export class WorldMap {
@@ -38,13 +42,17 @@ export class WorldMap {
   moralityDone = false;
   wicketDone = false;
   crossDone = false;
+  highwayDone = false;
+  hillDone = false;
   justDiverted = false; // set when the barred way shunts Christian onto the byway
   // t-parameters along the main curve nearest each stop, resolved in ctor
   cityT = 0.02;
   sloughT = 0.35;
   forkT = 0.6;
   beyondT = 0.85;
-  crossT = 0.97;
+  crossT = 0.88;
+  highwayT = 0.93;
+  hillT = 0.97;
   private mainCurve: THREE.CatmullRomCurve3;
   private branchCurve: THREE.CatmullRomCurve3;
   private branchSpeed = 1; // t-speed scale so ground speed matches the main road
@@ -84,18 +92,30 @@ export class WorldMap {
       new THREE.Vector3(20.5, 0.62, 0.4),
       new THREE.Vector3(23, 0.62, 1.6),
       new THREE.Vector3(CROSS.x - 1.0, 0.62, CROSS.z - 0.3),
-    ]);
-    this.branchCurve = new THREE.CatmullRomCurve3([
-      new THREE.Vector3(FORK.x + 0.6, 0.62, 0.8),
-      new THREE.Vector3(5.8, 0.62, 3.0),
-      new THREE.Vector3(8, 0.62, 5.0),
-      new THREE.Vector3(MORALITY.x - 2.0, 0.62, MORALITY.z - 0.6),
+      // …and down the far side onto the King's Highway
+      new THREE.Vector3(28.6, 0.62, 1.6),
+      new THREE.Vector3(31, 0.62, 0.1),
+      new THREE.Vector3(HIGHWAY.x - 0.6, 0.62, HIGHWAY.z),
+      // …and up to the foot of the Hill Difficulty
+      new THREE.Vector3(36.8, 0.62, 0),
+      new THREE.Vector3(HILL.x - 0.8, 0.62, HILL.z - 0.2),
     ]);
     this.cityT = this.tForPoint(CITY);
     this.sloughT = this.tForPoint(SLOUGH);
     this.forkT = this.tForPoint(FORK);
     this.beyondT = this.tForPoint(BEYOND);
     this.crossT = this.tForPoint(CROSS);
+    this.highwayT = this.tForPoint(HIGHWAY);
+    this.hillT = this.tForPoint(HILL);
+    // the byway begins exactly where the main road passes the crossroad,
+    // so switching roads never makes Christian jump
+    const forkPoint = this.mainCurve.getPointAt(this.forkT);
+    this.branchCurve = new THREE.CatmullRomCurve3([
+      forkPoint.clone(),
+      new THREE.Vector3(5.8, 0.62, 3.0),
+      new THREE.Vector3(8, 0.62, 5.0),
+      new THREE.Vector3(MORALITY.x - 2.0, 0.62, MORALITY.z - 0.6),
+    ]);
     this.branchSpeed = this.mainCurve.getLength() / Math.max(this.branchCurve.getLength(), 1);
 
     this.christian = this.makeMapChristian();
@@ -401,6 +421,46 @@ export class WorldMap {
     crossIsle.add(this.miniTree(-2.6, 1.8, true));
     this.label('The Cross', CROSS.x, CROSS.z, 5.4);
 
+    // ---------- the King's Highway at evening ----------
+    const hwy = this.island(HIGHWAY.x, HIGHWAY.z, 4.0, 0x8fb583);
+    // a low stone wall running along the road
+    for (let i = 0; i < 4; i++) {
+      hwy.add(block(0.9, 0.4, 0.25, 0xb9b0a2, -1.6 + i * 1.1, 0.78, -1.3));
+    }
+    // three tiny sleepers beside the way
+    for (const [sx, sz, c] of [[-0.8, 1.2, 0xdfb56e], [0.2, 1.5, 0x9a8f7a], [1.2, 1.2, 0xe6cfc0]] as const) {
+      hwy.add(block(0.55, 0.28, 0.32, c, sx, 0.72, sz));
+    }
+    // a lamp post glowing against the dusk
+    hwy.add(block(0.12, 1.5, 0.12, 0x5e5a55, 2.4, 1.3, -0.4));
+    const lamp = new THREE.Mesh(
+      new THREE.SphereGeometry(0.22, 12, 10),
+      new THREE.MeshBasicMaterial({ color: 0xffe9a0 }),
+    );
+    lamp.position.set(2.4, 2.1, -0.4);
+    hwy.add(lamp);
+    hwy.add(this.miniTree(-2.6, -1.6));
+    this.label("King's Highway", HIGHWAY.x, HIGHWAY.z, 4.4);
+
+    // ---------- the Hill Difficulty ----------
+    const hillIsle = this.island(HILL.x, HILL.z, 4.0, PALETTE.grass);
+    // a steep little mountain with a path zig-zagging up it
+    hillIsle.add(block(4.4, 1.2, 3.6, 0x9ede97, 0, 1.1, -0.5));
+    hillIsle.add(block(3.0, 1.2, 2.6, PALETTE.grass, 0, 2.2, -0.5));
+    hillIsle.add(block(1.8, 1.1, 1.6, 0x9ede97, 0, 3.3, -0.5));
+    for (let i = 0; i < 4; i++) {
+      hillIsle.add(block(0.4, 0.08, 0.5, PALETTE.path, -0.6 + (i % 2) * 1.2, 0.6 + i * 0.9, 1.35 - i * 0.55));
+    }
+    // the arbor halfway up
+    hillIsle.add(block(0.7, 0.3, 0.5, 0x7ba05f, 1.0, 2.1, 0.4));
+    hillIsle.add(block(0.08, 0.5, 0.08, PALETTE.woodDark, 0.8, 1.75, 0.5));
+    hillIsle.add(block(0.08, 0.5, 0.08, PALETTE.woodDark, 1.25, 1.75, 0.5));
+    // the two easy ways skirting the foot
+    hillIsle.add(block(0.5, 0.08, 1.6, 0xd9c9a8, -2.4, 0.62, 0.8));
+    hillIsle.add(block(0.5, 0.08, 1.6, 0xd9c9a8, 2.4, 0.62, 0.8));
+    hillIsle.add(this.miniTree(-2.8, -1.8, true));
+    this.label('Hill Difficulty', HILL.x, HILL.z, 5.4);
+
     // ---------- both roads: stones on land, plank bridges over water ----------
     this.buildRoad(this.mainCurve, 72);
     this.buildRoad(this.branchCurve, 26);
@@ -510,12 +570,15 @@ export class WorldMap {
     });
   }
 
+  private camPan = 0; // eastward pan as Christian travels past the classic islands
+
   resize(aspect: number): void {
     this.camera.aspect = aspect;
-    // pull back on narrow screens so all the islands stay in frame
+    // pull back on narrow screens so the classic islands stay in frame — the
+    // newer islands to the east are reached by PANNING, not by zooming out
     const z = THREE.MathUtils.clamp(48 / aspect - 1, 24, 58);
-    this.camera.position.set(5.0, z * 0.78, z + 2.2);
-    this.camera.lookAt(5.0, 0.4, 1.4);
+    this.camera.position.set(5.0 + this.camPan, z * 0.78, z + 2.2);
+    this.camera.lookAt(5.0 + this.camPan, 0.4, 1.4);
     this.camera.updateProjectionMatrix();
   }
 
@@ -526,7 +589,9 @@ export class WorldMap {
     if (this.progress < this.cityT + 0.05) return 'city';
     if (Math.abs(this.progress - this.sloughT) < 0.05) return 'slough';
     if (Math.abs(this.progress - this.forkT) < 0.04) return 'fork';
-    if (this.progress > this.crossT - 0.04) return 'cross';
+    if (this.progress > this.hillT - 0.025) return 'hill';
+    if (Math.abs(this.progress - this.highwayT) < 0.025) return 'highway';
+    if (Math.abs(this.progress - this.crossT) < 0.025) return 'cross';
     if (Math.abs(this.progress - this.beyondT) < 0.04) return 'beyond';
     return 'road';
   }
@@ -546,11 +611,15 @@ export class WorldMap {
         this.moving = true;
         // the long road east stays barred until Morality is settled;
         // the road past the Gate opens only once the Gate chapter is done
-        const maxP = this.wicketDone
-          ? this.crossT + 0.02
-          : this.moralityDone
-            ? this.beyondT + 0.02
-            : (this.sloughDone ? this.forkT : this.sloughT + 0.05);
+        const maxP = this.highwayDone
+          ? this.hillT + 0.02
+          : this.crossDone
+          ? this.highwayT + 0.02
+          : this.wicketDone
+            ? this.crossT + 0.02
+            : this.moralityDone
+              ? this.beyondT + 0.02
+              : (this.sloughDone ? this.forkT : this.sloughT + 0.05);
         this.progress = THREE.MathUtils.clamp(this.progress + axisX * step, 0.02, maxP);
         this.facing = axisX > 0 ? 1 : -1;
         // pressing east against the barred way → shunted onto the smooth byway
@@ -559,7 +628,7 @@ export class WorldMap {
           this.progress >= this.forkT - 1e-5
         ) {
           this.road = 'branch';
-          this.branchP = 0.02;
+          this.branchP = 0;
           this.justDiverted = true;
         }
       }
@@ -569,7 +638,7 @@ export class WorldMap {
         Math.abs(this.progress - this.forkT) < 0.05
       ) {
         this.road = 'branch';
-        this.branchP = 0.03;
+        this.branchP = 0.02;
         this.moving = true;
         this.facing = 1;
       }
@@ -591,6 +660,12 @@ export class WorldMap {
     const curve = this.road === 'main' ? this.mainCurve : this.branchCurve;
     const param = this.road === 'main' ? this.progress : this.branchP;
     this.placeOn(curve, this.christian.root, param);
+    // pan the camera east once Christian walks past the Cross, keeping the
+    // original zoom level rather than pulling back to fit the whole map
+    const panTarget = Math.max(0, this.christian.root.position.x - CROSS.x);
+    this.camPan += (panTarget - this.camPan) * Math.min(dt * 3, 1);
+    this.camera.position.x = 5.0 + this.camPan;
+    this.camera.lookAt(5.0 + this.camPan, 0.4, 1.4);
     const tan = curve.getTangentAt(THREE.MathUtils.clamp(param, 0, 1));
     this.christian.root.rotation.y = Math.atan2(tan.x * this.facing, tan.z * this.facing);
     animateBear(this.christian, t, this.moving);

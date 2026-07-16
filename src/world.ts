@@ -500,8 +500,10 @@ export function buildWorld(scene: THREE.Scene): World {
   addWallRun(W, N, E, N); // north
   addWallRun(W, S, E, S); // south
   addWallRun(W, N, W, S); // west
-  // east wall with a gap for the wicket gate
-  addWallRun(E, N, E, S, (_px, pz) => Math.abs(pz) < 4.4);
+  // east wall in two runs that stop flush at the gate towers' outer edges
+  // (a single skip-by-centre run left segments poking through the towers)
+  addWallRun(E, N, E, -4.8);
+  addWallRun(E, 4.8, E, S);
   // corner + gate towers
   addTower(W, N);
   addTower(E, N);

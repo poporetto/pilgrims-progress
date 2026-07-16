@@ -9,6 +9,8 @@ import { SloughScene } from './slough';
 import { MoralityScene } from './morality';
 import { WicketGateScene } from './wicketgate';
 import { CrossScene } from './cross';
+import { HighwayScene } from './highway';
+import { HillScene } from './hill';
 
 // ---------------------------------------------------------------- setup
 
@@ -75,11 +77,13 @@ const quest: QuestState = {
   wicketDone: false,
   interpreterDone: false,
   crossDone: false,
+  highwayDone: false,
+  hillDone: false,
 };
 
 const music = new Music();
 const worldMap = new WorldMap(window.innerWidth / window.innerHeight);
-let mode: 'village' | 'map' | 'slough' | 'morality' | 'wicket' | 'cross' = 'village';
+let mode: 'village' | 'map' | 'slough' | 'morality' | 'wicket' | 'cross' | 'highway' | 'hill' = 'village';
 
 // ---------------------------------------------------------------- UI refs
 
@@ -173,8 +177,12 @@ function goToMap(): void {
   mode = 'map';
   music.setStyle('map');
   ui.promptKey.style.display = 'none';
-  setObjective(quest.crossDone
-    ? '🗺 The burden is gone! Chapter VI — the road to the Celestial City, coming soon…'
+  setObjective(quest.hillDone
+    ? '🗺 Over the Hill Difficulty — Chapter VIII, the Palace Beautiful, coming soon…'
+    : quest.highwayDone
+    ? '🗺 A steep mountain looms past the night road — the Hill Difficulty!'
+    : quest.crossDone
+    ? '🗺 The burden is gone! On along the King\'s Highway, into the evening…'
     : quest.wicketDone
       ? '🗺 Past the Gate a green hill rises — on to the place of deliverance!'
       : quest.moralityDone
@@ -271,7 +279,7 @@ const wicket = new WicketGateScene({
     quest.wicketDone = true;
     quest.interpreterDone = true;
     showEnding(
-      '⛩ Chapter IV Complete',
+      '🚪 Chapter IV Complete',
       'The Wicket Gate and the House of the Interpreter',
       'Goodwill the great lion drew Christian through the Gate, out of the reach of '
       + 'Beelzebub\'s arrows, and set his feet on the King\'s Highway. There, in a '
@@ -329,6 +337,91 @@ const cross = new CrossScene({
   },
 });
 let crossActors: { christian: import('./bear').BearParts } | null = null;
+
+// ---------- Chapter VI: the King's Highway at evening ----------
+const highway = new HighwayScene({
+  playScript,
+  setObjective,
+  onExit: () => goToMap(),
+  blipSound: () => music.blip(),
+  setMusic: (style) => music.setStyle(style),
+  onComplete: () => {
+    quest.highwayDone = true;
+    showEnding(
+      '🌙 Chapter VI Complete',
+      'The King\'s Highway',
+      'Beside the road three sleepers — Simple, Sloth and Presumption — waved away '
+      + 'every warning and slept on in their chains; no one can be woken who is '
+      + 'determined to sleep. Then Formalist and Hypocrisy came over the wall, '
+      + 'trusting custom instead of the King\'s command, and fell in alongside. '
+      + 'As the sun set, the three walked on together toward the light — but only '
+      + 'one of them carries the King\'s scroll and seal…',
+      () => {
+        worldMap.sloughDone = true;
+        worldMap.moralityDone = true;
+        worldMap.wicketDone = true;
+        worldMap.crossDone = true;
+        worldMap.highwayDone = true;
+        worldMap.start([]);
+        worldMap.road = 'main';
+        worldMap.progress = worldMap.highwayT;
+        goToMap();
+      },
+    );
+  },
+});
+let highwayActors: { christian: import('./bear').BearParts } | null = null;
+
+// ---------- Chapter VII: the Hill of Difficulty ----------
+const hill = new HillScene({
+  playScript,
+  setObjective,
+  onExit: () => goToMap(),
+  blipSound: () => music.blip(),
+  setMusic: (style) => music.setStyle(style),
+  onComplete: () => {
+    quest.hillDone = true;
+    showEnding(
+      '⛰ Chapter VII Complete',
+      'The Hill of Difficulty',
+      'At the hill\'s foot Formalist and Hypocrisy took the easy ways called Danger '
+      + 'and Destruction, and were never seen again. Christian took the steep path — '
+      + 'dozed too long in the Lord\'s arbor, lost the scroll of his assurance, and '
+      + 'humbly climbed the hill twice to win it back. Even the news of lions ahead '
+      + 'could not turn him: behind lies certain ruin, ahead — whatever comes — lies '
+      + 'life. He presses on toward the Celestial City…',
+      () => {
+        worldMap.sloughDone = true;
+        worldMap.moralityDone = true;
+        worldMap.wicketDone = true;
+        worldMap.crossDone = true;
+        worldMap.highwayDone = true;
+        worldMap.hillDone = true;
+        worldMap.start([]);
+        worldMap.road = 'main';
+        worldMap.progress = worldMap.hillT;
+        goToMap();
+      },
+    );
+  },
+});
+let hillActors: { christian: import('./bear').BearParts } | null = null;
+
+function enterHill(revisit: boolean): void {
+  mode = 'hill';
+  ui.prompt.style.display = 'none';
+  ui.talkBtn.style.display = 'none';
+  hillActors = hill.enter(revisit);
+  camTarget.copy(hillActors.christian.root.position);
+}
+
+function enterHighway(revisit: boolean): void {
+  mode = 'highway';
+  ui.prompt.style.display = 'none';
+  ui.talkBtn.style.display = 'none';
+  highwayActors = highway.enter(revisit);
+  camTarget.copy(highwayActors.christian.root.position);
+}
 
 function enterCross(revisit: boolean): void {
   mode = 'cross';
@@ -465,6 +558,8 @@ window.addEventListener('keydown', (e) => {
     if (dialogueOpen) advanceDialogue();
     else if (mode === 'map') tryEnterFromMap();
     else if (mode === 'village') tryTalk();
+    else if (mode === 'slough') slough.talkToHelp();
+    else if (mode === 'hill') hill.tryPickScroll();
   }
 });
 
@@ -475,6 +570,8 @@ function tryEnterFromMap(): void {
   else if (spot === 'morality') enterMorality(quest.moralityDone);
   else if (spot === 'beyond') enterWicket(quest.wicketDone);
   else if (spot === 'cross') enterCross(quest.crossDone);
+  else if (spot === 'highway') enterHighway(quest.highwayDone);
+  else if (spot === 'hill') enterHill(quest.hillDone);
 }
 window.addEventListener('keyup', (e) => keys.delete(e.code));
 // don't leave movement keys stuck when the tab loses focus mid-keypress
@@ -537,13 +634,15 @@ ui.debugPanel.addEventListener('click', (e) => {
   // debug jumps skip the map entirely, so make sure its "how far can I walk"
   // flags agree with wherever we're jumping to — otherwise a later visit to
   // the map can snap Christian's progress back to an earlier chapter
-  if (jump === 'morality' || jump === 'wicket-approach' || jump === 'wicket-highway' || jump === 'interpreter' || jump === 'cross') {
+  if (jump === 'morality' || jump === 'wicket-approach' || jump === 'wicket-highway' || jump === 'interpreter' || jump === 'cross' || jump === 'highway' || jump === 'hill') {
     worldMap.sloughDone = true;
   }
-  if (jump === 'wicket-approach' || jump === 'wicket-highway' || jump === 'interpreter' || jump === 'cross') {
+  if (jump === 'wicket-approach' || jump === 'wicket-highway' || jump === 'interpreter' || jump === 'cross' || jump === 'highway' || jump === 'hill') {
     worldMap.moralityDone = true;
   }
-  if (jump === 'cross') worldMap.wicketDone = true;
+  if (jump === 'cross' || jump === 'highway' || jump === 'hill') worldMap.wicketDone = true;
+  if (jump === 'highway' || jump === 'hill') { worldMap.crossDone = true; quest.crossDone = true; }
+  if (jump === 'hill') { worldMap.highwayDone = true; quest.highwayDone = true; }
   if (jump === 'village') enterVillage();
   else if (jump === 'slough') enterSlough(false);
   else if (jump === 'morality') enterMorality(false);
@@ -551,6 +650,8 @@ ui.debugPanel.addEventListener('click', (e) => {
   else if (jump === 'wicket-highway') { enterWicket(false); wicket.debugSkip('highway'); }
   else if (jump === 'interpreter') { enterWicket(false); wicket.debugSkip('house'); }
   else if (jump === 'cross') enterCross(false);
+  else if (jump === 'highway') enterHighway(false);
+  else if (jump === 'hill') enterHill(false);
   else if (jump === 'map') { worldMap.start([]); worldMap.road = 'main'; goToMap(); }
 });
 
@@ -593,6 +694,8 @@ ui.talkBtn.addEventListener('click', () => {
   if (dialogueOpen) advanceDialogue();
   else if (mode === 'map') tryEnterFromMap();
   else if (mode === 'village') tryTalk();
+  else if (mode === 'slough') slough.talkToHelp();
+  else if (mode === 'hill') hill.tryPickScroll();
 });
 
 // ---------------------------------------------------------------- interaction
@@ -898,7 +1001,8 @@ function updateNPCs(dt: number, t: number): void {
       const dz = tz - pos.z;
       const d = Math.hypot(dx, dz);
       if (d > 0.25) {
-        const step = Math.min(10.5 * dt, d);
+        // they sprint flat-out — faster than Christian, so there's no outrunning them
+        const step = Math.min(13.5 * dt, d);
         pos.x += (dx / d) * step;
         pos.z += (dz / d) * step;
         npc.parts.root.rotation.y = Math.atan2(dx, dz);
@@ -1021,6 +1125,16 @@ function tick(): void {
     }
 
     const spot = worldMap.spot();
+
+    // reaching the middle of an island whose chapter is still ahead starts
+    // that chapter at once — no keypress needed (revisits keep the prompt)
+    if (spot === 'slough' && !quest.sloughComplete) { enterSlough(false); return; }
+    if (spot === 'morality' && !quest.moralityDone) { enterMorality(false); return; }
+    if (spot === 'beyond' && !quest.wicketDone) { enterWicket(false); return; }
+    if (spot === 'cross' && !quest.crossDone) { enterCross(false); return; }
+    if (spot === 'highway' && !quest.highwayDone) { enterHighway(false); return; }
+    if (spot === 'hill' && !quest.hillDone) { enterHill(false); return; }
+
     ui.prompt.style.display = spot === 'road' ? 'none' : 'block';
     ui.promptKey.style.display = 'none';
     if (isTouch) ui.talkBtn.style.display = 'none';
@@ -1040,14 +1154,22 @@ function tick(): void {
         : '🪧 A crossroad — the east road is barred…';
     } else if (spot === 'beyond') {
       ui.promptWho.textContent = quest.wicketDone
-        ? '⛩ Revisit the Wicket Gate'
-        : '⛩ Knock at the Wicket Gate';
+        ? '🚪 Revisit the Wicket Gate'
+        : '🚪 Knock at the Wicket Gate';
     } else if (spot === 'cross') {
       ui.promptWho.textContent = quest.crossDone
         ? '✝ Revisit the hill of the Cross'
         : '✝ Climb the hill to the Cross';
+    } else if (spot === 'highway') {
+      ui.promptWho.textContent = quest.highwayDone
+        ? '🌙 Walk the King\'s Highway again'
+        : '🌙 Set out along the King\'s Highway';
+    } else if (spot === 'hill') {
+      ui.promptWho.textContent = quest.hillDone
+        ? '⛰ Climb the Hill Difficulty again'
+        : '⛰ Face the Hill Difficulty';
     }
-    if (spot === 'city' || spot === 'slough' || spot === 'morality' || spot === 'beyond' || spot === 'cross') {
+    if (spot === 'city' || spot === 'slough' || spot === 'morality' || spot === 'beyond' || spot === 'cross' || spot === 'highway' || spot === 'hill') {
       ui.promptKey.style.display = isTouch ? 'none' : 'inline-block';
       if (isTouch) {
         ui.talkBtn.textContent = 'Enter';
@@ -1082,6 +1204,20 @@ function tick(): void {
     }
     slough.afterMove(moving);
     slough.update(dt, t, moving);
+
+    // talk prompt when standing near Help after the rescue
+    const canTalkHelp = slough.nearHelp() && !dialogueOpen && !endingOpen;
+    ui.prompt.style.display = canTalkHelp ? 'block' : 'none';
+    if (canTalkHelp) {
+      ui.promptKey.style.display = isTouch ? 'none' : 'inline-block';
+      ui.promptWho.textContent = 'Talk to Help';
+      if (isTouch) {
+        ui.talkBtn.textContent = 'Talk';
+        ui.talkBtn.style.display = 'block';
+      }
+    } else if (isTouch && !dialogueOpen) {
+      ui.talkBtn.style.display = 'none';
+    }
 
     camTarget.lerp(sc.root.position, Math.min(4 * dt, 1));
     camera.position.copy(camTarget).add(camOffset);
@@ -1184,6 +1320,82 @@ function tick(): void {
     return;
   }
 
+  if (mode === 'highway' && highwayActors) {
+    // ---- the King's Highway mode ----
+    const hc = highwayActors.christian;
+    let mx = 0;
+    let mz = 0;
+    if (keys.has('KeyW') || keys.has('ArrowUp')) mz -= 1;
+    if (keys.has('KeyS') || keys.has('ArrowDown')) mz += 1;
+    if (keys.has('KeyA') || keys.has('ArrowLeft')) mx -= 1;
+    if (keys.has('KeyD') || keys.has('ArrowRight')) mx += 1;
+    mx += joy.x;
+    mz += joy.y;
+    const len = Math.hypot(mx, mz);
+    const factor = highway.moveFactor();
+    const moving = len > 0.15 && !dialogueOpen && !endingOpen && factor > 0;
+    if (moving) {
+      mx /= Math.max(len, 1);
+      mz /= Math.max(len, 1);
+      hc.root.position.x += mx * SPEED * factor * dt;
+      hc.root.position.z += mz * SPEED * factor * dt;
+      hc.root.rotation.y = lerpAngle(hc.root.rotation.y, Math.atan2(mx, mz), 12 * dt);
+    }
+    highway.afterMove();
+    highway.update(dt, t, moving);
+
+    camTarget.lerp(hc.root.position, Math.min(4 * dt, 1));
+    camera.position.copy(camTarget).add(camOffset);
+    camera.lookAt(camTarget.x, camTarget.y + 1.4, camTarget.z);
+    renderer.render(highway.scene, camera);
+    return;
+  }
+
+  if (mode === 'hill' && hillActors) {
+    // ---- the Hill of Difficulty mode ----
+    const lc = hillActors.christian;
+    let mx = 0;
+    let mz = 0;
+    if (keys.has('KeyW') || keys.has('ArrowUp')) mz -= 1;
+    if (keys.has('KeyS') || keys.has('ArrowDown')) mz += 1;
+    if (keys.has('KeyA') || keys.has('ArrowLeft')) mx -= 1;
+    if (keys.has('KeyD') || keys.has('ArrowRight')) mx += 1;
+    mx += joy.x;
+    mz += joy.y;
+    const len = Math.hypot(mx, mz);
+    const factor = hill.moveFactor();
+    const moving = len > 0.15 && !dialogueOpen && !endingOpen && factor > 0;
+    if (moving) {
+      mx /= Math.max(len, 1);
+      mz /= Math.max(len, 1);
+      lc.root.position.x += mx * SPEED * factor * dt;
+      lc.root.position.z += mz * SPEED * factor * dt;
+      lc.root.rotation.y = lerpAngle(lc.root.rotation.y, Math.atan2(mx, mz), 12 * dt);
+    }
+    hill.afterMove();
+    hill.update(dt, t, moving);
+
+    // prompt when the lost scroll is within reach
+    const canPick = hill.nearScroll() && !dialogueOpen && !endingOpen;
+    ui.prompt.style.display = canPick ? 'block' : 'none';
+    if (canPick) {
+      ui.promptKey.style.display = isTouch ? 'none' : 'inline-block';
+      ui.promptWho.textContent = 'Pick up the scroll';
+      if (isTouch) {
+        ui.talkBtn.textContent = 'Take';
+        ui.talkBtn.style.display = 'block';
+      }
+    } else if (isTouch && !dialogueOpen) {
+      ui.talkBtn.style.display = 'none';
+    }
+
+    camTarget.lerp(lc.root.position, Math.min(4 * dt, 1));
+    camera.position.copy(camTarget).add(camOffset);
+    camera.lookAt(camTarget.x, camTarget.y + 1.4, camTarget.z);
+    renderer.render(hill.scene, camera);
+    return;
+  }
+
   // ---- village mode ----
   if (started) {
     updatePlayer(dt, t);
@@ -1237,6 +1449,6 @@ tick();
 (window as any).__game = {
   christian, npcs, quest, world, openDialogue, advanceDialogue, camTarget,
   worldMap, slough, enterSlough, morality, enterMorality,
-  wicket, enterWicket, cross, enterCross, playScript, goToMap,
+  wicket, enterWicket, cross, enterCross, highway, enterHighway, hill, enterHill, playScript, goToMap,
   get mode() { return mode; },
 };

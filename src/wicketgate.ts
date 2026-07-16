@@ -921,7 +921,7 @@ export class WicketGateScene {
       this.goodwill.root.visible = true;
       this.goodwill.root.position.set(GATE_X + 2.2, 0, -1.6);
       if (this.lightBeam) this.lightBeam.visible = true;
-      this.cb.setObjective('⛩ The Gate stands open — the narrow way runs east');
+      this.cb.setObjective('🚪 The Gate stands open — the narrow way runs east');
     } else {
       this.phase = 'approach';
       this.doorOpen = false;
@@ -1587,7 +1587,7 @@ export class WicketGateScene {
         this.christian.root.rotation.y = Math.PI; // faces north, toward the lion
         this.goodwill.root.position.set(GATE_X + 3.6, 0, -1.7);
         this.goodwill.root.rotation.y = 0; // faces south, toward Christian
-        this.cb.setObjective('⛩ Safe behind the Gate');
+        this.cb.setObjective('🚪 Safe behind the Gate');
         this.cb.blipSound();
         this.cb.playScript([
           { speaker: '', text: 'A great paw closes over Christian\'s, and the world blurs — then the Gate booms shut behind them. The arrows thud harmlessly against the far side.' },

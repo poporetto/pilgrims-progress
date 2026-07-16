@@ -32,6 +32,8 @@ export interface QuestState {
   wicketDone: boolean;
   interpreterDone: boolean;
   crossDone: boolean;
+  highwayDone: boolean;
+  hillDone: boolean;
 }
 
 interface NPCDef {

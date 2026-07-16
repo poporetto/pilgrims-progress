@@ -252,13 +252,13 @@ export class MoralityScene {
     if (this.phase === 'walk' && p.x > WW_X - 3) {
       this.phase = 'diverted'; // parked during the script
       this.cb.playScript([
-        { speaker: 'Worldly Wiseman', text: 'Ho there! Good day, good day! Christian of the City of Destruction, unless I miss my guess — the bear with the famous burden!' },
-        { speaker: 'Christian', text: 'Famous or not, sir, it is heavy. I am bound for the Wicket Gate, where I am told I shall be rid of it.' },
-        { speaker: 'Worldly Wiseman', text: 'The Wicket Gate! Dear me. Mire, mountains, lions and worse lie on THAT road. You have tasted the Slough already, have you not?' },
-        { speaker: 'Christian', text: '…I am still drying out, if I am honest.' },
-        { speaker: 'Worldly Wiseman', text: 'Then hear a practical bear! In yonder village of MORALITY lives my good friend Mr. Legality — a master at easing burdens exactly like yours. And if he is busy, his fine son Civility will see to you.' },
-        { speaker: 'Worldly Wiseman', text: 'A short, SAFE stroll — no mire, no nonsense. You could take a house there, send for your wife and cubs, and live respectably ever after!' },
-        { speaker: 'Christian', text: 'No mire… a house for my family… Sir, that sounds very sensible indeed. Which way did you say?' },
+        { speaker: 'Worldly Wiseman', text: 'Hello there! Good day, good day! Christian of the City of Destruction, unless I miss my guess — the bear with the famous burden!' },
+        { speaker: 'Christian', text: 'Famous or not, sir, it is heavy. I\'m headed for the Wicket Gate — they say I can be rid of it there.' },
+        { speaker: 'Worldly Wiseman', text: 'The Wicket Gate! Dear me. Mud, mountains, lions and worse lie on THAT road. You\'ve already had a taste of the Slough, haven\'t you?' },
+        { speaker: 'Christian', text: '…I\'m still drying out, if I\'m honest.' },
+        { speaker: 'Worldly Wiseman', text: 'Then listen to a practical bear! In the nearby village of MORALITY lives my good friend Mr. Legality — a master at easing burdens exactly like yours. And if he\'s busy, his fine son Civility will look after you.' },
+        { speaker: 'Worldly Wiseman', text: 'A short, SAFE stroll — no mud, no nonsense. You could get a house there, send for your wife and cubs, and live respectably ever after!' },
+        { speaker: 'Christian', text: 'No mud… a house for my family… Sir, that sounds very sensible indeed. Which way did you say?' },
         { speaker: 'Worldly Wiseman', text: 'Straight on, past that tall hill. First door on the left! Do give Mr. Legality my regards.' },
       ], () => {
         this.cb.setObjective('🏘 Follow the pleasant path east, toward the village of Morality');
@@ -271,8 +271,8 @@ export class MoralityScene {
       this.quake = 1;
       this.cb.rumbleSound();
       this.cb.playScript([
-        { speaker: 'Christian', text: 'The hill… it HANGS over the very road! And — fire! It flashes fire from its sides!' },
-        { speaker: 'Christian', text: 'It groans like thunder above me. One step more and it will surely fall… and this burden feels heavier than it has ever been. What have I done?' },
+        { speaker: 'Christian', text: 'The hill… it hangs right OVER the road! And — fire! Fire is flashing from its sides!' },
+        { speaker: 'Christian', text: 'It groans like thunder above me. One more step and it will surely fall… and this burden feels heavier than it has ever been. What have I done?' },
       ], () => {
         this.phase = 'evangelist';
         this.evangelistT = 0;
@@ -339,13 +339,13 @@ export class MoralityScene {
         this.christian.root.rotation.y = -Math.PI / 2;
         this.cb.playScript([
           { speaker: 'Evangelist', text: 'Christian. What are you doing HERE?' },
-          { speaker: 'Christian', text: 'E-Evangelist! A… a gentleman told me of a quicker way. A Mr. Legality, in the village of Morality, who could lift my burden without the mire and the mountains…' },
-          { speaker: 'Evangelist', text: 'Listen carefully, dear bear. That gentleman is Mr. WORLDLY WISEMAN, and he loves only the doctrine of this world. He turns every pilgrim he can from the true road.' },
-          { speaker: 'Evangelist', text: 'Mr. Legality cannot loosen one strap of your burden — no creature was ever freed at his door. And Civility, for all his polish, is a smiling fraud like his father.' },
-          { speaker: 'Evangelist', text: 'And THIS mountain is the reason. It is Sinai — the Law itself. It thunders, it flashes, it shows your burden for what it is… but it cannot LIFT it. Trust in your own good deeds, and it will hang over you all your days.' },
-          { speaker: 'Christian', text: 'Then I have been a fool twice over — once into the mire, and once onto this path. Is there any hope left for me?' },
-          { speaker: 'Evangelist', text: 'There is. The way you left is exactly where you left it. Return to the true road, Christian — on to the Wicket Gate — and turn aside from it no more.' },
-          { speaker: 'Christian', text: 'I will return at once. Thank you, Evangelist… again.' },
+          { speaker: 'Christian', text: 'E-Evangelist! A… a gentleman told me about a quicker way. A Mr. Legality, in the village of Morality, who could lift my burden without the mud and the mountains…' },
+          { speaker: 'Evangelist', text: 'Listen carefully, dear bear. That gentleman is Mr. WORLDLY WISEMAN, and he loves only the wisdom of this world. He turns every pilgrim he can away from the true road.' },
+          { speaker: 'Evangelist', text: 'Mr. Legality cannot loosen a single strap of your burden — no creature has ever been set free at his door. And Civility, for all his polish, is a smiling fraud like his father.' },
+          { speaker: 'Evangelist', text: 'And THIS mountain is the reason. It is Sinai — the Law itself. It thunders, it flashes, it shows your burden for what it is… but it cannot LIFT it. Trust in your own good deeds, and it will hang over you for the rest of your life.' },
+          { speaker: 'Christian', text: 'Then I\'ve been a fool twice over — once into the mud, and once onto this path. Is there any hope left for me?' },
+          { speaker: 'Evangelist', text: 'There is. The way you left is exactly where you left it. Go back to the true road, Christian — on to the Wicket Gate — and don\'t leave it again.' },
+          { speaker: 'Christian', text: 'I\'ll go back at once. Thank you, Evangelist… again.' },
         ], () => {
           this.phase = 'return';
           this.wwLeaving = true; // exposed — he scurries home to Morality

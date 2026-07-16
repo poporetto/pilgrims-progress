@@ -33,7 +33,7 @@ type Phase =
 
 const WEST_EDGE = -32;
 const HILL_R = 11;      // hill radius
-const HILL_PEAK = 13;   // hill height at the summit — a proper high place
+const HILL_PEAK = 7;    // hill height at the summit — tall but walkable
 const CROSS_TRIGGER = -1.2; // walking past here starts the scene
 // the tomb sits just below the summit, so the burden's whole roll stays on screen
 const TOMB = new THREE.Vector3(5.2, 0, -2.8);
@@ -80,7 +80,7 @@ export class CrossScene {
     // the old, travel-stained blue shirt (mirrors the plump 'shirt' outfit —
     // the shell must clear the plump body, or the coplanar faces flicker)
     this.oldClothes = new THREE.Group();
-    this.oldClothes.add(block(1.12, 0.52, 0.8, 0x8fb8d8, 0, 0.52, 0));
+    this.oldClothes.add(block(1.12, 0.54, 0.8, 0x8fb8d8, 0, 0.53, 0));
     body.add(this.oldClothes);
     const oldSleeveL = block(0.32, 0.28, 0.36, 0x8fb8d8, 0, -0.1, 0);
     const oldSleeveR = block(0.32, 0.28, 0.36, 0x8fb8d8, 0, -0.1, 0);
@@ -90,7 +90,7 @@ export class CrossScene {
 
     // the shining new garments: white with a golden sash
     this.newClothes = new THREE.Group();
-    this.newClothes.add(block(1.14, 0.54, 0.82, PALETTE.robeWhite, 0, 0.52, 0));
+    this.newClothes.add(block(1.14, 0.56, 0.82, PALETTE.robeWhite, 0, 0.53, 0));
     this.newClothes.add(block(1.18, 0.14, 0.86, PALETTE.robeGold, 0, 0.3, 0));
     this.newClothes.add(block(0.34, 0.12, 0.06, PALETTE.robeGold, 0, 0.68, 0.44)); // clasp
     body.add(this.newClothes);
@@ -110,7 +110,7 @@ export class CrossScene {
     body.add(this.burdenOnBack);
 
     // the seal on his forehead — a small golden mark
-    this.seal = block(0.16, 0.16, 0.05, PALETTE.robeGold, 0, 0.62, 0.42);
+    this.seal = block(0.10, 0.10, 0.04, PALETTE.robeGold, 0, 0.62, 0.42);
     this.seal.castShadow = false;
     this.christian.head.add(this.seal);
 
@@ -220,11 +220,14 @@ export class CrossScene {
       s.add(f);
     }
 
-    // the narrow road, west → east, climbing straight over the hill
-    // (stones packed closer so the steep climb reads as steps, not floaters)
-    for (let i = 0; i <= 54; i++) {
-      const px = -34 + i * 1.3;
-      const stone = block(1.2, 0.14, 2.6, PALETTE.path, px, this.groundY(px, 0) + 0.06, 0);
+    // the narrow road: scattered stepping-stones with gaps, wandering slightly
+    for (let i = 0; i <= 24; i++) {
+      const px = -34 + i * 2.9;
+      const pz = (Math.random() - 0.5) * 0.9;
+      const stone = block(
+        0.85 + Math.random() * 0.55, 0.14, 1.6 + Math.random() * 0.7,
+        PALETTE.path, px, this.groundY(px, pz) + 0.06, pz,
+      );
       stone.castShadow = false;
       s.add(stone);
     }
@@ -488,10 +491,12 @@ export class CrossScene {
           this.phase = 'descend';
           this.descendT = 0;
           const p = this.christian.root.position;
+          // angels land south of Christian (positive z = toward camera),
+          // clear of the cross which sits at z ≈ -2.2
           this.angelTargets = [
-            new THREE.Vector3(p.x - 2.2, 0, p.z - 1.4),
-            new THREE.Vector3(p.x, 0, p.z - 2.4),
-            new THREE.Vector3(p.x + 2.2, 0, p.z - 1.4),
+            new THREE.Vector3(p.x - 2.2, 0, p.z + 1.6),
+            new THREE.Vector3(p.x, 0, p.z + 2.8),
+            new THREE.Vector3(p.x + 2.2, 0, p.z + 1.6),
           ];
           this.angels.forEach((a, i) => {
             const tg = this.angelTargets[i];
