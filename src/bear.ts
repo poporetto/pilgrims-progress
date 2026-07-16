@@ -5,7 +5,7 @@ import { PALETTE } from './palette';
 // (stubby legs, round body, oversized head); species swap out ears, snouts
 // and tails, and everyone wears clothes.
 
-export type Species = 'bear' | 'pig' | 'frog' | 'rabbit' | 'cat' | 'lion' | 'owl';
+export type Species = 'bear' | 'pig' | 'frog' | 'rabbit' | 'cat' | 'lion' | 'owl' | 'mouse';
 export type Outfit = 'shirt' | 'dress' | 'apron' | 'robe' | 'overalls' | 'none';
 
 export interface CharacterOptions {
@@ -16,6 +16,7 @@ export interface CharacterOptions {
   outfitColor?: number;
   burden?: boolean;   // Christian's great burden on the back
   sling?: boolean;    // travel sling bag across the chest
+  plump?: boolean;    // slightly wider body and bigger tummy (Christian only)
 }
 
 export interface BearParts {
@@ -68,6 +69,7 @@ const DEFAULT_FUR: Record<Species, number> = {
   cat: 0xc8bfb4,
   lion: 0xd9a860,
   owl: 0x8a7864,
+  mouse: 0xb8aa9c,
 };
 
 const BELLY: Record<Species, number> = {
@@ -78,6 +80,7 @@ const BELLY: Record<Species, number> = {
   cat: 0xede7dd,
   lion: 0xf0dcbb,
   owl: 0xe8ddc9,
+  mouse: 0xf3ece3,
 };
 
 const LION_MANE = 0xb0793a;
@@ -107,8 +110,12 @@ export function makeBear(opts: CharacterOptions = {}): BearParts {
   body.position.y = 0.55;
   root.add(body);
 
-  body.add(block(0.92, 0.78, 0.6, fur, 0, 0.4, 0));
-  body.add(block(0.6, 0.5, 0.1, belly, 0, 0.38, 0.28)); // tummy
+  const bodyW = opts.plump ? 1.02 : 0.92;
+  const bodyD = opts.plump ? 0.68 : 0.6;
+  const tummyW = opts.plump ? 0.78 : 0.6;
+  const tummyD = opts.plump ? 0.17 : 0.1;
+  body.add(block(bodyW, 0.78, bodyD, fur, 0, 0.4, 0));
+  body.add(block(tummyW, 0.5, tummyD, belly, 0, 0.38, 0.28)); // tummy
 
   // species tails
   if (species === 'bear') {
@@ -125,6 +132,9 @@ export function makeBear(opts: CharacterOptions = {}): BearParts {
     // long tail with a dark tuft
     body.add(block(0.14, 0.14, 0.55, fur, 0.2, 0.28, -0.52));
     body.add(block(0.22, 0.22, 0.22, LION_MANE, 0.2, 0.28, -0.84));
+  } else if (species === 'mouse') {
+    // a thin, long tail
+    body.add(block(0.08, 0.08, 0.6, 0xd9a3ac, 0.1, 0.22, -0.5));
   }
   // frogs and owls have no visible tail
 
@@ -219,6 +229,18 @@ export function makeBear(opts: CharacterOptions = {}): BearParts {
     head.add(block(0.36, 0.36, 0.08, belly, 0.24, 0.5, 0.42));
     // small hooked beak
     head.add(block(0.16, 0.16, 0.16, 0xe8a23a, 0, 0.32, 0.5));
+  } else if (species === 'mouse') {
+    // big round ears
+    head.add(block(0.3, 0.3, 0.1, fur, -0.32, 0.98, 0.02));
+    head.add(block(0.3, 0.3, 0.1, fur, 0.32, 0.98, 0.02));
+    head.add(block(0.16, 0.16, 0.06, 0xd9a3ac, -0.32, 0.98, 0.07));
+    head.add(block(0.16, 0.16, 0.06, 0xd9a3ac, 0.32, 0.98, 0.07));
+    // small pointed pink snout
+    head.add(block(0.26, 0.2, 0.16, 0xf3ece3, 0, 0.24, 0.44));
+    head.add(block(0.1, 0.08, 0.06, 0xd9a3ac, 0, 0.3, 0.53));
+    // whiskers
+    head.add(block(0.28, 0.02, 0.02, 0xffffff, -0.05, 0.28, 0.55));
+    head.add(block(0.28, 0.02, 0.02, 0xffffff, 0.05, 0.28, 0.55));
   }
 
   // eyes (frogs already have theirs on top)
@@ -236,7 +258,9 @@ export function makeBear(opts: CharacterOptions = {}): BearParts {
   // NB: outfit shells must not share faces with the body/tummy blocks
   // (body top sits at y 0.79, tummy front at z 0.33) or they z-fight.
   if (outfit === 'shirt') {
-    body.add(block(0.98, 0.52, 0.7, oc, 0, 0.52, 0));
+    // the shell must clear the (possibly plump) body on every side, or the
+    // fur pokes through and the coplanar faces flicker
+    body.add(block(opts.plump ? 1.12 : 0.98, 0.52, opts.plump ? 0.8 : 0.7, oc, 0, 0.52, 0));
     // sleeves on the upper arms
     armL.add(block(0.32, 0.28, 0.36, oc, 0, -0.1, 0));
     armR.add(block(0.32, 0.28, 0.36, oc, 0, -0.1, 0));
@@ -267,10 +291,12 @@ export function makeBear(opts: CharacterOptions = {}): BearParts {
 
   // --- travel sling bag (diagonal strap over the chest, bag at the hip) ---
   if (opts.sling) {
-    const strapF = block(0.14, 1.05, 0.05, 0x8a6f52, 0, 0.42, 0.34);
+    // straps sit just proud of the (possibly plump) tummy/back planes
+    const strapZ = opts.plump ? 0.42 : 0.34;
+    const strapF = block(0.14, 1.05, 0.05, 0x8a6f52, 0, 0.42, strapZ);
     strapF.rotation.z = 0.72;
     body.add(strapF);
-    const strapB = block(0.14, 1.05, 0.05, 0x8a6f52, 0, 0.42, -0.33);
+    const strapB = block(0.14, 1.05, 0.05, 0x8a6f52, 0, 0.42, opts.plump ? -0.41 : -0.33);
     strapB.rotation.z = -0.72;
     body.add(strapB);
     // shoulder pad where the straps meet
@@ -283,11 +309,12 @@ export function makeBear(opts: CharacterOptions = {}): BearParts {
 
   // --- Christian's great burden ---
   if (opts.burden) {
-    body.add(block(0.7, 0.5, 0.42, PALETTE.burden, 0, 0.45, -0.52));
-    body.add(block(0.56, 0.4, 0.36, 0x87817a, 0, 0.9, -0.5));
-    body.add(block(0.4, 0.3, 0.3, PALETTE.burdenStrap, 0, 1.22, -0.48));
-    body.add(block(0.1, 0.6, 0.08, PALETTE.burdenStrap, -0.3, 0.45, 0.31));
-    body.add(block(0.1, 0.6, 0.08, PALETTE.burdenStrap, 0.3, 0.45, 0.31));
+    body.add(block(0.88, 0.62, 0.54, PALETTE.burden, 0, 0.45, -0.56));
+    body.add(block(0.70, 0.50, 0.46, 0x87817a, 0, 0.96, -0.54));
+    body.add(block(0.50, 0.36, 0.36, PALETTE.burdenStrap, 0, 1.28, -0.52));
+    const bStrapZ = opts.plump ? 0.42 : 0.31;
+    body.add(block(0.1, 0.6, 0.08, PALETTE.burdenStrap, -0.3, 0.45, bStrapZ));
+    body.add(block(0.1, 0.6, 0.08, PALETTE.burdenStrap, 0.3, 0.45, bStrapZ));
   }
 
   root.scale.setScalar(scale);

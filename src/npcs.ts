@@ -31,6 +31,7 @@ export interface QuestState {
   moralityDone: boolean;
   wicketDone: boolean;
   interpreterDone: boolean;
+  crossDone: boolean;
 }
 
 interface NPCDef {
@@ -82,46 +83,46 @@ const DEFS: NPCDef[] = [
   },
   {
     id: 'cub1',
-    name: 'Matthew (cub)',
+    name: 'Elsie (cub)',
     species: 'bear',
     fur: PALETTE.bearBrown,
     scale: 0.55,
-    outfit: 'shirt',
-    outfitColor: 0xaecbff,
+    outfit: 'dress',
+    outfitColor: 0xb89ae0,
     x: -11, z: -6,
     facing: Math.PI * 0.8,
     wanderRadius: 2,
     getLines: (s) =>
       s.talkedToEvangelist
         ? [
-            { speaker: 'Matthew', text: 'Papa, is that sparkly light for YOU? It looks like a star that fell down!' },
-            { speaker: 'Matthew', text: 'Bring me back a piece of it, okay? Promise!' },
+            { speaker: 'Elsie', text: 'Papa, is that sparkly light for YOU? It looks like a star that fell down!' },
+            { speaker: 'Elsie', text: 'Bring me back a piece of it, okay? Promise!' },
           ]
         : [
-            { speaker: 'Matthew', text: 'Papa! Why do you always carry that big lumpy backpack?' },
-            { speaker: 'Matthew', text: 'It looks SO heavy. I tried to lift it once and fell right over. Plop!' },
+            { speaker: 'Elsie', text: 'Papa! Why do you always carry that big lumpy backpack?' },
+            { speaker: 'Elsie', text: 'It looks SO heavy. I tried to lift it once and fell right over. Plop!' },
           ],
   },
   {
     id: 'cub2',
-    name: 'Samuel (cub)',
+    name: 'Anna (cub)',
     species: 'bear',
     fur: PALETTE.bearHoney,
     scale: 0.5,
-    outfit: 'overalls',
-    outfitColor: 0x9fdcc8,
+    outfit: 'dress',
+    outfitColor: PALETTE.dressLeaf,
     x: -7, z: -5,
     facing: -Math.PI * 0.7,
     wanderRadius: 2,
     getLines: (s) =>
       s.talkedToEvangelist
         ? [
-            { speaker: 'Samuel', text: '*sniff* …You are going away, Papa?' },
-            { speaker: 'Samuel', text: 'Mama says brave bears follow their hearts. So… be the bravest one ever.' },
+            { speaker: 'Anna', text: '*sniff* …You are going away, Papa?' },
+            { speaker: 'Anna', text: 'Mama says brave bears follow their hearts. So… be the bravest one ever.' },
           ]
         : [
-            { speaker: 'Samuel', text: 'Papa, I found a honey-flower by the well! Want to smell it?' },
-            { speaker: 'Samuel', text: 'It smells like… like honey! Hee hee.' },
+            { speaker: 'Anna', text: 'Papa, I found a honey-flower by the well! Want to smell it?' },
+            { speaker: 'Anna', text: 'It smells like… like honey! Hee hee.' },
           ],
   },
   // ---------------- villagers ----------------

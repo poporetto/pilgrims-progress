@@ -147,8 +147,15 @@
     }
     .hidden { opacity: 0; pointer-events: none; }
     #ending { display: none; }
+
+    /* ---------- screen fade (masks the outdoor/indoor cut) ---------- */
+    #fade {
+      position: fixed; inset: 0; z-index: 60; background: #1a1410;
+      opacity: 0; pointer-events: none; transition: opacity 0.45s ease;
+    }
+    #fade.show { opacity: 1; }
   </style>
-  <script type="module" crossorigin src="./assets/index-CiV_NQDX.js"></script>
+  <script type="module" crossorigin src="./assets/index-p77Z8V0a.js"></script>
 </head>
 <body>
   <div id="app"></div>
@@ -164,6 +171,7 @@
     <button data-jump="wicket-approach">IV · Wicket Gate (approach)</button>
     <button data-jump="wicket-highway">IV · King's Highway</button>
     <button data-jump="interpreter">IV · House of the Interpreter</button>
+    <button data-jump="cross">V · The Cross</button>
     <div class="label">Or</div>
     <button data-jump="map">World Map</button>
   </div>
@@ -195,6 +203,8 @@
     <button id="continue-btn">Continue the Journey →</button>
     <button id="restart-btn" class="ghost">Restart from the Beginning</button>
   </div>
+
+  <div id="fade"></div>
 
 </body>
 </html>

@@ -31,7 +31,7 @@ type Phase =
   | 'houseGreet' | 'house' | 'houseExit' | 'done';
 
 const GATE_X = 10;       // the wall + wicket gate
-const CASTLE = new THREE.Vector3(17, 0, -15); // Beelzebub's castle, NE of the gate
+const CASTLE = new THREE.Vector3(4, 0, -15); // Beelzebub's castle, outside (west of) the gate
 const HIGHWAY_END = 100; // the glow at the end of the narrow way — well over 2x the original walk
 
 // ---------- the House of the Interpreter, just off the King's Highway ----------
@@ -45,10 +45,12 @@ const STATIONS = [IX + 10, IX + 24, IX + 38, IX + 52, IX + 66, IX + 80];
 const HOUSE_EXIT_X = IX + 92;
 const HOUSE_HALF = 5.5;   // half-width of the hall — roomy enough to see everyone clearly
 const HOUSE_WIDTH = HOUSE_HALF * 2;
+const PARTITION_GAP = 2.2; // the walkway gap left open through each partition wall — wide enough to pass through smoothly
+const CAGE_X = STATIONS[4] - 4; // the caged man's station — kept clear of hall lamps
 
 const HOUSE_GREET_LINES: DialogueLine[] = [
   { speaker: '', text: 'A little way past the Gate, off the King\'s Highway, stands a cottage of warm timber with smoke curling from its chimney — the House of the Interpreter.' },
-  { speaker: 'Interpreter', text: '(an owl in a scholar\'s robe, blinking down from the doorway) Christian! Goodwill sent word that you would be along this way. Come in, come in — I have things to show you that shall be of great profit upon your journey.' },
+  { speaker: 'Interpreter', text: '(an owl in a scholar\'s robe, blinking down from the doorway) Christian! Goodwill sent word you\'d be coming. Come in, come in — I have things to show you that will help you greatly on your journey.' },
   { speaker: 'Christian', text: 'Gladly, sir. I have long wished for someone who could make plain the things I only half understand.' },
 ];
 
@@ -76,7 +78,7 @@ const VIGNETTES: DialogueLine[][] = [
     { speaker: '', text: 'Patience asks for nothing, and waits quietly, empty-handed.' },
     { speaker: 'Christian', text: 'Poor foolish thing. Will he never have any more?' },
     { speaker: 'Interpreter', text: 'Not until the appointed time — and by then, Patience will have come into lasting riches, while Passion has nothing left at all.' },
-    { speaker: 'Interpreter', text: 'So it is with the children of this world, who must have their good things now, and the children of the world to come, who can wait for theirs — for theirs shall never rust nor waste away.' },
+    { speaker: 'Interpreter', text: 'So it is with the children of this world, who must have their good things now, and the children of the world to come, who can wait for theirs — for theirs will never rust or fade away.' },
     { speaker: 'Christian', text: 'Better to wait for treasure that lasts, than seize a joy that crumbles in the hand.' },
   ],
   [ // 3. the fire against the wall
@@ -84,37 +86,37 @@ const VIGNETTES: DialogueLine[][] = [
     { speaker: 'Christian', text: 'Strange — the more he pours, the higher it burns! Why does it not go out?' },
     { speaker: 'Interpreter', text: 'Come round to the other side, and see.' },
     { speaker: '', text: 'Behind the wall, unseen from the front, another hand pours oil into the fire — secretly, steadily, without ceasing.' },
-    { speaker: 'Interpreter', text: 'The man with the water is the Devil, forever labouring to quench the work of grace in the heart. The one with the oil is Christ — He maintains what His own hand has begun, even when His people cannot see Him doing it.' },
+    { speaker: 'Interpreter', text: 'The man with the water is the Devil, forever working to put out the work of grace in the heart. The one with the oil is Christ — He keeps alive what His own hand has begun, even when His people cannot see Him doing it.' },
     { speaker: 'Christian', text: 'Then when I feel my faith failing under some trial, it may be only that I cannot see the hand still feeding it, behind the wall.' },
     { speaker: 'Interpreter', text: 'Just so, Christian. Just so.' },
   ],
   [ // 4. the armed man
-    { speaker: '', text: 'A crowd of fearful souls stands well back from a splendid palace, its gate thick with armed guards.' },
-    { speaker: '', text: 'None of them dares approach — until one man of stout countenance strides up and gives his name to be written down.' },
-    { speaker: '', text: 'He takes up helmet, shield, and sword, and falls upon the guards, cutting his way through many grievous wounds, until at last he forces the doorway and passes in.' },
+    { speaker: '', text: 'A crowd of fearful people stands well back from a splendid palace, its gate thick with armed guards.' },
+    { speaker: '', text: 'None of them dares approach — until one man of bold courage walks up and puts his name down to enter.' },
+    { speaker: '', text: 'He takes up his helmet, shield, and sword, and fights through the guards, taking many hard blows, until at last he pushes through the doorway and enters.' },
     { speaker: '', text: 'A great shout of welcome rises from within.' },
-    { speaker: 'Interpreter', text: 'Christian, thou must through difficulties enter the kingdom of heaven. Set down thy name, take up thy weapons, and press in — whatever wounds it may cost thee.' },
-    { speaker: 'Christian', text: 'Then this road was never meant to be walked without a fight. I had hoped otherwise — but I would rather bleed at that gate than turn back from it.' },
+    { speaker: 'Interpreter', text: 'Christian, you must push through difficulties to enter the kingdom of heaven. Write down your name, take up your weapons, and push in — whatever it costs you.' },
+    { speaker: 'Christian', text: 'Then this road was never meant to be walked without a fight. I had hoped otherwise — but I would rather be wounded at that gate than turn away from it.' },
   ],
   [ // 5. the man in the iron cage
     { speaker: '', text: 'In a dim corner, a man sits caged behind bars of black iron, his head bowed low.' },
     { speaker: 'Christian', text: 'Friend, what brought you here?' },
-    { speaker: '', text: '(the caged man, hollow-voiced) I was once a flourishing professor, fair in my own eyes and the eyes of others. I left off watching, and hardening followed hardening, sin upon sin, until I could no longer repent, though I longed to.' },
-    { speaker: '', text: 'Now I am shut up in this cage of my own forging, and cannot get out.' },
-    { speaker: 'Interpreter', text: 'Let his misery be a warning to thee. Take sin lightly, and stray but a little at a time, and thou mayest wake one day to find the door already shut — from the inside.' },
-    { speaker: 'Christian', text: '*shivering* A dreadful sight. God keep me watchful, and never so bold with sin as he was.' },
+    { speaker: '', text: '(the caged man, hollow-voiced) I was once a strong believer, respected in my own eyes and the eyes of others. I stopped watching myself, and hardness followed hardness, sin upon sin, until I could no longer repent, though I wanted to.' },
+    { speaker: '', text: 'Now I am locked in this cage I made for myself, and I cannot get out.' },
+    { speaker: 'Interpreter', text: 'Let his suffering be a warning to you. Treat sin as harmless, drift away little by little, and you may wake one day to find the door already shut — from the inside.' },
+    { speaker: 'Christian', text: '*shivering* A dreadful sight. God keep me watchful, and never so careless with sin as he was.' },
   ],
   [ // 6. the dream of judgment
     { speaker: '', text: 'A man sits bolt upright in his bed, trembling, sweat on his brow, staring as though he still saw the vision that woke him.' },
     { speaker: '', text: '(the man, shaking) I dreamed the heavens grew black as pitch, and the trumpet sounded, and the clouds parted, and I stood before the great white throne, unready, without a plea to offer.' },
-    { speaker: 'Interpreter', text: 'Let it not remain a dream to thee, Christian. That day comes for every soul alike. Live each one as a man who must give account — and thou shalt not be taken unready when the trumpet truly sounds.' },
+    { speaker: 'Interpreter', text: 'Don\'t let it remain just a dream, Christian. That day comes for every soul alike. Live each one as a man who must give account — and you won\'t be caught unready when the trumpet truly sounds.' },
     { speaker: 'Christian', text: 'I will remember this room longest of all, sir. It has put a solemn weight on me — a good weight, I think, unlike the one on my back.' },
   ],
 ];
 
 const FAREWELL_LINES: DialogueLine[] = [
-  { speaker: 'Christian', text: 'Sir, I thank you with all my heart. I came in confused, and I go out instructed — the dust and the Law, the fire and the oil, the cage, the dream — I shall carry every one of them with me.' },
-  { speaker: 'Interpreter', text: 'Go then, Christian, and the Lord be with thee upon the King\'s Highway. Remember what thou hast seen here always, and let it quicken and comfort thee in the rest of thy journey.' },
+  { speaker: 'Christian', text: 'Sir, I thank you with all my heart. I came in confused, and I go out instructed — the dust and the Law, the fire and the oil, the cage, the dream — I will carry every one of them with me.' },
+  { speaker: 'Interpreter', text: 'Go then, Christian, and the Lord be with you upon the King\'s Highway. Always remember what you\'ve seen here, and let it strengthen and comfort you for the rest of your journey.' },
   { speaker: '', text: 'The Interpreter walks him to the door, and the bright road outside — and the far light — waits beyond it.' },
 ];
 
@@ -138,6 +140,11 @@ export class WicketGateScene {
   private volleyT = 0;
   private arrowTimer = 0;
   private lightBeam: THREE.Group | null = null;
+  private hasPassedGate = false; // true once he's safely through — archers still watch the open ground
+  private peekBlocked = false;   // hysteresis so the "get back!" line doesn't repeat every frame
+  private peekVolley = 0;        // arrows left to fire in the current peek volley
+  private peekArrowTimer = 0;
+  private goodwillNear = false;  // hysteresis for re-approaching Goodwill after the gate scene
 
   // ---------- the House of the Interpreter ----------
   private interpreter: BearParts;
@@ -153,21 +160,57 @@ export class WicketGateScene {
   private fireMotes: THREE.Mesh[] = [];
   private devilArm: THREE.Group | null = null; // pours water, endlessly
   private christArm: THREE.Group | null = null; // pours oil, unseen, behind the wall
+  private waterDrops: Array<{ mesh: THREE.Mesh; mat: THREE.MeshBasicMaterial; active: boolean }> = [];
+  private oilDrops: Array<{ mesh: THREE.Mesh; mat: THREE.MeshBasicMaterial; active: boolean }> = [];
+  private dropTimer = 0;
   private cottageDoor: THREE.Group | null = null;
   private houseDoorOpen = false;
   private exitDoor: THREE.Group | null = null;
   private exitDoorOpen = false;
-  private exitDoorMat: THREE.MeshLambertMaterial | null = null;
   // the Interpreter walks (rather than teleports) between vignettes
   private interpreterTarget: THREE.Vector3 | null = null;
   private interpreterFaceOnArrive = 0;
+  private interpreterIdleTalked = false; // greeted once if Christian walks up before moving on
+  private interpreterExitTalked = false; // re-talk near exit door after farewell
+  private footDust: Array<{ mesh: THREE.Mesh; mat: THREE.MeshBasicMaterial; life: number; vx: number; vz: number }> = [];
+  private footDustTimer = 0;
+  // the dusty room's two servants
+  private sweeper: BearParts | null = null;
+  private sweeperArm: THREE.Group | null = null;
+  private waterer: BearParts | null = null;
+  private watererArm: THREE.Group | null = null;
+  // the children's room
+  private toyBall: THREE.Mesh | null = null;
+  private passionArm: THREE.Group | null = null;
+  // the dream of judgment — the dreamer trembles, sweat beading on his brow
+  private dreamer: BearParts | null = null;
+  private sweatDrops: Array<{ mesh: THREE.Mesh; mat: THREE.MeshBasicMaterial; baseY: number }> = [];
+  // partition walls Christian can't walk through
+  private partitionXs: number[] = [];
+  // solid characters/props Christian can't walk through, inside the House
+  private houseColliders: Array<{ x: number; z: number; r: number }> = [];
+  // a short flavour line the first time Christian walks up to each NPC
+  private npcTalks: Array<{ parts: BearParts; lines: DialogueLine[]; talked: boolean; radius: number }> = [];
+  // the armed man: fights his way past the guards, then enters the gate
+  private knight: BearParts | null = null;
+  private knightArm: THREE.Group | null = null;
+  private knightShieldArm: THREE.Group | null = null;
+  private knightState: 'idle' | 'fighting' | 'entering' | 'done' = 'idle';
+  private knightT = 0;
+  private guards: BearParts[] = [];
+  private guardBaseX: number[] = [];
+  private guardStagger: number[] = [];
+  private knightDoorPos = new THREE.Vector3();
+  // the fire against the wall — glow + rising embers
+  private fireGlow: THREE.PointLight | null = null;
+  private embers: Array<{ mesh: THREE.Mesh; mat: THREE.MeshBasicMaterial; life: number; baseX: number; baseZ: number }> = [];
 
   constructor(cb: WicketCallbacks) {
     this.cb = cb;
     this.christian = makeBear({
       species: 'bear', fur: PALETTE.bearBrown,
       outfit: 'shirt', outfitColor: 0x8fb8d8,
-      sling: true, burden: true,
+      sling: true, burden: true, plump: true,
     });
     // Goodwill: a great golden lion in a white robe
     this.goodwill = makeBear({
@@ -201,13 +244,14 @@ export class WicketGateScene {
     sun.shadow.camera.bottom = -45;
     s.add(sun);
 
-    // rolling ground
-    const ground = new THREE.Mesh(new THREE.BoxGeometry(180, 1, 90), mat(0x9dc793));
-    ground.position.set(-5, -0.5, 0);
+    // rolling ground — runs the full length of the road, past the gate and
+    // all the way out to the light at the end of the King's Highway
+    const ground = new THREE.Mesh(new THREE.BoxGeometry(210, 1, 90), mat(0x9dc793));
+    ground.position.set(10, -0.5, 0);
     ground.receiveShadow = true;
     s.add(ground);
-    for (let i = 0; i < 70; i++) {
-      const x = -70 + Math.random() * 130;
+    for (let i = 0; i < 90; i++) {
+      const x = -70 + Math.random() * 185;
       const z = -35 + Math.random() * 70;
       const p = block(0.9 + Math.random() * 1.6, 0.1, 0.9 + Math.random() * 1.6,
         Math.random() > 0.5 ? 0x8cba80 : 0xaad49c, x, 0.05, z);
@@ -317,7 +361,7 @@ export class WicketGateScene {
     castle.position.copy(CASTLE);
     s.add(castle);
     // dead brush around the crag
-    for (const [bx, bz] of [[12, -9], [21, -10], [14, -20], [22, -18]] as const) {
+    for (const [bx, bz] of [[-1, -9], [8, -10], [1, -20], [9, -18]] as const) {
       s.add(block(0.3, 1.3, 0.3, 0x8d8478, bx, 0.65, bz));
       s.add(block(0.9, 0.24, 0.24, 0x8d8478, bx + 0.3, 1.3, bz));
     }
@@ -455,6 +499,10 @@ export class WicketGateScene {
     s.add(block(96, 3.1, 0.3, PALETTE.wallCream, midX, 1.55, HOUSE_HALF));
     for (let i = 0; i < 10; i++) {
       const lx = IX + 4 + i * 9.5;
+      let lz = i % 2 === 0 ? -HOUSE_HALF + 0.4 : HOUSE_HALF - 0.4;
+      // dodge the caged man's bars — a south-side lamp there would clip
+      // straight through the cage
+      if (Math.abs(lx - CAGE_X) < 1.8) lz = HOUSE_HALF - 0.4;
       const lamp = new THREE.Group();
       lamp.add(block(0.14, 2.1, 0.14, PALETTE.woodDark, 0, 1.05, 0));
       const bulb = block(0.32, 0.32, 0.32, PALETTE.light, 0, 2.15, 0);
@@ -462,34 +510,62 @@ export class WicketGateScene {
         color: PALETTE.light, emissive: 0xfff0b0, emissiveIntensity: 0.5,
       });
       lamp.add(bulb);
-      lamp.position.set(lx, 0, i % 2 === 0 ? -HOUSE_HALF + 0.4 : HOUSE_HALF - 0.4);
+      lamp.position.set(lx, 0, lz);
       s.add(lamp);
     }
 
     // small partition walls between rooms — just enough to read as separate
     // spaces, with a gap down the centre of the hall to walk through
     const PARTITION_COLORS = [PALETTE.wallPink, PALETTE.wallMint, PALETTE.wallLilac];
-    const GAP = 1.5;
-    const span = HOUSE_HALF - GAP;
-    const partitionXs = [
+    const span = HOUSE_HALF - PARTITION_GAP;
+    this.partitionXs = [
       IX + 3,
       ...STATIONS.slice(1).map((sx, i) => (STATIONS[i] + sx) / 2),
       HOUSE_EXIT_X - 6,
     ];
-    partitionXs.forEach((wx, i) => {
+    this.partitionXs.forEach((wx, i) => {
       const color = PARTITION_COLORS[i % PARTITION_COLORS.length];
-      s.add(block(0.22, 2.2, span, color, wx, 1.1, -(GAP + HOUSE_HALF) / 2));
-      s.add(block(0.22, 2.2, span, color, wx, 1.1, (GAP + HOUSE_HALF) / 2));
+      s.add(block(0.14, 2.2, span, color, wx, 1.1, -(PARTITION_GAP + HOUSE_HALF) / 2));
+      s.add(block(0.14, 2.2, span, color, wx, 1.1, (PARTITION_GAP + HOUSE_HALF) / 2));
     });
 
-    // 1. the dusty room (south alcove)
+    // 1. the dusty room (south alcove) — two mouse servants: one sweeps,
+    // one follows after with water
     {
       const x = STATIONS[0];
       s.add(block(3.2, 0.05, 3.0, 0xcbb98a, x, 0.03, -3.2));
-      const broom = block(0.12, 1.5, 0.12, PALETTE.woodDark, x - 0.8, 0.75, -2.8);
-      broom.rotation.z = 0.35;
-      s.add(broom);
-      s.add(block(0.4, 0.3, 0.4, PALETTE.stone, x + 0.9, 0.15, -3.4)); // water bucket
+      s.add(block(0.4, 0.3, 0.4, PALETTE.stone, x + 0.9, 0.15, -3.4)); // water bucket (the source)
+
+      const sweeper = makeBear({ species: 'mouse', outfit: 'overalls', outfitColor: 0x8a6f52, scale: 0.52 });
+      sweeper.root.position.set(x - 0.9, 0, -2.7);
+      sweeper.root.rotation.y = 0.5;
+      const broomHandle = new THREE.Group();
+      broomHandle.add(block(0.07, 0.85, 0.07, PALETTE.woodDark, 0, -0.35, 0.1));
+      broomHandle.add(block(0.24, 0.18, 0.1, 0xc9a865, 0, -0.8, 0.16)); // bristles
+      sweeper.armR.add(broomHandle);
+      s.add(sweeper.root);
+      this.sweeper = sweeper;
+      this.sweeperArm = sweeper.armR;
+      this.houseColliders.push({ x: x - 0.9, z: -2.7, r: 0.4 });
+      this.npcTalks.push({
+        parts: sweeper, talked: false, radius: 1.1,
+        lines: [{ speaker: '', text: '(the little sweeper, between coughs) It never comes truly clean this way, sir — the harder I sweep, the worse it gets!' }],
+      });
+
+      const waterer = makeBear({ species: 'mouse', outfit: 'shirt', outfitColor: 0x8fb8d8, scale: 0.52 });
+      waterer.root.position.set(x + 1.0, 0, -3.6);
+      waterer.root.rotation.y = -0.6;
+      const pail = block(0.2, 0.22, 0.18, 0x4a4440, 0, -0.45, 0.14);
+      waterer.armR.add(pail);
+      s.add(waterer.root);
+      this.waterer = waterer;
+      this.watererArm = waterer.armR;
+      this.houseColliders.push({ x: x + 1.0, z: -3.6, r: 0.4 });
+      this.npcTalks.push({
+        parts: waterer, talked: false, radius: 1.1,
+        lines: [{ speaker: '', text: '(the little waterer, pail in hand) A splash of water first, and the dust lies down like a lamb. Sweeping alone never once managed it.' }],
+      });
+
       for (let i = 0; i < 22; i++) {
         const m = new THREE.MeshBasicMaterial({ color: 0xd9caa3, transparent: true, opacity: 0 });
         const mote = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.18, 0.18), m);
@@ -509,84 +585,208 @@ export class WicketGateScene {
       }
     }
 
-    // 2. the two children (north alcove)
+    // 2. the two children (north alcove) — Passion buried in toys on the
+    // left, Patience sitting quietly on the right with nothing around her
     {
       const x = STATIONS[1];
       const passion = makeBear({ species: 'bear', outfit: 'shirt', outfitColor: 0xe8834a, scale: 0.68 });
-      passion.root.position.set(x - 0.7, 0, 1.7);
-      passion.root.rotation.y = 0.3;
+      passion.root.position.set(x - 1.3, 0, 1.6);
+      passion.root.rotation.y = 0.5;
+      // a little rag doll, held and waved about
+      const doll = new THREE.Group();
+      doll.add(block(0.14, 0.22, 0.1, 0xffd6a5, 0, 0, 0));
+      doll.add(block(0.13, 0.13, 0.1, 0xf7c8d4, 0, 0.17, 0));
+      doll.position.set(0, -0.28, 0.2);
+      passion.armR.add(doll);
       s.add(passion.root);
-      const patience = makeBear({ species: 'bear', outfit: 'dress', outfitColor: PALETTE.dressLeaf, scale: 0.68 });
-      patience.root.position.set(x + 0.9, 0, 2.2);
-      patience.root.rotation.y = -0.4;
-      s.add(patience.root);
-      // Passion's scattered, wasted toys
-      for (const [tx, tz, c] of [[-1.4, 1.2, 0xffe08a], [-0.2, 1.1, 0xffb3c6], [-1.0, 2.1, 0xaecbff]] as const) {
-        s.add(block(0.24, 0.24, 0.24, c, x + tx, 0.12, tz));
+      this.passionArm = passion.armR;
+      this.houseColliders.push({ x: x - 1.3, z: 1.6, r: 0.45 });
+      this.npcTalks.push({
+        parts: passion, talked: false, radius: 1.2,
+        lines: [{ speaker: 'Passion', text: 'Mine! All of it, NOW! Why should I wait for anything, when I can have it all today?' }],
+      });
+      // toys scattered all around her
+      for (const [tx, tz, c] of [[-2.2, 0.5, 0xffe08a], [-1.8, 1.6, 0xffb3c6]] as const) {
+        s.add(block(0.22, 0.22, 0.22, c, x + tx, 0.11, tz));
       }
-      // Patience's unopened, waiting chest
-      s.add(block(0.5, 0.36, 0.36, PALETTE.woodDark, x + 0.9, 0.18, 2.8));
+      // a little wooden car
+      const car = new THREE.Group();
+      car.add(block(0.5, 0.2, 0.3, 0xff8a3d, 0, 0.15, 0));
+      car.add(block(0.3, 0.14, 0.26, 0xffc35c, 0, 0.3, 0));
+      for (const wx of [-0.18, 0.18]) {
+        for (const wz of [-0.13, 0.13]) car.add(block(0.1, 0.1, 0.1, 0x2c2a30, wx, 0.06, wz));
+      }
+      car.position.set(x - 2.5, 0, 1.0);
+      car.rotation.y = 0.6;
+      s.add(car);
+      // a bouncing ball
+      const ball = new THREE.Mesh(new THREE.SphereGeometry(0.16, 10, 8), mat(0xff6b81));
+      ball.position.set(x - 1.6, 0.16, 2.2);
+      ball.castShadow = true;
+      s.add(ball);
+      this.toyBall = ball;
+      // gift boxes with ribbons
+      for (const [gx, gz, c, rc] of [
+        [-2.0, 2.3, 0xaecbff, 0xfff6c9],
+        [-1.0, 0.6, PALETTE.dressLeaf, 0xffe08a],
+      ] as const) {
+        s.add(block(0.3, 0.3, 0.3, c, x + gx, 0.16, gz));
+        s.add(block(0.32, 0.06, 0.06, rc, x + gx, 0.24, gz));
+        s.add(block(0.06, 0.06, 0.32, rc, x + gx, 0.24, gz));
+      }
+
+      const patience = makeBear({ species: 'bear', outfit: 'overalls', outfitColor: PALETTE.dressLeaf, scale: 0.68 });
+      patience.root.position.set(x + 1.6, 0, 1.8);
+      patience.root.rotation.y = -0.5;
+      s.add(patience.root);
+      this.houseColliders.push({ x: x + 1.6, z: 1.8, r: 0.45 });
+      this.npcTalks.push({
+        parts: patience, talked: false, radius: 1.2,
+        lines: [{ speaker: 'Patience', text: 'I\'d rather wait and have something that lasts, than grab at what falls apart in my hands.' }],
+      });
     }
 
-    // 3. the fire against the wall (south alcove)
+    // 3. the fire against the wall (south alcove) — devil on the left,
+    // Christ on the right, the fire in the middle with the wall — rotated
+    // 90°, now a fin running front-to-back — floating just above it
     {
       const x = STATIONS[2];
-      s.add(block(0.3, 2.0, 2.8, PALETTE.stone, x, 1.0, -3.4)); // the dividing wall
-      for (let i = 0; i < 6; i++) {
-        const m = new THREE.MeshBasicMaterial({ color: i % 2 === 0 ? 0xff8a3d : 0xffc35c });
-        const mesh = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.5 + Math.random() * 0.4, 0.3), m);
-        mesh.position.set(x + (Math.random() - 0.5) * 0.7, 0.3, -2.4 + (Math.random() - 0.5) * 0.4);
+      const fireZ = -1.8;
+      // the wall: rotated a quarter turn, so it's a thin fin dividing the
+      // space front-to-back rather than a slab facing the walkway
+      s.add(block(0.4, 1.5, 1.8, PALETTE.stone, x, 2.05, fireZ));
+      // the fire, layered and detailed: a glowing core, licking flames, and
+      // a warm light spilling out
+      s.add(block(0.9, 0.14, 0.9, 0x4a4038, x, 0.08, fireZ)); // charred hearth base
+      for (let i = 0; i < 14; i++) {
+        const hue = [0xff8a3d, 0xffc35c, 0xff5c3d, 0xffe08a][i % 4];
+        const m = new THREE.MeshBasicMaterial({ color: hue });
+        const h = 0.3 + Math.random() * 0.55;
+        const mesh = new THREE.Mesh(new THREE.BoxGeometry(0.18 + Math.random() * 0.14, h, 0.18 + Math.random() * 0.14), m);
+        mesh.position.set(x + (Math.random() - 0.5) * 0.8, h / 2 + 0.1, fireZ + (Math.random() - 0.5) * 0.6);
         s.add(mesh);
         this.fireMotes.push(mesh);
       }
+      const glow = new THREE.PointLight(0xffa347, 1.8, 6);
+      glow.position.set(x, 0.6, fireZ);
+      s.add(glow);
+      this.fireGlow = glow;
+      // embers rising from the flames
+      for (let i = 0; i < 10; i++) {
+        const m = new THREE.MeshBasicMaterial({ color: 0xffcf7a, transparent: true, opacity: 0 });
+        const ember = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.06, 0.06), m);
+        const baseX = x + (Math.random() - 0.5) * 0.7;
+        const baseZ = fireZ + (Math.random() - 0.5) * 0.5;
+        ember.position.set(baseX, 0.3, baseZ);
+        s.add(ember);
+        this.embers.push({ mesh: ember, mat: m, life: Math.random(), baseX, baseZ });
+      }
+      // the devil, on the left, pouring water into the fire
       const devil = makeBear({ species: 'cat', outfit: 'none', fur: 0x5a5464, scale: 0.9 });
-      devil.root.position.set(x, 0, -1.4);
-      devil.root.rotation.y = Math.PI;
+      devil.root.position.set(x - 1.8, 0, fireZ + 0.3);
+      devil.root.rotation.y = Math.PI / 2; // faces right, toward the fire
       devil.armR.add(block(0.26, 0.34, 0.22, 0x4a4440, 0, -0.5, 0.16)); // pail, carried in hand
       s.add(devil.root);
       this.devilArm = devil.armR;
+      this.houseColliders.push({ x: x - 1.8, z: fireZ + 0.3, r: 0.45 });
+      this.npcTalks.push({
+        parts: devil, talked: false, radius: 1.2,
+        lines: [{ speaker: '', text: '(the dark figure pours, unblinking) Pour and pour... this fire will never go out, no matter what I do to smother it.' }],
+      });
+      // Christ, on the right, pouring oil into the same fire
       const christ = makeBear({ species: 'lion', outfit: 'robe', outfitColor: PALETTE.robeWhite, scale: 0.85 });
-      christ.root.position.set(x, 0, -4.4);
+      christ.root.position.set(x + 1.8, 0, fireZ + 0.3);
+      christ.root.rotation.y = -Math.PI / 2; // faces left, toward the fire
       christ.armR.add(block(0.22, 0.3, 0.2, PALETTE.robeGold, 0, -0.5, 0.16)); // oil jug, carried in hand
       s.add(christ.root);
       this.christArm = christ.armR;
+      this.houseColliders.push({ x: x + 1.8, z: fireZ + 0.3, r: 0.45 });
+      this.npcTalks.push({
+        parts: christ, talked: false, radius: 1.2,
+        lines: [{ speaker: '', text: '(a quiet voice, warm and steady) Have no fear, Christian. My grace feeds this flame, and it will never run dry.' }],
+      });
+      // water drops (blue) falling from the devil's pail into the fire
+      for (let i = 0; i < 10; i++) {
+        const m = new THREE.MeshBasicMaterial({ color: 0x5aa8e8, transparent: true, opacity: 0 });
+        const drop = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.16, 0.08), m);
+        drop.visible = false;
+        s.add(drop);
+        this.waterDrops.push({ mesh: drop, mat: m, active: false });
+      }
+      // oil drops (bright yellow) falling from Christ's jug into the fire
+      for (let i = 0; i < 10; i++) {
+        const m = new THREE.MeshBasicMaterial({ color: 0xffe14d, transparent: true, opacity: 0 });
+        const drop = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.16, 0.08), m);
+        drop.visible = false;
+        s.add(drop);
+        this.oilDrops.push({ mesh: drop, mat: m, active: false });
+      }
     }
 
-    // 4. the armed man and the palace (north alcove)
+    // 4. the armed man and the palace (north alcove) — armored, sword and
+    // shield in hand, fights his way past the guards, then enters the gate
     {
       const x = STATIONS[3];
       s.add(block(2.6, 2.8, 0.3, PALETTE.roofLilac, x, 1.4, 4.2)); // palace facade
       s.add(block(2.8, 0.3, 0.4, PALETTE.robeGold, x, 2.85, 4.2)); // cornice
       s.add(block(0.9, 1.7, 0.3, 0xfff6c9, x, 0.85, 4.05)); // glowing doorway
+      this.knightDoorPos.set(x, 0, 3.85);
+
+      this.guardBaseX = [];
       for (const gx of [-1.1, 1.1]) {
         const guard = makeBear({ species: 'pig', outfit: 'overalls', outfitColor: 0x5a5464, scale: 0.9 });
         guard.root.position.set(x + gx, 0, 3.0);
         guard.root.rotation.y = Math.PI;
+        const spear = new THREE.Group();
+        spear.add(block(0.06, 1.2, 0.06, PALETTE.woodDark, 0, 0.3, 0));
+        spear.add(block(0.12, 0.24, 0.12, 0xc7c9cf, 0, 0.95, 0));
+        guard.armR.add(spear);
         s.add(guard.root);
+        this.guards.push(guard);
+        this.guardStagger.push(0);
+        this.guardBaseX.push(x + gx);
+        this.houseColliders.push({ x: x + gx, z: 3.0, r: 0.45 });
       }
+
       const knight = makeBear({ species: 'bear', outfit: 'shirt', outfitColor: 0x8a8f9a, scale: 0.95 });
       knight.root.position.set(x, 0, 1.2);
+      // a helmet
+      knight.head.add(block(0.7, 0.22, 0.68, 0xc7c9cf, 0, 0.74, 0));
+      knight.head.add(block(0.46, 0.14, 0.1, 0xc7c9cf, 0, 0.52, 0.42)); // visor bar
+      // a shield on his left arm
+      knight.armL.add(block(0.36, 0.5, 0.1, 0x8a8f9a, 0, -0.3, 0.2));
+      knight.armL.add(block(0.18, 0.24, 0.11, PALETTE.robeGold, 0, -0.3, 0.24)); // shield boss
+      // a sword in his right hand
+      const swordGrp = new THREE.Group();
+      swordGrp.add(block(0.08, 0.7, 0.08, 0xd8d3cc, 0, -0.15, 0));
+      swordGrp.add(block(0.22, 0.1, 0.08, 0x8a6f52, 0, -0.46, 0)); // hilt guard
+      knight.armR.add(swordGrp);
       s.add(knight.root);
-      const sword = block(0.1, 0.1, 0.9, 0xd8d3cc, x + 0.4, 0.7, 1.2);
-      sword.rotation.x = 0.3;
-      s.add(sword);
+      this.knight = knight;
+      this.knightArm = knight.armR;
+      this.knightShieldArm = knight.armL;
+      this.houseColliders.push({ x, z: 1.2, r: 0.45 });
+      this.npcTalks.push({
+        parts: knight, talked: false, radius: 1.3,
+        lines: [{ speaker: '', text: '(the armored man, resolute) Set down your name, friend, and take up your sword. This road is not for the faint of heart.' }],
+      });
     }
 
     // 5. the man in the iron cage (south alcove) — bars on all four sides,
     // tucked into a real corner where the back wall meets the room's edge
     {
-      const cx = STATIONS[4] - 4;
-      const cz = -(HOUSE_HALF - 0.9);
-      const HW = 0.8;
-      const HD = 0.7;
-      const BARH = 1.6;
+      const cx = CAGE_X;
+      const HW = 1.1;
+      const HD = 0.95;
+      const BARH = 2.1;
+      const cz = -(HOUSE_HALF - HD - 0.2); // clear of the back wall
       s.add(block(HW * 2, 0.05, HD * 2, 0x3a3640, cx, 0.03, cz)); // cage floor
       const barMat = 0x2c2a30;
-      for (const bx of [-0.8, -0.4, 0, 0.4, 0.8]) {
+      for (const bx of [-1.1, -0.55, 0, 0.55, 1.1]) {
         s.add(block(0.06, BARH, 0.06, barMat, cx + bx, BARH / 2, cz - HD)); // back bars
         s.add(block(0.06, BARH, 0.06, barMat, cx + bx, BARH / 2, cz + HD)); // front bars
       }
-      for (const bz of [-0.45, 0, 0.45]) {
+      for (const bz of [-0.63, 0, 0.63]) {
         s.add(block(0.06, BARH, 0.06, barMat, cx - HW, BARH / 2, cz + bz)); // left side
         s.add(block(0.06, BARH, 0.06, barMat, cx + HW, BARH / 2, cz + bz)); // right side
       }
@@ -603,18 +803,44 @@ export class WicketGateScene {
       caged.head.add(block(0.16, 0.14, 0.05, 0x2c2a30, 0.24, 0.5, 0.44));
       caged.head.add(block(0.2, 0.04, 0.04, 0x2c2a30, 0, 0.5, 0.44)); // bridge
       s.add(caged.root);
+      // the cage itself blocks the way — bigger than the man inside it
+      this.houseColliders.push({ x: cx, z: cz, r: Math.max(HW, HD) + 0.1 });
+      this.npcTalks.push({
+        parts: caged, talked: false, radius: 1.6,
+        lines: [{ speaker: '', text: '(the caged man, barely lifting his head) Don\'t linger here on my account, friend. Just... don\'t let your heart go hard the way mine did.' }],
+      });
     }
 
-    // 6. the dream of judgment (north alcove) — a longer bed, sitting bolt upright
+    // 6. the dream of judgment (north alcove) — a longer bed, seated (not
+    // standing), trembling, sweat beading on his brow
     {
       const x = STATIONS[5];
       const bz = 3.0;
       s.add(block(1.1, 0.3, 2.2, PALETTE.woodDark, x, 0.3, bz)); // longer bed frame
       s.add(block(1.0, 0.2, 2.0, 0xeef2ff, x, 0.5, bz)); // blanket
       s.add(block(0.5, 0.18, 0.4, 0xfff6e8, x, 0.6, bz - 0.95)); // pillow
+      this.houseColliders.push({ x, z: bz, r: 1.15 });
       const dreamer = makeBear({ species: 'rabbit', outfit: 'none', scale: 0.85 });
-      dreamer.root.position.set(x, 0.55, bz);
+      // hips at the blanket's height, legs swung forward so they stretch out
+      // in front of him on top of the covers — reads as sitting, not standing
+      dreamer.root.position.set(x, 0.6, bz - 0.3);
+      dreamer.legL.rotation.x = -1.3;
+      dreamer.legR.rotation.x = -1.3;
       s.add(dreamer.root);
+      this.dreamer = dreamer;
+      // sweat drops beading on his brow, animated falling
+      const dropDefs: Array<[number, number]> = [[-0.26, 0.5], [0.28, 0.55]];
+      for (const [dx, baseY] of dropDefs) {
+        const m = new THREE.MeshBasicMaterial({ color: 0x6fc3f0, transparent: true, opacity: 0 });
+        const drop = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.1, 0.07), m);
+        drop.position.set(dx, baseY, 0.42);
+        dreamer.head.add(drop);
+        this.sweatDrops.push({ mesh: drop, mat: m, baseY });
+      }
+      this.npcTalks.push({
+        parts: dreamer, talked: false, radius: 1.5,
+        lines: [{ speaker: '', text: '(the man, still shaking) Don\'t wake me yet... no, wait — don\'t let it be real...' }],
+      });
       // a pale, distant throne-shape hinting at the vision
       const throneMat = new THREE.MeshBasicMaterial({ color: 0xfdfdf6, transparent: true, opacity: 0.5 });
       const throne = new THREE.Mesh(new THREE.BoxGeometry(0.9, 1.8, 0.5), throneMat);
@@ -631,18 +857,24 @@ export class WicketGateScene {
     s.add(block(0.3, 3.0, HOUSE_HALF - DOOR_GAP, PALETTE.wallCream,
       HOUSE_EXIT_X, 1.5, -(HOUSE_HALF + DOOR_GAP) / 2));
     s.add(block(0.3, 0.4, DOOR_GAP * 2 + 0.3, PALETTE.wallCream, HOUSE_EXIT_X, 3.2, 0)); // lintel
-    // a real door on a hinge, filling the doorway, swinging open once the
-    // farewell is said, and fading in behind Christian once he's stepped out
-    const doorMat = new THREE.MeshLambertMaterial({ color: PALETTE.woodDark, transparent: true, opacity: 1 });
+    // a real, solid door on a hinge, filling the doorway, swinging open
+    // once the farewell is said
     const exitDoorPivot = new THREE.Group();
     exitDoorPivot.position.set(HOUSE_EXIT_X, 0, -DOOR_GAP);
-    const exitPanel = new THREE.Mesh(new THREE.BoxGeometry(0.14, 1.9, DOOR_GAP * 1.85), doorMat);
-    exitPanel.position.set(0, 0.95, DOOR_GAP * 0.925);
-    exitPanel.castShadow = true;
+    const exitPanel = block(0.14, 1.9, DOOR_GAP * 1.85, PALETTE.woodDark, 0, 0.95, DOOR_GAP * 0.925);
     exitDoorPivot.add(exitPanel);
     s.add(exitDoorPivot);
     this.exitDoor = exitDoorPivot;
-    this.exitDoorMat = doorMat;
+
+    // foot-dust puffs while Christian walks (same system as Chapter I)
+    for (let i = 0; i < 16; i++) {
+      const m = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0 });
+      const mesh = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.22, 0.22), m);
+      mesh.visible = false;
+      mesh.castShadow = false;
+      s.add(mesh);
+      this.footDust.push({ mesh, mat: m, life: 1, vx: 0, vz: 0 });
+    }
   }
 
   // ------------------------------------------------------------ runtime
@@ -654,14 +886,29 @@ export class WicketGateScene {
     this.volleyT = 0;
     this.houseGreeted = revisit; // revisiting skips the Interpreter's House
     this.houseCalledOut = false;
+    this.interpreterIdleTalked = false;
+    this.interpreterExitTalked = false;
+    for (const t of this.npcTalks) t.talked = false;
     this.dustBurst = 0;
     this.dustBurstTarget = 0;
     this.sprinkleT = 0;
+    this.knightState = 'idle';
+    this.knightT = 0;
+    if (this.knight) {
+      this.knight.root.visible = true;
+      this.knight.root.position.set(STATIONS[3], 0, 1.2);
+      this.knight.root.rotation.set(0, 0, 0);
+    }
+    for (let i = 0; i < this.guards.length; i++) this.guardStagger[i] = 0;
     this.stationIndex = STATIONS.length;
     this.houseDoorOpen = false;
     this.exitDoorOpen = false;
     this.interpreterTarget = null;
     for (const a of this.arrows) { a.active = false; a.g.visible = false; }
+    this.hasPassedGate = false;
+    this.peekBlocked = false;
+    this.peekVolley = 0;
+    this.goodwillNear = false;
     this.christian.root.position.set(-60, 0, 0);
     this.christian.root.rotation.y = Math.PI / 2;
     this.scene.add(this.christian.root);
@@ -698,10 +945,26 @@ export class WicketGateScene {
     this.houseGreeted = target === 'house';
     this.stationIndex = target === 'house' ? 0 : STATIONS.length;
     this.interpreterTarget = null;
+    this.interpreterIdleTalked = false;
+    this.interpreterExitTalked = false;
+    for (const t of this.npcTalks) t.talked = false;
+    this.knightState = 'idle';
+    this.knightT = 0;
+    if (this.knight) {
+      this.knight.root.visible = true;
+      this.knight.root.position.set(STATIONS[3], 0, 1.2);
+      this.knight.root.rotation.set(0, 0, 0);
+    }
+    for (let i = 0; i < this.guards.length; i++) this.guardStagger[i] = 0;
+    this.hasPassedGate = target !== 'house';
+    this.peekBlocked = false;
+    this.peekVolley = 0;
+    this.goodwillNear = false;
     if (target === 'house') {
       this.christian.root.position.set(IX, 0, 0);
       this.christian.root.rotation.y = Math.PI / 2;
-      this.interpreter.root.position.set(IX + 3, 0, 1.2);
+      this.interpreter.root.position.set(IX + 1.5, 0, -1.8);
+      this.interpreter.root.rotation.y = -Math.PI / 2;
       this.phase = 'house';
       this.cb.setMusic?.('interpreter');
       this.cb.setObjective('🏚 The House of the Interpreter — walk on to see what he shows you');
@@ -735,9 +998,38 @@ export class WicketGateScene {
     }
   }
 
+  // Christian can't walk through a partition wall — only through its gap
+  private resolvePartitions(p: THREE.Vector3): void {
+    const halfT = 0.18; // thin wall + a sliver of clearance — just enough to stop clipping
+    const gapHalf = PARTITION_GAP / 2 - 0.3; // a little slack so he doesn't catch on the edge
+    if (Math.abs(p.z) < gapHalf) return; // inside the walkway gap — nothing blocks him
+    for (const wx of this.partitionXs) {
+      if (p.x > wx - halfT && p.x < wx + halfT) {
+        p.x = p.x < wx ? wx - halfT : wx + halfT;
+      }
+    }
+  }
+
+  // Christian can't walk through the House's characters or furniture either
+  private resolveHouseColliders(p: THREE.Vector3): void {
+    for (const c of this.houseColliders) {
+      const dx = p.x - c.x;
+      const dz = p.z - c.z;
+      const d = Math.hypot(dx, dz);
+      if (d < c.r && d > 0.0001) {
+        p.x = c.x + (dx / d) * c.r;
+        p.z = c.z + (dz / d) * c.r;
+      }
+    }
+  }
+
   afterMove(): void {
     const p = this.christian.root.position;
     this.resolvePeopleCollision(p);
+    if (this.phase === 'house' || this.phase === 'houseExit') {
+      this.resolvePartitions(p);
+      this.resolveHouseColliders(p);
+    }
 
     // ---------- inside the House of the Interpreter ----------
     if (this.phase === 'house' || this.phase === 'houseExit') {
@@ -745,13 +1037,56 @@ export class WicketGateScene {
       p.x = THREE.MathUtils.clamp(p.x, IX - 2, HOUSE_EXIT_X + 3);
 
       if (this.phase === 'house') {
+        // walk up to the Interpreter before moving on, and he'll greet you
+        if (
+          !this.interpreterIdleTalked && this.stationIndex === 0 &&
+          p.distanceTo(this.interpreter.root.position) < 1.4
+        ) {
+          this.interpreterIdleTalked = true;
+          this.cb.playScript([
+            { speaker: 'Interpreter', text: 'Take your time, Christian. Walk on when you\'re ready, and I\'ll show you all that\'s here to see.' },
+          ]);
+          return;
+        }
+        // walk up to any of the House's characters, and they'll speak
+        for (const t of this.npcTalks) {
+          if (!t.talked && p.distanceTo(t.parts.root.position) < t.radius) {
+            t.talked = true;
+            this.cb.playScript(t.lines);
+            return;
+          }
+        }
         if (this.stationIndex < STATIONS.length && p.x > STATIONS[this.stationIndex] - 2) {
           const idx = this.stationIndex;
           this.stationIndex++;
-          // he walks to stand opposite Christian, facing him — never teleporting
+          // Interpreter walks to a scene-specific spot — never teleports
           const side = p.z >= 0 ? -1.6 : 1.6;
-          this.interpreterTarget = new THREE.Vector3(STATIONS[idx] - 1, 0, side);
-          this.interpreterFaceOnArrive = p.z >= 0 ? 0 : Math.PI;
+          if (idx === 0) {
+            // sweeping: top-left corner (clear of servants and Christian's path), facing east
+            this.interpreterTarget = new THREE.Vector3(STATIONS[0] - 2.0, 0, -2.0);
+            this.interpreterFaceOnArrive = Math.PI / 2;
+            this.christian.root.rotation.y = Math.PI; // face the sweeping servants
+          } else if (idx === 1) {
+            // children: top-right corner, facing down toward the kids
+            this.interpreterTarget = new THREE.Vector3(STATIONS[1] + 2.0, 0, -1.8);
+            this.interpreterFaceOnArrive = 0;
+          } else if (idx === 2) {
+            // fire/wall: top-left next to the devil, facing down into the room
+            this.interpreterTarget = new THREE.Vector3(STATIONS[2] - 1.8, 0, -3.0);
+            this.interpreterFaceOnArrive = 0;
+          } else if (idx === 3) {
+            // armed man: further left so he doesn't bump into Christian
+            this.interpreterTarget = new THREE.Vector3(STATIONS[3] - 2.5, 0, side);
+            this.interpreterFaceOnArrive = p.z >= 0 ? 0 : Math.PI;
+          } else if (idx === 4) {
+            // caged man: standard opposite side, Christian faces the cage
+            this.interpreterTarget = new THREE.Vector3(STATIONS[4] - 1, 0, side);
+            this.interpreterFaceOnArrive = p.z >= 0 ? 0 : Math.PI;
+            this.christian.root.rotation.y = Math.PI; // face toward cage (top of screen)
+          } else {
+            this.interpreterTarget = new THREE.Vector3(STATIONS[idx] - 1, 0, side);
+            this.interpreterFaceOnArrive = p.z >= 0 ? 0 : Math.PI;
+          }
           if (idx === 0) {
             // the dusty room: fill it with a choking cloud, then settle it
             // with a sprinkle of water, timed to the dialogue
@@ -760,6 +1095,18 @@ export class WicketGateScene {
               this.dustBurstTarget = 0;
               this.sprinkleT = 1.6;
               this.cb.playScript(DUST_LINES_B);
+            });
+          } else if (idx === 3) {
+            // armed man: fight starts after setup narration; knight only enters
+            // the gate when the Interpreter's dialogue cues it
+            this.cb.playScript([VIGNETTES[2][0], VIGNETTES[2][1]], () => {
+              this.knightState = 'fighting';
+              this.knightT = 0;
+              this.cb.playScript([VIGNETTES[2][2], VIGNETTES[2][3]], () => {
+                this.knightState = 'entering';
+                this.knightT = 0;
+                this.cb.playScript([VIGNETTES[2][4], VIGNETTES[2][5]]);
+              });
             });
           } else {
             this.cb.playScript(VIGNETTES[idx - 1]);
@@ -779,8 +1126,7 @@ export class WicketGateScene {
         return;
       }
 
-      // houseExit: the farewell is said (or being said) — once Christian
-      // actually walks through the open door, cut back outside
+      // houseExit: once Christian walks through the open door, cut back outside
       if (p.x > HOUSE_EXIT_X + 1.5) {
         const leave = () => {
           this.christian.root.position.set(COTTAGE_X, 0, -6.5 + 4.3);
@@ -793,6 +1139,14 @@ export class WicketGateScene {
         };
         if (this.cb.fade) this.cb.fade(leave);
         else leave();
+      }
+      // re-talk to Interpreter near the exit door if Christian doubles back
+      if (!this.interpreterExitTalked && p.distanceTo(this.interpreter.root.position) < 1.8) {
+        this.interpreterExitTalked = true;
+        this.cb.playScript([
+          { speaker: 'Interpreter', text: 'Still here, Christian? The road is waiting — but it\'s good to pause and look back sometimes.' },
+          { speaker: 'Interpreter', text: 'Everything you\'ve seen today will make more sense the further you walk. Now go — grace will carry you to the end.' },
+        ]);
       }
       return;
     }
@@ -808,6 +1162,40 @@ export class WicketGateScene {
       p.z = THREE.MathUtils.clamp(p.z, nearCottage ? -6.5 : -1.6, 1.6);
     }
     p.x = THREE.MathUtils.clamp(p.x, -62, HIGHWAY_END + 3);
+
+    // once through the Gate, Beelzebub's archers still watch the open ground
+    // before it — try to step back out and they loose another volley,
+    // simulating that the enemy is always there
+    if (this.hasPassedGate && !this.revisit && this.phase === 'freeroam' && p.x < GATE_X - 1.2) {
+      p.x = GATE_X - 1.2;
+      if (!this.peekBlocked) {
+        this.peekBlocked = true;
+        this.peekVolley = 5;
+        this.peekArrowTimer = 0;
+        this.cb.rumbleSound();
+        this.cb.playScript([
+          { speaker: 'Goodwill', text: 'Careful! Beelzebub\'s archers never sleep — stay behind the wall, Christian!' },
+        ]);
+      }
+    } else if (p.x > GATE_X + 0.5) {
+      this.peekBlocked = false;
+    }
+
+    // walk up to Goodwill again, behind the Gate, and he'll gladly talk
+    if (
+      this.goodwill.root.visible && (this.phase === 'freeroam' || this.phase === 'done') &&
+      p.distanceTo(this.goodwill.root.position) < 2.2
+    ) {
+      if (!this.goodwillNear) {
+        this.goodwillNear = true;
+        this.cb.playScript([
+          { speaker: 'Goodwill', text: 'Still here, are you? The Highway lies straight ahead, Christian — I told you true.' },
+          { speaker: 'Goodwill', text: 'Keep that shining light before your eyes. It has never yet led a pilgrim wrong.' },
+        ]);
+      }
+    } else {
+      this.goodwillNear = false;
+    }
 
     if (this.revisit) {
       if (p.x < -58 || p.x > HIGHWAY_END - 2) this.cb.onExit();
@@ -827,7 +1215,7 @@ export class WicketGateScene {
           this.stationIndex = 0;
           this.christian.root.position.set(IX, 0, 0);
           this.christian.root.rotation.y = Math.PI / 2;
-          this.interpreter.root.position.set(IX + 3, 0, 1.2);
+          this.interpreter.root.position.set(IX + 1.5, 0, -1.8);
           this.interpreter.root.rotation.y = -Math.PI / 2;
           this.cb.setMusic?.('interpreter');
           this.cb.setObjective('🏚 The House of the Interpreter — walk on to see what he shows you');
@@ -845,7 +1233,7 @@ export class WicketGateScene {
     ) {
       this.houseCalledOut = true;
       this.cb.playScript([
-        { speaker: 'Interpreter', text: 'Christian! Christian — over here! Will you not stop a moment at an old owl\'s door?' },
+        { speaker: 'Interpreter', text: 'Christian! Christian — over here! Won\'t you stop a moment at an old owl\'s door?' },
       ]);
     }
 
@@ -862,7 +1250,7 @@ export class WicketGateScene {
         ]],
         [-15, [
           { speaker: 'Christian', text: 'So far… and so straight. Not one turning. As if the road itself were telling me: no more byways, old bear.' },
-          { speaker: 'Christian', text: '*sigh* Help said it. Evangelist said it. "Knock, and it shall be opened." Keep walking, Christian. Just keep walking.' },
+          { speaker: 'Christian', text: '*sigh* Help said it. Evangelist said it. "Knock, and it will be opened." Keep walking, Christian. Just keep walking.' },
         ]],
       ];
       if (this.mutterIndex < mutters.length && p.x > mutters[this.mutterIndex][0]) {
@@ -876,11 +1264,11 @@ export class WicketGateScene {
         this.phase = 'knock';
         this.christian.root.rotation.y = Math.PI / 2;
         this.cb.playScript([
-          { speaker: '', text: 'The gate is shut. Above it, an old inscription reads: "Knock, and it shall be opened unto you."' },
-          { speaker: 'Christian', text: '*knock… knock…* May I enter here? Will he within open to sorry me, though I have been an undeserving rebel?' },
+          { speaker: '', text: 'The gate is shut. Above it, an old inscription reads: "Knock, and it will be opened to you."' },
+          { speaker: 'Christian', text: '*knock… knock…* May I enter here? Will he within open even to a broken sinner like me?' },
           { speaker: '???', text: '(a deep, warm voice, like far-off thunder that means no harm) Who knocks?' },
           { speaker: 'Christian', text: 'A poor burdened sinner, come from the City of Destruction. I am bound for the Celestial City — they told me the way lies through this Gate.' },
-          { speaker: 'Goodwill', text: 'Then willingly do I open. We turn none away who knock — none.' },
+          { speaker: 'Goodwill', text: 'Then I gladly open it. We turn no one away who knocks — no one.' },
         ], () => {
           // the doors swing wide; a great lion stands within
           this.doorOpen = true;
@@ -888,8 +1276,8 @@ export class WicketGateScene {
           this.cb.blipSound();
           this.cb.playScript([
             { speaker: '', text: 'The doors swing open — and there stands a LION, golden-maned and robed in white, filling the gateway like sunrise.' },
-            { speaker: 'Goodwill', text: 'I am Goodwill, keeper of this Gate. But stand not in the open, friend—' },
-            { speaker: 'Goodwill', text: 'Yonder castle belongs to BEELZEBUB, and his archers shoot at every pilgrim who dares my doorstep. QUICKLY — give me your paw!' },
+            { speaker: 'Goodwill', text: 'I am Goodwill, keeper of this Gate. But don\'t stand in the open, friend—' },
+            { speaker: 'Goodwill', text: 'That castle over there belongs to BEELZEBUB, and his archers shoot at every pilgrim who dares my doorstep. QUICKLY — give me your paw!' },
           ], () => {
             this.phase = 'volley';
             this.volleyT = 0;
@@ -923,6 +1311,34 @@ export class WicketGateScene {
     if (!this.built) return;
     animateBear(this.christian, t, moving && this.moveFactor() > 0);
     if (this.goodwill.root.visible) animateBear(this.goodwill, t + 0.7, false);
+
+    // foot-dust puffs while walking
+    if (moving) {
+      this.footDustTimer -= dt;
+      if (this.footDustTimer <= 0) {
+        this.footDustTimer = 0.13;
+        const cp = this.christian.root.position;
+        const fd = this.footDust.find((d) => d.life >= 1);
+        if (fd) {
+          fd.life = 0;
+          fd.vx = (Math.random() - 0.5) * 0.8;
+          fd.vz = (Math.random() - 0.5) * 0.8;
+          fd.mesh.position.set(cp.x + (Math.random() - 0.5) * 0.5, 0.12, cp.z + (Math.random() - 0.5) * 0.5);
+          fd.mesh.visible = true;
+        }
+      }
+    }
+    for (const fd of this.footDust) {
+      if (fd.life >= 1) continue;
+      fd.life = Math.min(1, fd.life + dt * 2.2);
+      fd.mesh.position.x += fd.vx * dt;
+      fd.mesh.position.z += fd.vz * dt;
+      fd.mesh.position.y += dt * 0.9;
+      const ss = 0.6 + fd.life * 1.6;
+      fd.mesh.scale.setScalar(ss);
+      fd.mat.opacity = 0.55 * (1 - fd.life);
+      if (fd.life >= 1) fd.mesh.visible = false;
+    }
 
     // the Interpreter walks (never teleports) between vignettes, and always
     // turns to face Christian once he arrives. While the House's rooms are in
@@ -994,15 +1410,133 @@ export class WicketGateScene {
         drop.mesh.visible = false;
       }
     }
-    // the fire that never goes out
+    // the fire that never goes out — flickering flames, a pulsing glow, and
+    // embers rising out of it
     for (let i = 0; i < this.fireMotes.length; i++) {
       const mesh = this.fireMotes[i];
-      const s = 0.85 + 0.3 * Math.abs(Math.sin(t * 6 + i * 1.7));
+      const s = 0.8 + 0.35 * Math.abs(Math.sin(t * 6.5 + i * 1.9));
       mesh.scale.set(1, s, 1);
+    }
+    if (this.fireGlow) this.fireGlow.intensity = 1.5 + Math.abs(Math.sin(t * 5)) * 0.8;
+    for (const e of this.embers) {
+      e.life += dt * 0.6;
+      if (e.life >= 1) {
+        e.life -= 1;
+        e.mesh.position.set(e.baseX, 0.3, e.baseZ);
+      }
+      e.mesh.position.y += dt * 0.7;
+      e.mesh.position.x += Math.sin(t * 3 + e.baseZ) * dt * 0.15;
+      e.mat.opacity = 0.8 * (1 - e.life);
     }
     // the devil endlessly tips his pail; Christ, unseen, endlessly tips his oil
     if (this.devilArm) this.devilArm.rotation.x = -0.9 + Math.sin(t * 2.2) * 0.5;
     if (this.christArm) this.christArm.rotation.x = -0.9 + Math.sin(t * 1.8 + 1) * 0.5;
+
+    // blue water drops fall from the devil's pail (left); bright yellow oil
+    // drops fall from Christ's jug (right) — both into the fire in the middle
+    this.dropTimer -= dt;
+    if (this.dropTimer <= 0) {
+      this.dropTimer = 0.12;
+      const wd = this.waterDrops.find((d) => !d.active);
+      if (wd) {
+        wd.active = true;
+        wd.mesh.position.set(STATIONS[2] - 1.2 + (Math.random() - 0.5) * 0.3, 0.85, -1.7);
+        wd.mesh.visible = true;
+        wd.mat.opacity = 0.85;
+      }
+      const od = this.oilDrops.find((d) => !d.active);
+      if (od) {
+        od.active = true;
+        od.mesh.position.set(STATIONS[2] + 1.2 + (Math.random() - 0.5) * 0.3, 0.85, -1.7);
+        od.mesh.visible = true;
+        od.mat.opacity = 0.9;
+      }
+    }
+    for (const d of this.waterDrops) {
+      if (!d.active) continue;
+      d.mesh.position.y -= dt * 2.2;
+      if (d.mesh.position.y <= 0.08) { d.active = false; d.mesh.visible = false; }
+    }
+    for (const d of this.oilDrops) {
+      if (!d.active) continue;
+      d.mesh.position.y -= dt * 2.2;
+      if (d.mesh.position.y <= 0.08) { d.active = false; d.mesh.visible = false; }
+    }
+
+    // the sweeper works hard while the dust billows; the waterer douses the
+    // floor once the dust clears, both timed to the same dialogue beats
+    if (this.sweeper && this.sweeperArm) {
+      const sweeping = this.dustBurst > 0.1;
+      this.sweeperArm.rotation.z = sweeping ? Math.sin(t * 11) * 0.9 : 0;
+      this.sweeper.root.position.x = STATIONS[0] - 0.9 + (sweeping ? Math.sin(t * 3) * 0.3 : 0);
+      animateBear(this.sweeper, t * 4, sweeping);
+    }
+    if (this.waterer && this.watererArm) {
+      const pouring = this.sprinkleT > 0;
+      this.watererArm.rotation.x = pouring ? -1.1 + Math.sin(t * 5) * 0.4 : -0.1;
+      animateBear(this.waterer, t * 3, false);
+    }
+
+    // Passion's ball bounces as she plays
+    if (this.toyBall) {
+      this.toyBall.position.y = 0.16 + Math.abs(Math.sin(t * 2.6)) * 0.18;
+    }
+    if (this.passionArm) {
+      this.passionArm.rotation.x = -0.3 + Math.sin(t * 2.4) * 0.3;
+    }
+
+    // the dreamer trembles, visibly scared, sweat beading and falling
+    if (this.dreamer) {
+      this.dreamer.root.rotation.z = Math.sin(t * 19) * 0.05;
+      this.dreamer.root.rotation.x = Math.sin(t * 23) * 0.04;
+      this.dreamer.head.rotation.y = Math.sin(t * 14) * 0.06;
+    }
+    for (let i = 0; i < this.sweatDrops.length; i++) {
+      const d = this.sweatDrops[i];
+      const cyc = (t * 0.9 + i * 0.5) % 1;
+      d.mesh.position.y = d.baseY - cyc * 0.45;
+      d.mat.opacity = 0.85 * (1 - cyc);
+    }
+
+    // the armed man: fights his way past the guards, then enters the gate
+    if (this.knightState === 'fighting') {
+      this.knightT += dt;
+      if (this.knightArm) this.knightArm.rotation.x = -0.3 + Math.sin(this.knightT * 11) * 1.1;
+      if (this.knightShieldArm) this.knightShieldArm.rotation.z = 0.2 + Math.sin(this.knightT * 7 + 1) * 0.15;
+      if (this.knight) {
+        this.knight.root.rotation.z = Math.sin(this.knightT * 8) * 0.06;
+        animateBear(this.knight, t, false);
+      }
+      this.guards.forEach((g, i) => {
+        this.guardStagger[i] = Math.max(0, this.guardStagger[i] - dt * 2.5);
+        if (Math.random() < dt * 1.8) this.guardStagger[i] = 1;
+        const kick = this.guardStagger[i];
+        g.root.position.x = this.guardBaseX[i] + Math.sin(this.knightT * 22 + i) * 0.08 * kick;
+        g.root.rotation.z = Math.sin(this.knightT * 16 + i) * 0.35 * kick;
+        animateBear(g, t + i, false);
+      });
+      // loop the fight animation without auto-entering — entering is triggered
+      // by the dialogue callback when the Interpreter speaks
+      if (this.knightT > 2.6) this.knightT = 0.5;
+    } else if (this.knightState === 'entering' && this.knight) {
+      this.knightT += dt;
+      const kp = this.knight.root.position;
+      const dx = this.knightDoorPos.x - kp.x;
+      const dz = this.knightDoorPos.z - kp.z;
+      const d = Math.hypot(dx, dz);
+      if (d > 0.15) {
+        const step = Math.min(3 * dt, d);
+        kp.x += (dx / d) * step;
+        kp.z += (dz / d) * step;
+        this.knight.root.rotation.y = Math.atan2(dx, dz);
+        animateBear(this.knight, t, true);
+      } else {
+        this.knightState = 'done';
+        this.knight.root.visible = false; // through the gate, and welcomed within
+      }
+    } else if (this.knight && this.knight.root.visible) {
+      animateBear(this.knight, t + 2, false);
+    }
 
     // the gate doors swing
     const doorTarget = this.doorOpen ? 1.7 : 0;
@@ -1015,21 +1549,27 @@ export class WicketGateScene {
       const cDoorTarget = this.houseDoorOpen ? -2.1 : 0;
       this.cottageDoor.rotation.y += (cDoorTarget - this.cottageDoor.rotation.y) * 0.08;
     }
-    // the far door out of the hall swings open once the farewell is said,
-    // and fades gently between solid and translucent as it opens/shuts
+    // the far door out of the hall swings open once the farewell is said
     if (this.exitDoor) {
       const eDoorTarget = this.exitDoorOpen ? -2.1 : 0;
       this.exitDoor.rotation.y += (eDoorTarget - this.exitDoor.rotation.y) * 0.08;
-      if (this.exitDoorMat) {
-        const opTarget = this.exitDoorOpen ? 0.75 : 1;
-        this.exitDoorMat.opacity += (opTarget - this.exitDoorMat.opacity) * 0.05;
-      }
     }
 
     // castle windows pulse balefully
     for (let i = 0; i < this.castleGlows.length; i++) {
       (this.castleGlows[i].material as THREE.MeshBasicMaterial).opacity =
         0.5 + 0.4 * Math.abs(Math.sin(t * 1.7 + i * 1.9));
+    }
+
+    // a short, sharp volley whenever Christian tries to step back out past
+    // the Gate — the archers were never actually called off
+    if (this.peekVolley > 0) {
+      this.peekArrowTimer -= dt;
+      if (this.peekArrowTimer <= 0) {
+        this.peekArrowTimer = 0.15;
+        this.fireArrow();
+        this.peekVolley--;
+      }
     }
 
     // ---------- the volley: arrows rain while Goodwill pulls him through ----------
@@ -1057,12 +1597,13 @@ export class WicketGateScene {
           { speaker: 'Christian', text: 'I fell in the Slough of Despond, and my neighbour turned home. Then a smooth-tongued gentleman turned me aside to Mount Sinai, and I was nearly crushed. I am ashamed of it all, sir.' },
           { speaker: 'Goodwill', text: 'And yet you are HERE — muddy, singed, and standing at my Gate. That is the whole of what matters. This door was hung for the bruised and the muddy, or it was hung for no one.' },
           { speaker: 'Christian', text: 'Then… may I ask one thing more? This burden on my back. I have carried it so long. Can it be taken off here?' },
-          { speaker: 'Goodwill', text: 'Not here, dear pilgrim. Be content to bear it a little longer. Ahead lies the place of deliverance — there it will loosen of itself, and fall from your back, and roll away where none shall ever find it.' },
-          { speaker: 'Goodwill', text: 'Look east. That is the King\'s Highway — straight and narrow, cast up by the King and His Son. Keep to it; turn neither left nor right, and you cannot lose your way.' },
+          { speaker: 'Goodwill', text: 'Not here, dear pilgrim. Be patient a little longer. Ahead lies the place of deliverance — there it will loosen of itself, and fall from your back, and roll away where no one will ever find it.' },
+          { speaker: 'Goodwill', text: 'Look east. That is the King\'s Highway — straight and narrow, built by the King and His Son. Keep to it; turn neither left nor right, and you cannot lose your way.' },
           { speaker: 'Christian', text: 'Straight and narrow. I will keep to it, Goodwill — I promise. My heart feels lighter already… though my back, I confess, does not.' },
           { speaker: 'Goodwill', text: '*a low, warm laugh, like summer thunder* It will, Christian. Sooner than you think. Now go — and grace go with you.' },
         ], () => {
           this.phase = 'freeroam';
+          this.hasPassedGate = true;
           if (this.lightBeam) this.lightBeam.visible = true;
           this.cb.setObjective('✨ Walk the straight and narrow way, toward the light');
         });

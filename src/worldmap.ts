@@ -9,13 +9,14 @@ import { makeBear, animateBear, BearParts, block, mat } from './bear';
 // way is barred and a smooth, pleasant byway curves south to the village of
 // Morality, where Mount Sinai broods. Party members trail behind Christian.
 
-export type MapSpot = 'city' | 'road' | 'slough' | 'fork' | 'morality' | 'beyond';
+export type MapSpot = 'city' | 'road' | 'slough' | 'fork' | 'morality' | 'beyond' | 'cross';
 
 const CITY = new THREE.Vector3(-14.5, 0, 0);
 const SLOUGH = new THREE.Vector3(-3.5, 0, 0);
 const FORK = new THREE.Vector3(3.5, 0, 0);
 const MORALITY = new THREE.Vector3(11, 0, 7);
 const BEYOND = new THREE.Vector3(17.5, 0, -1);
+const CROSS = new THREE.Vector3(25.5, 0, 2.5);
 
 // island centres + how close the road must be to count as "on land"
 const ISLANDS: Array<{ c: THREE.Vector3; r: number }> = [
@@ -24,6 +25,7 @@ const ISLANDS: Array<{ c: THREE.Vector3; r: number }> = [
   { c: FORK, r: 1.9 },
   { c: MORALITY, r: 4.2 },
   { c: BEYOND, r: 4.0 },
+  { c: CROSS, r: 4.0 },
 ];
 
 export class WorldMap {
@@ -34,12 +36,15 @@ export class WorldMap {
   road: 'main' | 'branch' = 'main';
   sloughDone = false;
   moralityDone = false;
+  wicketDone = false;
+  crossDone = false;
   justDiverted = false; // set when the barred way shunts Christian onto the byway
   // t-parameters along the main curve nearest each stop, resolved in ctor
   cityT = 0.02;
   sloughT = 0.35;
   forkT = 0.6;
-  beyondT = 0.97;
+  beyondT = 0.85;
+  crossT = 0.97;
   private mainCurve: THREE.CatmullRomCurve3;
   private branchCurve: THREE.CatmullRomCurve3;
   private branchSpeed = 1; // t-speed scale so ground speed matches the main road
@@ -50,6 +55,11 @@ export class WorldMap {
   private sparkles: THREE.Mesh[] = [];
   private mist: THREE.Mesh[] = [];
   private sinaiGlow: THREE.Mesh | null = null;
+  private sunHalos: THREE.Mesh[] = [];
+  private crossGlow: THREE.Mesh | null = null;
+  private birds: Array<{ g: THREE.Group; wingL: THREE.Mesh; wingR: THREE.Mesh; speed: number; active: boolean }> = [];
+  private birdTimer = 4;
+  private christianHasBurden = true;
   private moving = false;
   private facing = 1;
   private built = false;
@@ -70,6 +80,10 @@ export class WorldMap {
       new THREE.Vector3(11, 0.62, -4.2),
       new THREE.Vector3(14.5, 0.62, -3.2),
       new THREE.Vector3(BEYOND.x - 1.5, 0.62, -1.3),
+      // …and on past the Gate, to the green hill of the Cross
+      new THREE.Vector3(20.5, 0.62, 0.4),
+      new THREE.Vector3(23, 0.62, 1.6),
+      new THREE.Vector3(CROSS.x - 1.0, 0.62, CROSS.z - 0.3),
     ]);
     this.branchCurve = new THREE.CatmullRomCurve3([
       new THREE.Vector3(FORK.x + 0.6, 0.62, 0.8),
@@ -81,12 +95,20 @@ export class WorldMap {
     this.sloughT = this.tForPoint(SLOUGH);
     this.forkT = this.tForPoint(FORK);
     this.beyondT = this.tForPoint(BEYOND);
+    this.crossT = this.tForPoint(CROSS);
     this.branchSpeed = this.mainCurve.getLength() / Math.max(this.branchCurve.getLength(), 1);
 
-    this.christian = makeBear({
+    this.christian = this.makeMapChristian();
+  }
+
+  // Christian on the map: burdened in his old blue shirt until the Cross,
+  // then unburdened, in the shining garments the angels gave him
+  private makeMapChristian(): BearParts {
+    this.christianHasBurden = !this.crossDone;
+    return makeBear({
       species: 'bear', fur: PALETTE.bearBrown,
-      outfit: 'shirt', outfitColor: 0x8fb8d8,
-      sling: true, burden: true, scale: 0.5,
+      outfit: 'shirt', outfitColor: this.crossDone ? PALETTE.robeWhite : 0x8fb8d8,
+      sling: true, burden: !this.crossDone, scale: 0.5,
     });
   }
 
@@ -174,30 +196,36 @@ export class WorldMap {
     if (this.built) return;
     this.built = true;
     const s = this.scene;
-    s.background = new THREE.Color(0xbfe0f5);
-    s.fog = new THREE.Fog(0xbfe0f5, 34, 95);
+    s.background = new THREE.Color(0xd3ecff);
+    s.fog = new THREE.Fog(0xd3ecff, 36, 100);
 
-    s.add(new THREE.HemisphereLight(0xe8f4ff, 0xbcd9ea, 1.0));
-    const sun = new THREE.DirectionalLight(PALETTE.sun, 1.4);
+    s.add(new THREE.HemisphereLight(0xf2f9ff, 0xcde4f2, 1.3));
+    const sun = new THREE.DirectionalLight(PALETTE.sun, 1.7);
     sun.position.set(-8, 14, 10);
     sun.castShadow = true;
     sun.shadow.mapSize.set(1024, 1024);
-    sun.shadow.camera.left = -24;
-    sun.shadow.camera.right = 24;
-    sun.shadow.camera.top = 16;
-    sun.shadow.camera.bottom = -16;
+    sun.shadow.camera.left = -30;
+    sun.shadow.camera.right = 30;
+    sun.shadow.camera.top = 18;
+    sun.shadow.camera.bottom = -18;
     s.add(sun);
 
-    // a chunky voxel sun in the sky
-    const sunBlock = block(1.6, 1.6, 0.3, 0xffe87a, 14, 10.5, -14);
-    sunBlock.castShadow = false;
-    s.add(sunBlock);
-    const sunHalo = new THREE.Mesh(
-      new THREE.BoxGeometry(2.4, 2.4, 0.2),
-      new THREE.MeshBasicMaterial({ color: 0xfff3b8, transparent: true, opacity: 0.5 }),
+    // a proper round, bright sun with soft halos
+    const sunCore = new THREE.Mesh(
+      new THREE.SphereGeometry(1.15, 24, 18),
+      new THREE.MeshBasicMaterial({ color: 0xffe14d }),
     );
-    sunHalo.position.set(14, 10.5, -14.2);
-    s.add(sunHalo);
+    sunCore.position.set(14, 11, -14);
+    s.add(sunCore);
+    for (const [r, op] of [[1.55, 0.4], [2.1, 0.18]] as const) {
+      const halo = new THREE.Mesh(
+        new THREE.SphereGeometry(r, 24, 18),
+        new THREE.MeshBasicMaterial({ color: 0xfff3b8, transparent: true, opacity: op, depthWrite: false }),
+      );
+      halo.position.copy(sunCore.position);
+      s.add(halo);
+      this.sunHalos.push(halo);
+    }
 
     // pastel sea with animated sparkles
     const sea = new THREE.Mesh(new THREE.BoxGeometry(240, 1, 160), mat(PALETTE.water));
@@ -346,21 +374,77 @@ export class WorldMap {
     }
     this.label('Wicket Gate', BEYOND.x, BEYOND.z, 4.4);
 
+    // ---------- the hill of the Cross ----------
+    const crossIsle = this.island(CROSS.x, CROSS.z, 4.2, PALETTE.grassLight);
+    // a soft green hill rising from the island
+    crossIsle.add(block(4.6, 0.7, 4.0, PALETTE.grass, 0, 0.85, -0.4));
+    crossIsle.add(block(3.2, 0.7, 2.8, 0x9ede97, 0, 1.5, -0.4));
+    crossIsle.add(block(2.0, 0.6, 1.8, PALETTE.grassLight, 0, 2.1, -0.4));
+    // the Cross on the summit
+    crossIsle.add(block(0.22, 1.5, 0.22, PALETTE.woodDark, 0, 3.1, -0.4));
+    crossIsle.add(block(0.95, 0.22, 0.22, PALETTE.woodDark, 0, 3.45, -0.4));
+    const crossHalo = new THREE.Mesh(
+      new THREE.SphereGeometry(1.0, 18, 14),
+      new THREE.MeshBasicMaterial({ color: 0xfff3b8, transparent: true, opacity: 0.35, depthWrite: false }),
+    );
+    crossHalo.position.set(0, 3.3, -0.4);
+    crossIsle.add(crossHalo);
+    this.crossGlow = crossHalo;
+    // the open tomb at the hill's foot
+    crossIsle.add(block(1.1, 0.8, 0.9, 0xb9b4ac, 1.9, 0.9, 0.9));
+    crossIsle.add(block(0.5, 0.5, 0.1, 0x4a4440, 1.9, 0.85, 1.36));
+    const tombStone = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.34, 0.16, 12), mat(0xa8a29a));
+    tombStone.rotation.x = Math.PI / 2;
+    tombStone.rotation.z = Math.PI / 2;
+    tombStone.position.set(2.7, 0.9, 1.3);
+    crossIsle.add(tombStone);
+    crossIsle.add(this.miniTree(-2.6, 1.8, true));
+    this.label('The Cross', CROSS.x, CROSS.z, 5.4);
+
     // ---------- both roads: stones on land, plank bridges over water ----------
     this.buildRoad(this.mainCurve, 72);
     this.buildRoad(this.branchCurve, 26);
 
-    // ---------- drifting clouds ----------
+    // ---------- drifting clouds: soft, round and white ----------
+    const cloudMat = new THREE.MeshLambertMaterial({ color: 0xffffff, emissive: 0x777777 });
     for (let i = 0; i < 6; i++) {
       const c = new THREE.Group();
-      c.add(block(1.8, 0.55, 1.0, 0xffffff, 0, 0, 0));
-      c.add(block(1.1, 0.5, 0.8, 0xffffff, 1.0, 0.25, 0.1));
-      c.add(block(0.9, 0.45, 0.7, 0xffffff, -0.9, 0.18, -0.1));
-      c.add(block(0.6, 0.35, 0.5, 0xffffff, 0.2, 0.42, 0.15));
-      c.position.set((Math.random() - 0.5) * 36, 5.5 + Math.random() * 3, -6 - Math.random() * 5);
-      c.traverse((o) => { if ((o as THREE.Mesh).isMesh) o.castShadow = false; });
+      const puff = (r: number, px: number, py: number, pz: number) => {
+        const p = new THREE.Mesh(new THREE.SphereGeometry(r, 14, 10), cloudMat);
+        p.position.set(px, py, pz);
+        p.castShadow = false;
+        c.add(p);
+      };
+      puff(0.85, 0, 0, 0);
+      puff(0.65, 0.95, 0.12, 0.1);
+      puff(0.6, -0.9, 0.08, -0.1);
+      puff(0.5, 0.35, 0.45, 0.12);
+      puff(0.45, -0.4, 0.4, -0.05);
+      c.position.set((Math.random() - 0.5) * 42, 5.5 + Math.random() * 3, -6 - Math.random() * 5);
       this.clouds.push(c);
       s.add(c);
+    }
+
+    // ---------- birds that fly across the sky now and then ----------
+    for (let i = 0; i < 3; i++) {
+      const g = new THREE.Group();
+      const body = block(0.22, 0.12, 0.3, 0x4a4440, 0, 0, 0);
+      body.castShadow = false;
+      g.add(body);
+      const wing = (side: number) => {
+        const w = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.05, 0.22), mat(0x5b544e));
+        w.geometry.translate(0.3, 0, 0); // pivot at the wing root
+        w.position.set(0.08 * side, 0.04, 0);
+        w.scale.x = side;
+        w.castShadow = false;
+        g.add(w);
+        return w;
+      };
+      const wingL = wing(-1);
+      const wingR = wing(1);
+      g.visible = false;
+      s.add(g);
+      this.birds.push({ g, wingL, wingR, speed: 0, active: false });
     }
 
     // travellers
@@ -409,6 +493,13 @@ export class WorldMap {
 
   start(party: Array<'pliable'>): void {
     this.build();
+    // after the Cross, the burden is gone and the garments are new
+    if (this.christianHasBurden !== !this.crossDone) {
+      this.scene.remove(this.christian.root);
+      this.christian = this.makeMapChristian();
+      this.scene.add(this.christian.root);
+      this.placeOn(this.mainCurve, this.christian.root, this.progress);
+    }
     for (const f of this.followers) this.scene.remove(f.root);
     this.followers = party.map((id) => {
       const parts = id === 'pliable'
@@ -422,9 +513,9 @@ export class WorldMap {
   resize(aspect: number): void {
     this.camera.aspect = aspect;
     // pull back on narrow screens so all the islands stay in frame
-    const z = THREE.MathUtils.clamp(40 / aspect - 1, 20, 46);
-    this.camera.position.set(1.2, z * 0.78, z + 2.2);
-    this.camera.lookAt(1.2, 0.4, 1.4);
+    const z = THREE.MathUtils.clamp(48 / aspect - 1, 24, 58);
+    this.camera.position.set(5.0, z * 0.78, z + 2.2);
+    this.camera.lookAt(5.0, 0.4, 1.4);
     this.camera.updateProjectionMatrix();
   }
 
@@ -435,7 +526,8 @@ export class WorldMap {
     if (this.progress < this.cityT + 0.05) return 'city';
     if (Math.abs(this.progress - this.sloughT) < 0.05) return 'slough';
     if (Math.abs(this.progress - this.forkT) < 0.04) return 'fork';
-    if (this.progress > this.beyondT - 0.04) return 'beyond';
+    if (this.progress > this.crossT - 0.04) return 'cross';
+    if (Math.abs(this.progress - this.beyondT) < 0.04) return 'beyond';
     return 'road';
   }
 
@@ -452,10 +544,13 @@ export class WorldMap {
     if (this.road === 'main') {
       if (Math.abs(axisX) > 0.15) {
         this.moving = true;
-        // the long road east stays barred until Morality is settled
-        const maxP = this.moralityDone
-          ? this.beyondT + 0.02
-          : (this.sloughDone ? this.forkT : this.sloughT + 0.05);
+        // the long road east stays barred until Morality is settled;
+        // the road past the Gate opens only once the Gate chapter is done
+        const maxP = this.wicketDone
+          ? this.crossT + 0.02
+          : this.moralityDone
+            ? this.beyondT + 0.02
+            : (this.sloughDone ? this.forkT : this.sloughT + 0.05);
         this.progress = THREE.MathUtils.clamp(this.progress + axisX * step, 0.02, maxP);
         this.facing = axisX > 0 ? 1 : -1;
         // pressing east against the barred way → shunted onto the smooth byway
@@ -512,7 +607,41 @@ export class WorldMap {
     for (let i = 0; i < this.clouds.length; i++) {
       const c = this.clouds[i];
       c.position.x += dt * (0.2 + i * 0.06);
-      if (c.position.x > 24) c.position.x = -24;
+      if (c.position.x > 30) c.position.x = -30;
+    }
+    // birds: launch one across the sky every so often
+    this.birdTimer -= dt;
+    if (this.birdTimer <= 0) {
+      this.birdTimer = 6 + Math.random() * 8;
+      const bird = this.birds.find((b) => !b.active);
+      if (bird) {
+        bird.active = true;
+        bird.speed = 2.6 + Math.random() * 1.8;
+        bird.g.position.set(-30, 6.5 + Math.random() * 3.5, -9 + Math.random() * 9);
+        bird.g.rotation.y = Math.PI / 2;
+        bird.g.visible = true;
+      }
+    }
+    for (const b of this.birds) {
+      if (!b.active) continue;
+      b.g.position.x += b.speed * dt;
+      b.g.position.y += Math.sin(t * 2 + b.g.position.x) * dt * 0.3;
+      const flap = Math.sin(t * 13 + b.g.position.z) * 0.65;
+      b.wingL.rotation.z = -flap;
+      b.wingR.rotation.z = flap;
+      if (b.g.position.x > 30) {
+        b.active = false;
+        b.g.visible = false;
+      }
+    }
+    // the sun breathes gently
+    for (let i = 0; i < this.sunHalos.length; i++) {
+      const sc = 1 + Math.sin(t * 1.4 + i) * 0.06;
+      this.sunHalos[i].scale.setScalar(sc);
+    }
+    if (this.crossGlow) {
+      (this.crossGlow.material as THREE.MeshBasicMaterial).opacity =
+        0.22 + 0.18 * Math.abs(Math.sin(t * 1.1));
     }
     for (let i = 0; i < this.islands.length; i++) {
       this.islands[i].position.y = Math.sin(t * 0.6 + i * 2.1) * 0.04;

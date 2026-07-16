@@ -8,6 +8,7 @@ import { WorldMap } from './worldmap';
 import { SloughScene } from './slough';
 import { MoralityScene } from './morality';
 import { WicketGateScene } from './wicketgate';
+import { CrossScene } from './cross';
 
 // ---------------------------------------------------------------- setup
 
@@ -56,6 +57,7 @@ const christian = makeBear({
   outfitColor: 0x8fb8d8,
   sling: true,
   burden: true,
+  plump: true,
 });
 christian.root.position.set(-6, 0, -4);
 scene.add(christian.root);
@@ -72,11 +74,12 @@ const quest: QuestState = {
   moralityDone: false,
   wicketDone: false,
   interpreterDone: false,
+  crossDone: false,
 };
 
 const music = new Music();
 const worldMap = new WorldMap(window.innerWidth / window.innerHeight);
-let mode: 'village' | 'map' | 'slough' | 'morality' | 'wicket' = 'village';
+let mode: 'village' | 'map' | 'slough' | 'morality' | 'wicket' | 'cross' = 'village';
 
 // ---------------------------------------------------------------- UI refs
 
@@ -170,9 +173,11 @@ function goToMap(): void {
   mode = 'map';
   music.setStyle('map');
   ui.promptKey.style.display = 'none';
-  setObjective(quest.wicketDone
-    ? '🗺 The place of deliverance lies ahead — Chapter V, coming soon…'
-    : quest.moralityDone
+  setObjective(quest.crossDone
+    ? '🗺 The burden is gone! Chapter VI — the road to the Celestial City, coming soon…'
+    : quest.wicketDone
+      ? '🗺 Past the Gate a green hill rises — on to the place of deliverance!'
+      : quest.moralityDone
       ? '🗺 The long road east lies open — on toward the Wicket Gate!'
       : quest.sloughComplete
         ? '🗺 East to the crossroad — a smooth byway and a barred road'
@@ -257,7 +262,11 @@ const wicket = new WicketGateScene({
   rumbleSound: () => music.rumble(),
   blipSound: () => music.blip(),
   setMusic: (style) => music.setStyle(style),
-  fade: (mid) => fadeTransition(mid),
+  fade: (mid) => fadeTransition(() => {
+    mid();
+    // snap camera to new position so the fade covers the cut completely
+    if (wicketActors) camTarget.copy(wicketActors.christian.root.position);
+  }),
   onComplete: () => {
     quest.wicketDone = true;
     quest.interpreterDone = true;
@@ -277,6 +286,7 @@ const wicket = new WicketGateScene({
         // straight back to the Slough the moment you try to move
         worldMap.sloughDone = true;
         worldMap.moralityDone = true;
+        worldMap.wicketDone = true;
         worldMap.start([]);
         worldMap.road = 'main';
         worldMap.progress = worldMap.beyondT;
@@ -286,6 +296,47 @@ const wicket = new WicketGateScene({
   },
 });
 let wicketActors: { christian: import('./bear').BearParts } | null = null;
+
+// ---------- Chapter V: the Cross and the empty tomb ----------
+const cross = new CrossScene({
+  playScript,
+  setObjective,
+  onExit: () => goToMap(),
+  blipSound: () => music.blip(),
+  setMusic: (style) => music.setStyle(style),
+  onComplete: () => {
+    quest.crossDone = true;
+    showEnding(
+      '✝ Chapter V Complete',
+      'The Cross and the Empty Tomb',
+      'At the top of the hill the burden loosened of itself, rolled down into the '
+      + 'open tomb, and was never seen again. Three Shining Ones met Christian there: '
+      + 'his sins forgiven, his rags exchanged for shining garments, a seal on his '
+      + 'forehead and a sealed scroll in his paw — the King\'s own promise. Not by '
+      + 'the hard journey, nor by any good deed, but by grace alone he goes on now, '
+      + 'singing, toward the Celestial City…',
+      () => {
+        worldMap.sloughDone = true;
+        worldMap.moralityDone = true;
+        worldMap.wicketDone = true;
+        worldMap.crossDone = true;
+        worldMap.start([]);
+        worldMap.road = 'main';
+        worldMap.progress = worldMap.crossT;
+        goToMap();
+      },
+    );
+  },
+});
+let crossActors: { christian: import('./bear').BearParts } | null = null;
+
+function enterCross(revisit: boolean): void {
+  mode = 'cross';
+  ui.prompt.style.display = 'none';
+  ui.talkBtn.style.display = 'none';
+  crossActors = cross.enter(revisit);
+  camTarget.copy(crossActors.christian.root.position);
+}
 
 function enterWicket(revisit: boolean): void {
   mode = 'wicket';
@@ -413,7 +464,7 @@ window.addEventListener('keydown', (e) => {
   ) {
     if (dialogueOpen) advanceDialogue();
     else if (mode === 'map') tryEnterFromMap();
-    else tryTalk();
+    else if (mode === 'village') tryTalk();
   }
 });
 
@@ -423,6 +474,7 @@ function tryEnterFromMap(): void {
   else if (spot === 'city') enterVillage();
   else if (spot === 'morality') enterMorality(quest.moralityDone);
   else if (spot === 'beyond') enterWicket(quest.wicketDone);
+  else if (spot === 'cross') enterCross(quest.crossDone);
 }
 window.addEventListener('keyup', (e) => keys.delete(e.code));
 // don't leave movement keys stuck when the tab loses focus mid-keypress
@@ -485,18 +537,20 @@ ui.debugPanel.addEventListener('click', (e) => {
   // debug jumps skip the map entirely, so make sure its "how far can I walk"
   // flags agree with wherever we're jumping to — otherwise a later visit to
   // the map can snap Christian's progress back to an earlier chapter
-  if (jump === 'morality' || jump === 'wicket-approach' || jump === 'wicket-highway' || jump === 'interpreter') {
+  if (jump === 'morality' || jump === 'wicket-approach' || jump === 'wicket-highway' || jump === 'interpreter' || jump === 'cross') {
     worldMap.sloughDone = true;
   }
-  if (jump === 'wicket-approach' || jump === 'wicket-highway' || jump === 'interpreter') {
+  if (jump === 'wicket-approach' || jump === 'wicket-highway' || jump === 'interpreter' || jump === 'cross') {
     worldMap.moralityDone = true;
   }
+  if (jump === 'cross') worldMap.wicketDone = true;
   if (jump === 'village') enterVillage();
   else if (jump === 'slough') enterSlough(false);
   else if (jump === 'morality') enterMorality(false);
   else if (jump === 'wicket-approach') enterWicket(false);
   else if (jump === 'wicket-highway') { enterWicket(false); wicket.debugSkip('highway'); }
   else if (jump === 'interpreter') { enterWicket(false); wicket.debugSkip('house'); }
+  else if (jump === 'cross') enterCross(false);
   else if (jump === 'map') { worldMap.start([]); worldMap.road = 'main'; goToMap(); }
 });
 
@@ -538,7 +592,7 @@ function updateJoy(e: PointerEvent): void {
 ui.talkBtn.addEventListener('click', () => {
   if (dialogueOpen) advanceDialogue();
   else if (mode === 'map') tryEnterFromMap();
-  else tryTalk();
+  else if (mode === 'village') tryTalk();
 });
 
 // ---------------------------------------------------------------- interaction
@@ -988,8 +1042,12 @@ function tick(): void {
       ui.promptWho.textContent = quest.wicketDone
         ? '⛩ Revisit the Wicket Gate'
         : '⛩ Knock at the Wicket Gate';
+    } else if (spot === 'cross') {
+      ui.promptWho.textContent = quest.crossDone
+        ? '✝ Revisit the hill of the Cross'
+        : '✝ Climb the hill to the Cross';
     }
-    if (spot === 'city' || spot === 'slough' || spot === 'morality' || spot === 'beyond') {
+    if (spot === 'city' || spot === 'slough' || spot === 'morality' || spot === 'beyond' || spot === 'cross') {
       ui.promptKey.style.display = isTouch ? 'none' : 'inline-block';
       if (isTouch) {
         ui.talkBtn.textContent = 'Enter';
@@ -1095,6 +1153,37 @@ function tick(): void {
     return;
   }
 
+  if (mode === 'cross' && crossActors) {
+    // ---- the Cross mode ----
+    const cc = crossActors.christian;
+    let mx = 0;
+    let mz = 0;
+    if (keys.has('KeyW') || keys.has('ArrowUp')) mz -= 1;
+    if (keys.has('KeyS') || keys.has('ArrowDown')) mz += 1;
+    if (keys.has('KeyA') || keys.has('ArrowLeft')) mx -= 1;
+    if (keys.has('KeyD') || keys.has('ArrowRight')) mx += 1;
+    mx += joy.x;
+    mz += joy.y;
+    const len = Math.hypot(mx, mz);
+    const factor = cross.moveFactor();
+    const moving = len > 0.15 && !dialogueOpen && !endingOpen && factor > 0;
+    if (moving) {
+      mx /= Math.max(len, 1);
+      mz /= Math.max(len, 1);
+      cc.root.position.x += mx * SPEED * factor * dt;
+      cc.root.position.z += mz * SPEED * factor * dt;
+      cc.root.rotation.y = lerpAngle(cc.root.rotation.y, Math.atan2(mx, mz), 12 * dt);
+    }
+    cross.afterMove();
+    cross.update(dt, t, moving);
+
+    camTarget.lerp(cc.root.position, Math.min(4 * dt, 1));
+    camera.position.copy(camTarget).add(camOffset);
+    camera.lookAt(camTarget.x, camTarget.y + 1.4, camTarget.z);
+    renderer.render(cross.scene, camera);
+    return;
+  }
+
   // ---- village mode ----
   if (started) {
     updatePlayer(dt, t);
@@ -1148,6 +1237,6 @@ tick();
 (window as any).__game = {
   christian, npcs, quest, world, openDialogue, advanceDialogue, camTarget,
   worldMap, slough, enterSlough, morality, enterMorality,
-  wicket, enterWicket, playScript, goToMap,
+  wicket, enterWicket, cross, enterCross, playScript, goToMap,
   get mode() { return mode; },
 };
