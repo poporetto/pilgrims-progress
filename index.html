@@ -148,6 +148,30 @@
     .hidden { opacity: 0; pointer-events: none; }
     #ending { display: none; }
 
+    /* ---------- battle HUD (Apollyon fight) ---------- */
+    #battle-ui {
+      position: fixed; top: 70px; left: 50%; transform: translateX(-50%);
+      display: none; flex-direction: column; gap: 8px; z-index: 12;
+      width: min(520px, calc(100% - 32px)); pointer-events: none;
+    }
+    #battle-ui.show { display: flex; }
+    #battle-ui .brow {
+      display: flex; align-items: center; gap: 10px;
+      background: var(--paper); border: 3px solid var(--accent2);
+      border-radius: 999px; padding: 5px 14px;
+      box-shadow: 0 3px 0 rgba(91, 74, 63, 0.15);
+    }
+    #battle-ui .brow.apo { border-color: #c9535f; }
+    #battle-ui .bname { font-size: 13px; font-weight: bold; white-space: nowrap; min-width: 82px; }
+    #battle-ui .btrack {
+      flex: 1; height: 14px; border-radius: 999px; background: #eee4d4; overflow: hidden;
+    }
+    #battle-ui .bfill {
+      height: 100%; border-radius: 999px; background: #7fc47f;
+      transition: width 0.35s ease;
+    }
+    #battle-ui .brow.apo .bfill { background: #c9535f; }
+
     /* ---------- screen fade (masks the outdoor/indoor cut) ---------- */
     #fade {
       position: fixed; inset: 0; z-index: 60; background: #1a1410;
@@ -173,10 +197,24 @@
     <button data-jump="cross">V · The Cross</button>
     <button data-jump="highway">VI · King's Highway</button>
     <button data-jump="hill">VII · Hill Difficulty</button>
+    <button data-jump="palace">VIII · Palace Beautiful</button>
+    <button data-jump="valley">IX · Valley of Humiliation</button>
+    <button data-jump="shadow">X · Shadow of Death</button>
     <div class="label">Or</div>
     <button data-jump="map">World Map</button>
   </div>
   <div id="prompt"><span class="key">E</span><span class="who"></span></div>
+
+  <div id="battle-ui">
+    <div class="brow chr">
+      <span class="bname">🐻 Christian</span>
+      <div class="btrack"><div class="bfill" style="width:100%"></div></div>
+    </div>
+    <div class="brow apo">
+      <span class="bname">🐉 Apollyon</span>
+      <div class="btrack"><div class="bfill" style="width:100%"></div></div>
+    </div>
+  </div>
 
   <div id="dialogue">
     <div class="name"></div>

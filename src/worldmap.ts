@@ -9,7 +9,9 @@ import { makeBear, animateBear, BearParts, block, mat } from './bear';
 // way is barred and a smooth, pleasant byway curves south to the village of
 // Morality, where Mount Sinai broods. Party members trail behind Christian.
 
-export type MapSpot = 'city' | 'road' | 'slough' | 'fork' | 'morality' | 'beyond' | 'cross' | 'highway' | 'hill';
+export type MapSpot =
+  | 'city' | 'road' | 'slough' | 'fork' | 'morality' | 'beyond' | 'cross'
+  | 'highway' | 'hill' | 'palace' | 'valley' | 'shadow';
 
 const CITY = new THREE.Vector3(-14.5, 0, 0);
 const SLOUGH = new THREE.Vector3(-3.5, 0, 0);
@@ -19,6 +21,9 @@ const BEYOND = new THREE.Vector3(17.5, 0, -1);
 const CROSS = new THREE.Vector3(25.5, 0, 2.5);
 const HIGHWAY = new THREE.Vector3(33.5, 0, -1);
 const HILL = new THREE.Vector3(41.5, 0, 1.5);
+const PALACE = new THREE.Vector3(49.5, 0, -1);
+const VALLEY = new THREE.Vector3(57.5, 0, 1.5);
+const SHADOW = new THREE.Vector3(65.5, 0, -0.5);
 
 // island centres + how close the road must be to count as "on land"
 const ISLANDS: Array<{ c: THREE.Vector3; r: number }> = [
@@ -30,6 +35,9 @@ const ISLANDS: Array<{ c: THREE.Vector3; r: number }> = [
   { c: CROSS, r: 4.0 },
   { c: HIGHWAY, r: 4.0 },
   { c: HILL, r: 4.0 },
+  { c: PALACE, r: 4.0 },
+  { c: VALLEY, r: 4.0 },
+  { c: SHADOW, r: 4.0 },
 ];
 
 export class WorldMap {
@@ -44,15 +52,21 @@ export class WorldMap {
   crossDone = false;
   highwayDone = false;
   hillDone = false;
+  palaceDone = false;
+  valleyDone = false;
+  shadowDone = false;
   justDiverted = false; // set when the barred way shunts Christian onto the byway
   // t-parameters along the main curve nearest each stop, resolved in ctor
   cityT = 0.02;
   sloughT = 0.35;
   forkT = 0.6;
-  beyondT = 0.85;
-  crossT = 0.88;
-  highwayT = 0.93;
-  hillT = 0.97;
+  beyondT = 0.72;
+  crossT = 0.78;
+  highwayT = 0.83;
+  hillT = 0.88;
+  palaceT = 0.92;
+  valleyT = 0.96;
+  shadowT = 0.99;
   private mainCurve: THREE.CatmullRomCurve3;
   private branchCurve: THREE.CatmullRomCurve3;
   private branchSpeed = 1; // t-speed scale so ground speed matches the main road
@@ -99,6 +113,13 @@ export class WorldMap {
       // …and up to the foot of the Hill Difficulty
       new THREE.Vector3(36.8, 0.62, 0),
       new THREE.Vector3(HILL.x - 0.8, 0.62, HILL.z - 0.2),
+      // …then the Palace, and down through the two valleys
+      new THREE.Vector3(45.4, 0.62, 0.4),
+      new THREE.Vector3(PALACE.x - 0.6, 0.62, PALACE.z),
+      new THREE.Vector3(53.4, 0.62, 0.2),
+      new THREE.Vector3(VALLEY.x - 0.6, 0.62, VALLEY.z - 0.2),
+      new THREE.Vector3(61.4, 0.62, 0.6),
+      new THREE.Vector3(SHADOW.x - 0.6, 0.62, SHADOW.z),
     ]);
     this.cityT = this.tForPoint(CITY);
     this.sloughT = this.tForPoint(SLOUGH);
@@ -107,6 +128,9 @@ export class WorldMap {
     this.crossT = this.tForPoint(CROSS);
     this.highwayT = this.tForPoint(HIGHWAY);
     this.hillT = this.tForPoint(HILL);
+    this.palaceT = this.tForPoint(PALACE);
+    this.valleyT = this.tForPoint(VALLEY);
+    this.shadowT = this.tForPoint(SHADOW);
     // the byway begins exactly where the main road passes the crossroad,
     // so switching roads never makes Christian jump
     const forkPoint = this.mainCurve.getPointAt(this.forkT);
@@ -461,6 +485,53 @@ export class WorldMap {
     hillIsle.add(this.miniTree(-2.8, -1.8, true));
     this.label('Hill Difficulty', HILL.x, HILL.z, 5.4);
 
+    // ---------- Palace Beautiful ----------
+    const palIsle = this.island(PALACE.x, PALACE.z, 4.0, PALETTE.grass);
+    palIsle.add(block(2.6, 1.4, 1.8, 0xfaf8f2, 0, 1.25, -0.6));
+    palIsle.add(block(2.9, 0.3, 2.0, 0xe8e2d2, 0, 2.1, -0.6));
+    for (const tx of [-1.5, 1.5]) {
+      palIsle.add(block(0.7, 2.0, 0.7, 0xfaf8f2, tx, 1.55, -0.6));
+      palIsle.add(block(0.6, 0.5, 0.6, PALETTE.roofPink, tx, 2.8, -0.6));
+    }
+    const palWin = new THREE.Mesh(
+      new THREE.BoxGeometry(0.4, 0.5, 0.08),
+      new THREE.MeshBasicMaterial({ color: 0xffe9a0 }),
+    );
+    palWin.position.set(0, 1.4, 0.35);
+    palIsle.add(palWin);
+    // the two lions before the gate
+    palIsle.add(block(0.5, 0.35, 0.3, 0xd9a860, -0.6, 0.72, 1.4));
+    palIsle.add(block(0.5, 0.35, 0.3, 0xd9a860, 0.6, 0.72, 1.4));
+    this.label('Palace Beautiful', PALACE.x, PALACE.z, 4.6);
+
+    // ---------- Valley of Humiliation ----------
+    const valIsle = this.island(VALLEY.x, VALLEY.z, 4.0, 0x8aa87a);
+    valIsle.add(block(1.6, 1.6, 2.4, 0x74855f, -1.9, 1.1, -0.4));
+    valIsle.add(block(1.6, 1.6, 2.4, 0x74855f, 1.9, 1.1, -0.4));
+    valIsle.add(block(2.2, 0.1, 1.4, 0xb8a888, 0, 0.62, 0));
+    // a scorch mark and one red eye of the fled monster
+    valIsle.add(block(1.0, 0.06, 1.0, 0x4a4440, 0.3, 0.6, 0.9));
+    const eye = new THREE.Mesh(
+      new THREE.BoxGeometry(0.18, 0.18, 0.1),
+      new THREE.MeshBasicMaterial({ color: 0xff4a3d }),
+    );
+    eye.position.set(-1.9, 2.1, 0.85);
+    valIsle.add(eye);
+    this.label('Valley of Humiliation', VALLEY.x, VALLEY.z, 4.4);
+
+    // ---------- Valley of the Shadow of Death ----------
+    const shIsle = this.island(SHADOW.x, SHADOW.z, 4.0, 0x3a4258);
+    shIsle.add(block(2.0, 1.2, 1.6, 0x232838, -1.6, 1.15, -0.8));
+    shIsle.add(block(2.0, 1.2, 1.6, 0x232838, 1.6, 1.15, -0.8));
+    // the one narrow line of light through the dark
+    const lane = new THREE.Mesh(
+      new THREE.BoxGeometry(3.4, 0.08, 0.5),
+      new THREE.MeshBasicMaterial({ color: 0xffeec4 }),
+    );
+    lane.position.set(0, 0.62, 0.4);
+    shIsle.add(lane);
+    this.label('Shadow of Death', SHADOW.x, SHADOW.z, 4.4);
+
     // ---------- both roads: stones on land, plank bridges over water ----------
     this.buildRoad(this.mainCurve, 72);
     this.buildRoad(this.branchCurve, 26);
@@ -586,13 +657,16 @@ export class WorldMap {
     if (this.road === 'branch') {
       return this.branchP > 0.86 ? 'morality' : 'road';
     }
-    if (this.progress < this.cityT + 0.05) return 'city';
-    if (Math.abs(this.progress - this.sloughT) < 0.05) return 'slough';
-    if (Math.abs(this.progress - this.forkT) < 0.04) return 'fork';
-    if (this.progress > this.hillT - 0.025) return 'hill';
-    if (Math.abs(this.progress - this.highwayT) < 0.025) return 'highway';
-    if (Math.abs(this.progress - this.crossT) < 0.025) return 'cross';
-    if (Math.abs(this.progress - this.beyondT) < 0.04) return 'beyond';
+    if (this.progress < this.cityT + 0.03) return 'city';
+    if (Math.abs(this.progress - this.sloughT) < 0.03) return 'slough';
+    if (Math.abs(this.progress - this.forkT) < 0.025) return 'fork';
+    if (this.progress > this.shadowT - 0.015) return 'shadow';
+    if (Math.abs(this.progress - this.valleyT) < 0.015) return 'valley';
+    if (Math.abs(this.progress - this.palaceT) < 0.015) return 'palace';
+    if (Math.abs(this.progress - this.hillT) < 0.015) return 'hill';
+    if (Math.abs(this.progress - this.highwayT) < 0.02) return 'highway';
+    if (Math.abs(this.progress - this.crossT) < 0.02) return 'cross';
+    if (Math.abs(this.progress - this.beyondT) < 0.02) return 'beyond';
     return 'road';
   }
 
@@ -611,10 +685,16 @@ export class WorldMap {
         this.moving = true;
         // the long road east stays barred until Morality is settled;
         // the road past the Gate opens only once the Gate chapter is done
-        const maxP = this.highwayDone
-          ? this.hillT + 0.02
+        const maxP = this.valleyDone
+          ? this.shadowT + 0.01
+          : this.palaceDone
+          ? this.valleyT + 0.01
+          : this.hillDone
+          ? this.palaceT + 0.01
+          : this.highwayDone
+          ? this.hillT + 0.01
           : this.crossDone
-          ? this.highwayT + 0.02
+          ? this.highwayT + 0.01
           : this.wicketDone
             ? this.crossT + 0.02
             : this.moralityDone

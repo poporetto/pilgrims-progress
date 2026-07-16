@@ -11,6 +11,9 @@ import { WicketGateScene } from './wicketgate';
 import { CrossScene } from './cross';
 import { HighwayScene } from './highway';
 import { HillScene } from './hill';
+import { PalaceScene } from './palace';
+import { ValleyScene } from './valley';
+import { ShadowScene } from './shadow';
 
 // ---------------------------------------------------------------- setup
 
@@ -79,11 +82,16 @@ const quest: QuestState = {
   crossDone: false,
   highwayDone: false,
   hillDone: false,
+  palaceDone: false,
+  valleyDone: false,
+  shadowDone: false,
 };
 
 const music = new Music();
 const worldMap = new WorldMap(window.innerWidth / window.innerHeight);
-let mode: 'village' | 'map' | 'slough' | 'morality' | 'wicket' | 'cross' | 'highway' | 'hill' = 'village';
+let mode:
+  | 'village' | 'map' | 'slough' | 'morality' | 'wicket' | 'cross'
+  | 'highway' | 'hill' | 'palace' | 'valley' | 'shadow' = 'village';
 
 // ---------------------------------------------------------------- UI refs
 
@@ -177,8 +185,14 @@ function goToMap(): void {
   mode = 'map';
   music.setStyle('map');
   ui.promptKey.style.display = 'none';
-  setObjective(quest.hillDone
-    ? '🗺 Over the Hill Difficulty — Chapter VIII, the Palace Beautiful, coming soon…'
+  setObjective(quest.shadowDone
+    ? '🗺 Through the Shadow with Faithful — Chapter XI, Vanity Fair, coming soon…'
+    : quest.valleyDone
+    ? '🗺 Apollyon is fled — but a darker valley waits: the Shadow of Death…'
+    : quest.palaceDone
+    ? '🗺 Armed head to paw — down into the Valley of Humiliation'
+    : quest.hillDone
+    ? '🗺 Over the Hill Difficulty — a white palace glows in the dusk ahead!'
     : quest.highwayDone
     ? '🗺 A steep mountain looms past the night road — the Hill Difficulty!'
     : quest.crossDone
@@ -415,6 +429,162 @@ function enterHill(revisit: boolean): void {
   camTarget.copy(hillActors.christian.root.position);
 }
 
+// ---------- Chapter VIII: Palace Beautiful ----------
+const palace = new PalaceScene({
+  playScript,
+  setObjective,
+  onExit: () => goToMap(),
+  rumbleSound: () => music.rumble(),
+  blipSound: () => music.blip(),
+  setMusic: (style) => music.setStyle(style),
+  fade: (mid) => fadeTransition(() => {
+    mid();
+    if (palaceActors) camTarget.copy(palaceActors.christian.root.position);
+  }),
+  onComplete: () => {
+    quest.palaceDone = true;
+    showEnding(
+      '🏰 Chapter VIII Complete',
+      'Palace Beautiful',
+      'Between the roaring lions — chained, though he could not see it — Christian '
+      + 'kept the middle of the path and reached Palace Beautiful. There Discretion, '
+      + 'Prudence, Piety and Charity heard his whole story, showed him the records '
+      + 'and treasures of the King, and from the rooftop he glimpsed — far, far off — '
+      + 'the shining Celestial City itself. Armed at their hands with the whole Armor '
+      + 'of God, he goes down now into the Valley of Humiliation…',
+      () => {
+        worldMap.sloughDone = true;
+        worldMap.moralityDone = true;
+        worldMap.wicketDone = true;
+        worldMap.crossDone = true;
+        worldMap.highwayDone = true;
+        worldMap.hillDone = true;
+        worldMap.palaceDone = true;
+        worldMap.start([]);
+        worldMap.road = 'main';
+        worldMap.progress = worldMap.palaceT;
+        goToMap();
+      },
+    );
+  },
+});
+let palaceActors: { christian: import('./bear').BearParts } | null = null;
+
+function enterPalace(revisit: boolean): void {
+  mode = 'palace';
+  ui.prompt.style.display = 'none';
+  ui.talkBtn.style.display = 'none';
+  palaceActors = palace.enter(revisit);
+  camTarget.copy(palaceActors.christian.root.position);
+}
+
+// ---------- Chapter IX: the Valley of Humiliation & Apollyon ----------
+const battleUI = document.getElementById('battle-ui')!;
+const battleFillChr = document.querySelector('#battle-ui .brow.chr .bfill')! as HTMLElement;
+const battleFillApo = document.querySelector('#battle-ui .brow.apo .bfill')! as HTMLElement;
+
+const valley = new ValleyScene({
+  playScript,
+  setObjective,
+  onExit: () => goToMap(),
+  rumbleSound: () => music.rumble(),
+  blipSound: () => music.blip(),
+  setMusic: (style) => music.setStyle(style),
+  battleUI: (show) => battleUI.classList.toggle('show', show),
+  setHP: (c, a) => {
+    battleFillChr.style.width = `${Math.max(0, c)}%`;
+    battleFillApo.style.width = `${Math.max(0, a)}%`;
+  },
+  onComplete: () => {
+    quest.valleyDone = true;
+    showEnding(
+      '⚔ Chapter IX Complete',
+      'The Valley of Humiliation',
+      'Apollyon barred the whole breadth of the way — and neither his offers nor his '
+      + 'accusations could move a pilgrim who answered only: "My Prince is merciful, '
+      + 'and ready to forgive." The battle was long; Christian fell, and his sword flew '
+      + 'from his paw — but "when I fall, I shall ARISE." With the Sword of the Spirit '
+      + 'blazing he drove the Destroyer into the sky, was healed with leaves from the '
+      + 'Tree of Life, and walks on: more than conqueror…',
+      () => {
+        worldMap.sloughDone = true;
+        worldMap.moralityDone = true;
+        worldMap.wicketDone = true;
+        worldMap.crossDone = true;
+        worldMap.highwayDone = true;
+        worldMap.hillDone = true;
+        worldMap.palaceDone = true;
+        worldMap.valleyDone = true;
+        worldMap.start([]);
+        worldMap.road = 'main';
+        worldMap.progress = worldMap.valleyT;
+        goToMap();
+      },
+    );
+  },
+});
+let valleyActors: { christian: import('./bear').BearParts } | null = null;
+
+function enterValley(revisit: boolean): void {
+  mode = 'valley';
+  ui.prompt.style.display = 'none';
+  ui.talkBtn.style.display = 'none';
+  valleyActors = valley.enter(revisit);
+  camTarget.copy(valleyActors.christian.root.position);
+}
+
+// ---------- Chapter X: the Valley of the Shadow of Death ----------
+const shadow = new ShadowScene({
+  playScript,
+  setObjective,
+  onExit: () => goToMap(),
+  rumbleSound: () => music.rumble(),
+  blipSound: () => music.blip(),
+  splashSound: () => music.splash(),
+  setMusic: (style) => music.setStyle(style),
+  fade: (mid) => fadeTransition(() => {
+    mid();
+    if (shadowActors) camTarget.copy(shadowActors.christian.root.position);
+  }),
+  onComplete: () => {
+    quest.shadowDone = true;
+    showEnding(
+      '🐑 Chapter X Complete',
+      'The Valley of the Shadow of Death',
+      'Through a night with no bottom to its darkness — a stride-wide path between '
+      + 'the ditch and the mire, noises with no owners, whispers that wore his own '
+      + 'voice — Christian walked by prayer instead of sight. Dawn showed him every '
+      + 'pit and snare he had been carried past, and at the valley\'s end stood the '
+      + 'voice that had prayed him through it: FAITHFUL, his own neighbour from the '
+      + 'City of Destruction. Two pilgrims now, walking east together…',
+      () => {
+        worldMap.sloughDone = true;
+        worldMap.moralityDone = true;
+        worldMap.wicketDone = true;
+        worldMap.crossDone = true;
+        worldMap.highwayDone = true;
+        worldMap.hillDone = true;
+        worldMap.palaceDone = true;
+        worldMap.valleyDone = true;
+        worldMap.shadowDone = true;
+        worldMap.start([]);
+        worldMap.road = 'main';
+        worldMap.progress = worldMap.shadowT;
+        goToMap();
+      },
+    );
+  },
+});
+let shadowActors: { christian: import('./bear').BearParts } | null = null;
+
+function enterShadow(revisit: boolean): void {
+  mode = 'shadow';
+  ui.prompt.style.display = 'none';
+  ui.talkBtn.style.display = 'none';
+  shadowActors = shadow.enter(revisit);
+  camTarget.copy(shadowActors.christian.root.position);
+}
+
 function enterHighway(revisit: boolean): void {
   mode = 'highway';
   ui.prompt.style.display = 'none';
@@ -560,6 +730,7 @@ window.addEventListener('keydown', (e) => {
     else if (mode === 'village') tryTalk();
     else if (mode === 'slough') slough.talkToHelp();
     else if (mode === 'hill') hill.tryPickScroll();
+    else if (mode === 'valley') valley.tryAttack();
   }
 });
 
@@ -572,6 +743,9 @@ function tryEnterFromMap(): void {
   else if (spot === 'cross') enterCross(quest.crossDone);
   else if (spot === 'highway') enterHighway(quest.highwayDone);
   else if (spot === 'hill') enterHill(quest.hillDone);
+  else if (spot === 'palace') enterPalace(quest.palaceDone);
+  else if (spot === 'valley') enterValley(quest.valleyDone);
+  else if (spot === 'shadow') enterShadow(quest.shadowDone);
 }
 window.addEventListener('keyup', (e) => keys.delete(e.code));
 // don't leave movement keys stuck when the tab loses focus mid-keypress
@@ -634,15 +808,19 @@ ui.debugPanel.addEventListener('click', (e) => {
   // debug jumps skip the map entirely, so make sure its "how far can I walk"
   // flags agree with wherever we're jumping to — otherwise a later visit to
   // the map can snap Christian's progress back to an earlier chapter
-  if (jump === 'morality' || jump === 'wicket-approach' || jump === 'wicket-highway' || jump === 'interpreter' || jump === 'cross' || jump === 'highway' || jump === 'hill') {
-    worldMap.sloughDone = true;
-  }
-  if (jump === 'wicket-approach' || jump === 'wicket-highway' || jump === 'interpreter' || jump === 'cross' || jump === 'highway' || jump === 'hill') {
-    worldMap.moralityDone = true;
-  }
-  if (jump === 'cross' || jump === 'highway' || jump === 'hill') worldMap.wicketDone = true;
-  if (jump === 'highway' || jump === 'hill') { worldMap.crossDone = true; quest.crossDone = true; }
-  if (jump === 'hill') { worldMap.highwayDone = true; quest.highwayDone = true; }
+  // each jump implies every earlier chapter is behind us
+  const ORDER = ['village', 'slough', 'morality', 'wicket-approach', 'cross', 'highway', 'hill', 'palace', 'valley', 'shadow'];
+  const rank = ORDER.indexOf(
+    jump === 'wicket-highway' || jump === 'interpreter' ? 'wicket-approach' : jump === 'map' ? 'village' : jump,
+  );
+  if (rank >= 2) worldMap.sloughDone = true;
+  if (rank >= 3) worldMap.moralityDone = true;
+  if (rank >= 4) worldMap.wicketDone = true;
+  if (rank >= 5) { worldMap.crossDone = true; quest.crossDone = true; }
+  if (rank >= 6) { worldMap.highwayDone = true; quest.highwayDone = true; }
+  if (rank >= 7) { worldMap.hillDone = true; quest.hillDone = true; }
+  if (rank >= 8) { worldMap.palaceDone = true; quest.palaceDone = true; }
+  if (rank >= 9) { worldMap.valleyDone = true; quest.valleyDone = true; }
   if (jump === 'village') enterVillage();
   else if (jump === 'slough') enterSlough(false);
   else if (jump === 'morality') enterMorality(false);
@@ -652,6 +830,9 @@ ui.debugPanel.addEventListener('click', (e) => {
   else if (jump === 'cross') enterCross(false);
   else if (jump === 'highway') enterHighway(false);
   else if (jump === 'hill') enterHill(false);
+  else if (jump === 'palace') enterPalace(false);
+  else if (jump === 'valley') enterValley(false);
+  else if (jump === 'shadow') enterShadow(false);
   else if (jump === 'map') { worldMap.start([]); worldMap.road = 'main'; goToMap(); }
 });
 
@@ -696,6 +877,7 @@ ui.talkBtn.addEventListener('click', () => {
   else if (mode === 'village') tryTalk();
   else if (mode === 'slough') slough.talkToHelp();
   else if (mode === 'hill') hill.tryPickScroll();
+  else if (mode === 'valley') valley.tryAttack();
 });
 
 // ---------------------------------------------------------------- interaction
@@ -1134,6 +1316,9 @@ function tick(): void {
     if (spot === 'cross' && !quest.crossDone) { enterCross(false); return; }
     if (spot === 'highway' && !quest.highwayDone) { enterHighway(false); return; }
     if (spot === 'hill' && !quest.hillDone) { enterHill(false); return; }
+    if (spot === 'palace' && !quest.palaceDone) { enterPalace(false); return; }
+    if (spot === 'valley' && !quest.valleyDone) { enterValley(false); return; }
+    if (spot === 'shadow' && !quest.shadowDone) { enterShadow(false); return; }
 
     ui.prompt.style.display = spot === 'road' ? 'none' : 'block';
     ui.promptKey.style.display = 'none';
@@ -1168,8 +1353,20 @@ function tick(): void {
       ui.promptWho.textContent = quest.hillDone
         ? '⛰ Climb the Hill Difficulty again'
         : '⛰ Face the Hill Difficulty';
+    } else if (spot === 'palace') {
+      ui.promptWho.textContent = quest.palaceDone
+        ? '🏰 Call again at Palace Beautiful'
+        : '🏰 Approach Palace Beautiful';
+    } else if (spot === 'valley') {
+      ui.promptWho.textContent = quest.valleyDone
+        ? '🌄 Revisit the Valley of Humiliation'
+        : '🌄 Descend into the Valley of Humiliation';
+    } else if (spot === 'shadow') {
+      ui.promptWho.textContent = quest.shadowDone
+        ? '🌑 Walk the Shadow valley again'
+        : '🌑 Enter the Valley of the Shadow of Death';
     }
-    if (spot === 'city' || spot === 'slough' || spot === 'morality' || spot === 'beyond' || spot === 'cross' || spot === 'highway' || spot === 'hill') {
+    if (spot !== 'road' && spot !== 'fork') {
       ui.promptKey.style.display = isTouch ? 'none' : 'inline-block';
       if (isTouch) {
         ui.talkBtn.textContent = 'Enter';
@@ -1396,6 +1593,113 @@ function tick(): void {
     return;
   }
 
+  if (mode === 'palace' && palaceActors) {
+    // ---- Palace Beautiful mode ----
+    const pc = palaceActors.christian;
+    let mx = 0;
+    let mz = 0;
+    if (keys.has('KeyW') || keys.has('ArrowUp')) mz -= 1;
+    if (keys.has('KeyS') || keys.has('ArrowDown')) mz += 1;
+    if (keys.has('KeyA') || keys.has('ArrowLeft')) mx -= 1;
+    if (keys.has('KeyD') || keys.has('ArrowRight')) mx += 1;
+    mx += joy.x;
+    mz += joy.y;
+    const len = Math.hypot(mx, mz);
+    const factor = palace.moveFactor();
+    const moving = len > 0.15 && !dialogueOpen && !endingOpen && factor > 0;
+    if (moving) {
+      mx /= Math.max(len, 1);
+      mz /= Math.max(len, 1);
+      pc.root.position.x += mx * SPEED * factor * dt;
+      pc.root.position.z += mz * SPEED * factor * dt;
+      pc.root.rotation.y = lerpAngle(pc.root.rotation.y, Math.atan2(mx, mz), 12 * dt);
+    }
+    palace.afterMove();
+    palace.update(dt, t, moving);
+
+    camTarget.lerp(pc.root.position, Math.min(4 * dt, 1));
+    camera.position.copy(camTarget).add(camOffset);
+    camera.lookAt(camTarget.x, camTarget.y + 1.4, camTarget.z);
+    renderer.render(palace.scene, camera);
+    return;
+  }
+
+  if (mode === 'valley' && valleyActors) {
+    // ---- Valley of Humiliation mode ----
+    const vc = valleyActors.christian;
+    let mx = 0;
+    let mz = 0;
+    if (keys.has('KeyW') || keys.has('ArrowUp')) mz -= 1;
+    if (keys.has('KeyS') || keys.has('ArrowDown')) mz += 1;
+    if (keys.has('KeyA') || keys.has('ArrowLeft')) mx -= 1;
+    if (keys.has('KeyD') || keys.has('ArrowRight')) mx += 1;
+    mx += joy.x;
+    mz += joy.y;
+    const len = Math.hypot(mx, mz);
+    const factor = valley.moveFactor();
+    const moving = len > 0.15 && !dialogueOpen && !endingOpen && factor > 0;
+    if (moving) {
+      mx /= Math.max(len, 1);
+      mz /= Math.max(len, 1);
+      vc.root.position.x += mx * SPEED * factor * dt;
+      vc.root.position.z += mz * SPEED * factor * dt;
+      vc.root.rotation.y = lerpAngle(vc.root.rotation.y, Math.atan2(mx, mz), 12 * dt);
+    }
+    valley.afterMove();
+    valley.update(dt, t, moving);
+
+    // battle prompt: strike when it's the player's turn
+    const canStrike = valley.canAttack() && !dialogueOpen && !endingOpen;
+    ui.prompt.style.display = canStrike ? 'block' : 'none';
+    if (canStrike) {
+      ui.promptKey.style.display = isTouch ? 'none' : 'inline-block';
+      ui.promptWho.textContent = 'Swing the sword!';
+      if (isTouch) {
+        ui.talkBtn.textContent = '⚔';
+        ui.talkBtn.style.display = 'block';
+      }
+    } else if (isTouch && !dialogueOpen) {
+      ui.talkBtn.style.display = 'none';
+    }
+
+    camTarget.lerp(vc.root.position, Math.min(4 * dt, 1));
+    camera.position.copy(camTarget).add(camOffset);
+    camera.lookAt(camTarget.x, camTarget.y + 1.4, camTarget.z);
+    renderer.render(valley.scene, camera);
+    return;
+  }
+
+  if (mode === 'shadow' && shadowActors) {
+    // ---- Valley of the Shadow of Death mode ----
+    const shc = shadowActors.christian;
+    let mx = 0;
+    let mz = 0;
+    if (keys.has('KeyW') || keys.has('ArrowUp')) mz -= 1;
+    if (keys.has('KeyS') || keys.has('ArrowDown')) mz += 1;
+    if (keys.has('KeyA') || keys.has('ArrowLeft')) mx -= 1;
+    if (keys.has('KeyD') || keys.has('ArrowRight')) mx += 1;
+    mx += joy.x;
+    mz += joy.y;
+    const len = Math.hypot(mx, mz);
+    const factor = shadow.moveFactor();
+    const moving = len > 0.15 && !dialogueOpen && !endingOpen && factor > 0;
+    if (moving) {
+      mx /= Math.max(len, 1);
+      mz /= Math.max(len, 1);
+      shc.root.position.x += mx * SPEED * factor * dt;
+      shc.root.position.z += mz * SPEED * factor * dt;
+      shc.root.rotation.y = lerpAngle(shc.root.rotation.y, Math.atan2(mx, mz), 12 * dt);
+    }
+    shadow.afterMove(dt);
+    shadow.update(dt, t, moving);
+
+    camTarget.lerp(shc.root.position, Math.min(4 * dt, 1));
+    camera.position.copy(camTarget).add(camOffset);
+    camera.lookAt(camTarget.x, camTarget.y + 1.4, camTarget.z);
+    renderer.render(shadow.scene, camera);
+    return;
+  }
+
   // ---- village mode ----
   if (started) {
     updatePlayer(dt, t);
@@ -1449,6 +1753,7 @@ tick();
 (window as any).__game = {
   christian, npcs, quest, world, openDialogue, advanceDialogue, camTarget,
   worldMap, slough, enterSlough, morality, enterMorality,
-  wicket, enterWicket, cross, enterCross, highway, enterHighway, hill, enterHill, playScript, goToMap,
+  wicket, enterWicket, cross, enterCross, highway, enterHighway, hill, enterHill,
+  palace, enterPalace, valley, enterValley, shadow, enterShadow, playScript, goToMap,
   get mode() { return mode; },
 };

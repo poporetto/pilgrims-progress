@@ -5,7 +5,7 @@ import { PALETTE } from './palette';
 // (stubby legs, round body, oversized head); species swap out ears, snouts
 // and tails, and everyone wears clothes.
 
-export type Species = 'bear' | 'pig' | 'frog' | 'rabbit' | 'cat' | 'lion' | 'owl' | 'mouse';
+export type Species = 'bear' | 'pig' | 'frog' | 'rabbit' | 'cat' | 'lion' | 'owl' | 'mouse' | 'sheep';
 export type Outfit = 'shirt' | 'dress' | 'apron' | 'robe' | 'overalls' | 'none';
 
 export interface CharacterOptions {
@@ -70,6 +70,7 @@ const DEFAULT_FUR: Record<Species, number> = {
   lion: 0xd9a860,
   owl: 0x8a7864,
   mouse: 0xb8aa9c,
+  sheep: 0xf3efe4,
 };
 
 const BELLY: Record<Species, number> = {
@@ -81,6 +82,7 @@ const BELLY: Record<Species, number> = {
   lion: 0xf0dcbb,
   owl: 0xe8ddc9,
   mouse: 0xf3ece3,
+  sheep: 0xfaf7ef,
 };
 
 const LION_MANE = 0xb0793a;
@@ -138,6 +140,10 @@ export function makeBear(opts: CharacterOptions = {}): BearParts {
   } else if (species === 'mouse') {
     // a thin, long tail
     body.add(block(0.08, 0.08, 0.6, 0xd9a3ac, 0.1, 0.22, -0.5));
+  } else if (species === 'sheep') {
+    // woolly fleece over the shoulders and a stubby tail
+    body.add(block(bodyW + 0.12, 0.34, bodyD + 0.12, 0xffffff, 0, 0.66, 0));
+    body.add(block(0.22, 0.22, 0.18, 0xffffff, 0, 0.3, -(bodyD / 2 + 0.06)));
   }
   // frogs and owls have no visible tail
 
@@ -232,6 +238,20 @@ export function makeBear(opts: CharacterOptions = {}): BearParts {
     head.add(block(0.36, 0.36, 0.08, belly, 0.24, 0.5, 0.42));
     // small hooked beak
     head.add(block(0.16, 0.16, 0.16, 0xe8a23a, 0, 0.32, 0.5));
+  } else if (species === 'sheep') {
+    // a fluffy wool cap over the crown (kept clear of the head's faces)
+    head.add(block(1.04, 0.34, 0.9, 0xffffff, 0, 0.9, -0.02));
+    head.add(block(0.8, 0.28, 0.7, 0xffffff, 0, 1.12, -0.04));
+    head.add(block(0.4, 0.22, 0.4, 0xffffff, 0.12, 1.3, 0));
+    // little sideways ears
+    for (const side of [-1, 1]) {
+      const ear = block(0.36, 0.18, 0.14, fur, 0.56 * side, 0.62, 0.02);
+      ear.rotation.z = -0.25 * side;
+      head.add(ear);
+    }
+    // soft muzzle with a rosy nose
+    head.add(block(0.36, 0.26, 0.16, 0xfaf7ef, 0, 0.24, 0.45));
+    head.add(block(0.13, 0.1, 0.07, 0xe0a3ac, 0, 0.32, 0.54));
   } else if (species === 'mouse') {
     // big round ears
     head.add(block(0.3, 0.3, 0.1, fur, -0.32, 0.98, 0.02));

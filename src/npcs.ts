@@ -34,6 +34,9 @@ export interface QuestState {
   crossDone: boolean;
   highwayDone: boolean;
   hillDone: boolean;
+  palaceDone: boolean;
+  valleyDone: boolean;
+  shadowDone: boolean;
 }
 
 interface NPCDef {
@@ -294,6 +297,29 @@ const DEFS: NPCDef[] = [
             { speaker: 'Mr. Whiskers', text: 'Mrrrow. You\'re blocking my sunbeam, Christian.' },
             { speaker: 'Christian', text: 'Sorry, Mr. Whiskers. I have rather a lot on my mind — and on my back.' },
             { speaker: 'Mr. Whiskers', text: 'A city falling down? As long as it doesn\'t fall before my nap, I really can\'t be bothered.' },
+          ],
+  },
+  {
+    id: 'faithful',
+    name: 'Faithful',
+    species: 'sheep',
+    scale: 0.98,
+    outfit: 'shirt',
+    outfitColor: 0xa8c4a2,
+    x: 18, z: 13,
+    facing: -Math.PI * 0.6,
+    wanderRadius: 2.5,
+    getLines: (s) =>
+      s.talkedToEvangelist
+        ? [
+            { speaker: 'Faithful', text: 'So it\'s true — you\'re really going. Toward that light in the east.' },
+            { speaker: 'Faithful', text: 'I\'ve felt it too, Christian. The dreams, the dread… this city will not stand. I haven\'t the courage to leave today, but…' },
+            { speaker: 'Faithful', text: 'Go on ahead, friend. I have a feeling our roads will meet again — somewhere past the dark places. Baa. Look for a sheep on the horizon.' },
+          ]
+        : [
+            { speaker: 'Faithful', text: 'Baa… oh, Christian. You look how I feel — like the whole sky is about to come down.' },
+            { speaker: 'Faithful', text: 'I\'ve been reading the same book you have. And I\'ve started having the same dreams. Fire, and trumpets, and this city gone to ash…' },
+            { speaker: 'Faithful', text: 'If ever you find the way out of here, don\'t forget the rest of us. Some of us might just follow.' },
           ],
   },
   // ---------------- Evangelist ----------------
