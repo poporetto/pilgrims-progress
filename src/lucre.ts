@@ -409,13 +409,13 @@ export class LucreScene {
   }
 
   moveFactor(): number {
-    return (this.phase === 'byends' || this.phase === 'demas' || this.phase === 'doom' ||
-      this.phase === 'pillar') ? 0 : 1;
+    // ('pillar' stays walkable so the player can line up with the statue)
+    return (this.phase === 'byends' || this.phase === 'demas' || this.phase === 'doom') ? 0 : 1;
   }
 
   nearPillar(): boolean {
     if (this.pillarTouched || !this.pillar) return false;
-    return this.christian.root.position.distanceTo(this.pillar.position) < 3;
+    return this.christian.root.position.distanceTo(this.pillar.position) < 3.6;
   }
 
   tryTouchPillar(): void {
@@ -528,9 +528,9 @@ export class LucreScene {
               ], () => this.beginDoom());
             } else {
               this.cb.fade?.(() => {
-                this.christian.root.position.set(MINE.x, 0, 5.8);
+                this.christian.root.position.set(MINE.x, 0, 4.4);
                 this.christian.root.rotation.y = 0;
-                this.hopeful.root.position.set(MINE.x - 1.6, 0, 6.2);
+                this.hopeful.root.position.set(MINE.x - 1.6, 0, 5.2);
                 this.hopeful.root.rotation.y = 0;
                 this.cb.setMusic?.('slough');
               });
