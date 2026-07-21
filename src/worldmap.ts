@@ -11,7 +11,7 @@ import { makeBear, animateBear, BearParts, block, mat } from './bear';
 
 export type MapSpot =
   | 'city' | 'road' | 'slough' | 'fork' | 'morality' | 'beyond' | 'cross'
-  | 'highway' | 'hill' | 'palace' | 'valley' | 'shadow' | 'vanity' | 'lucre';
+  | 'highway' | 'hill' | 'palace' | 'valley' | 'shadow' | 'vanity' | 'lucre' | 'castle';
 
 const CITY = new THREE.Vector3(-14.5, 0, 0);
 const SLOUGH = new THREE.Vector3(-3.5, 0, 0);
@@ -25,7 +25,8 @@ const PALACE = new THREE.Vector3(49.5, 0, -1);
 const VALLEY = new THREE.Vector3(57.5, 0, 1.5);
 const SHADOW = new THREE.Vector3(65.5, 0, -0.5);
 const VANITY = new THREE.Vector3(73.5, 0, 1);
-const LUCRE = new THREE.Vector3(81.5, 0, -0.5);
+const LUCRE   = new THREE.Vector3(81.5, 0, -0.5);
+const CASTLE  = new THREE.Vector3(89.5, 0, 1.0);
 
 // island centres + how close the road must be to count as "on land"
 const ISLANDS: Array<{ c: THREE.Vector3; r: number }> = [
@@ -41,7 +42,8 @@ const ISLANDS: Array<{ c: THREE.Vector3; r: number }> = [
   { c: VALLEY, r: 4.0 },
   { c: SHADOW, r: 4.0 },
   { c: VANITY, r: 4.2 },
-  { c: LUCRE, r: 4.0 },
+  { c: LUCRE,   r: 4.0 },
+  { c: CASTLE,  r: 4.0 },
 ];
 
 export class WorldMap {
@@ -60,7 +62,8 @@ export class WorldMap {
   valleyDone = false;
   shadowDone = false;
   vanityDone = false;
-  lucreDone = false;
+  lucreDone   = false;
+  castleDone  = false;
   justDiverted = false; // set when the barred way shunts Christian onto the byway
   // t-parameters along the main curve nearest each stop, resolved in ctor
   cityT = 0.02;
@@ -74,7 +77,8 @@ export class WorldMap {
   valleyT = 0.88;
   shadowT = 0.92;
   vanityT = 0.96;
-  lucreT = 0.99;
+  lucreT  = 0.99;
+  castleT = 1.00;
   private mainCurve: THREE.CatmullRomCurve3;
   private branchCurve: THREE.CatmullRomCurve3;
   private branchSpeed = 1; // t-speed scale so ground speed matches the main road
@@ -134,6 +138,9 @@ export class WorldMap {
       // …then out across the Plain of Ease to the Hill Lucre
       new THREE.Vector3(77.4, 0.62, 0.4),
       new THREE.Vector3(LUCRE.x - 0.6, 0.62, LUCRE.z),
+      // …and on to the rocky stretch past Doubting Castle
+      new THREE.Vector3(85.4, 0.62, 0.2),
+      new THREE.Vector3(CASTLE.x - 0.6, 0.62, CASTLE.z),
     ]);
     this.cityT = this.tForPoint(CITY);
     this.sloughT = this.tForPoint(SLOUGH);
@@ -146,7 +153,8 @@ export class WorldMap {
     this.valleyT = this.tForPoint(VALLEY);
     this.shadowT = this.tForPoint(SHADOW);
     this.vanityT = this.tForPoint(VANITY);
-    this.lucreT = this.tForPoint(LUCRE);
+    this.lucreT  = this.tForPoint(LUCRE);
+    this.castleT = this.tForPoint(CASTLE);
     // the byway begins exactly where the main road passes the crossroad,
     // so switching roads never makes Christian jump
     const forkPoint = this.mainCurve.getPointAt(this.forkT);
@@ -586,8 +594,24 @@ export class WorldMap {
     lucIsle.add(this.miniTree(-2.6, 1.8, true));
     this.label('Hill Lucre', LUCRE.x, LUCRE.z, 5.0);
 
+    // ---------- Doubting Castle island ----------
+    const castleIsle = this.island(CASTLE.x, CASTLE.z, 4.0, 0x9ecf8c);
+    // dark stone towers — the castle looming on the island
+    const castleC = 0x4a4250;
+    castleIsle.add(block(1.4, 3.2, 1.4, castleC,  0.8, 2.2, -0.6));  // main tower
+    castleIsle.add(block(1.4, 2.6, 1.4, castleC, -0.8, 2.0, -0.5));  // second tower
+    castleIsle.add(block(2.4, 0.6, 1.2, 0x3a3248, 0.0, 3.6, -0.6));  // battlements
+    castleIsle.add(block(0.5, 0.5, 0.5, castleC,  0.8, 4.0, -0.6));  // crenellation
+    castleIsle.add(block(0.5, 0.5, 0.5, castleC, -0.8, 3.6, -0.5));
+    // rocky highway path through
+    castleIsle.add(block(4.0, 0.1, 0.8, 0x9e8e76, 0.0, 0.62, 1.2));  // road stripe
+    // small warning sign post
+    castleIsle.add(block(0.1, 0.7, 0.1, 0x7a5c38, -1.4, 0.97, 1.2));
+    castleIsle.add(block(0.8, 0.2, 0.08, 0xfff8ef, -1.4, 1.4, 1.2));
+    this.label('Doubting Castle', CASTLE.x, CASTLE.z, 5.2, '#7a4a6a');
+
     // ---------- both roads: stones on land, plank bridges over water ----------
-    this.buildRoad(this.mainCurve, 72);
+    this.buildRoad(this.mainCurve, 80);
     this.buildRoad(this.branchCurve, 26);
 
     // ---------- drifting clouds: soft, round and white ----------
@@ -714,7 +738,8 @@ export class WorldMap {
     if (this.progress < this.cityT + 0.03) return 'city';
     if (Math.abs(this.progress - this.sloughT) < 0.03) return 'slough';
     if (Math.abs(this.progress - this.forkT) < 0.025) return 'fork';
-    if (this.progress > this.lucreT - 0.015) return 'lucre';
+    if (this.progress > this.castleT - 0.015) return 'castle';
+    if (Math.abs(this.progress - this.lucreT) < 0.015) return 'lucre';
     if (Math.abs(this.progress - this.vanityT) < 0.015) return 'vanity';
     if (Math.abs(this.progress - this.shadowT) < 0.015) return 'shadow';
     if (Math.abs(this.progress - this.valleyT) < 0.015) return 'valley';
@@ -741,7 +766,9 @@ export class WorldMap {
         this.moving = true;
         // the long road east stays barred until Morality is settled;
         // the road past the Gate opens only once the Gate chapter is done
-        const maxP = this.vanityDone
+        const maxP = this.lucreDone
+          ? this.castleT + 0.01
+          : this.vanityDone
           ? this.lucreT + 0.01
           : this.shadowDone
           ? this.vanityT + 0.01
@@ -801,10 +828,10 @@ export class WorldMap {
     const param = this.road === 'main' ? this.progress : this.branchP;
     this.placeOn(curve, this.christian.root, param);
     // pan the camera to show the NEXT world on the road ahead of Christian
-    const nextWorlds = [HIGHWAY, HILL, PALACE, VALLEY, SHADOW, VANITY, LUCRE];
+    const nextWorlds = [HIGHWAY, HILL, PALACE, VALLEY, SHADOW, VANITY, LUCRE, CASTLE];
     const nextDones = [this.highwayDone, this.hillDone, this.palaceDone,
-      this.valleyDone, this.shadowDone, this.vanityDone, this.lucreDone];
-    const nextW = nextWorlds.find((_, i) => !nextDones[i]) ?? LUCRE;
+      this.valleyDone, this.shadowDone, this.vanityDone, this.lucreDone, this.castleDone];
+    const nextW = nextWorlds.find((_, i) => !nextDones[i]) ?? CASTLE;
     const panTarget = this.crossDone ? Math.max(0, nextW.x - CROSS.x) : 0;
     this.camPan += (panTarget - this.camPan) * Math.min(dt * 2.5, 1);
     this.camera.position.x = 5.0 + this.camPan;

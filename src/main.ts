@@ -16,6 +16,7 @@ import { ValleyScene } from './valley';
 import { ShadowScene } from './shadow';
 import { VanityScene } from './vanity';
 import { LucreScene } from './lucre';
+import { CastleScene } from './castle';
 
 // ---------------------------------------------------------------- setup
 
@@ -89,13 +90,14 @@ const quest: QuestState = {
   shadowDone: false,
   vanityDone: false,
   lucreDone: false,
+  castleDone: false,
 };
 
 const music = new Music();
 const worldMap = new WorldMap(window.innerWidth / window.innerHeight);
 let mode:
   | 'village' | 'map' | 'slough' | 'morality' | 'wicket' | 'cross'
-  | 'highway' | 'hill' | 'palace' | 'valley' | 'shadow' | 'vanity' | 'lucre' = 'village';
+  | 'highway' | 'hill' | 'palace' | 'valley' | 'shadow' | 'vanity' | 'lucre' | 'castle' = 'village';
 
 // ---------------------------------------------------------------- UI refs
 
@@ -189,8 +191,10 @@ function goToMap(): void {
   mode = 'map';
   music.setStyle('map');
   ui.promptKey.style.display = 'none';
-  setObjective(quest.lucreDone
-    ? '🗺 Past the silver hill — Chapter XIII, coming soon…'
+  setObjective(quest.castleDone
+    ? '🗺 Doubting Castle is behind you — the road to the Celestial City goes on!'
+    : quest.lucreDone
+    ? '🗺 Past the silver hill — the King\'s Highway grows rocky ahead. Beware Bypath Meadow!'
     : quest.vanityDone
     ? '🗺 With Hopeful now — ahead, the easy Plain and the glittering Hill Lucre'
     : quest.shadowDone
@@ -713,6 +717,72 @@ function enterLucre(revisit: boolean): void {
   camTarget.copy(lucreActors.christian.root.position);
 }
 
+// ---------- Chapter XIII: Doubting Castle ----------
+const castle = new CastleScene({
+  playScript,
+  setObjective,
+  onExit: () => goToMap(),
+  rumbleSound: () => music.rumble(),
+  blipSound: () => music.blip(),
+  setMusic: (style) => music.setStyle(style),
+  showChoice,
+  battleUI: (show) => {
+    battleUI.classList.toggle('show', show);
+    battleUI.classList.toggle('solo', false); // show both bars: Christian + Hopeful
+  },
+  setHP: (c, h) => {
+    battleFillChr.style.width = `${Math.max(0, c)}%`;
+    battleFillApo.style.width = `${Math.max(0, h)}%`;
+  },
+  fade: (mid) => fadeTransition(() => {
+    mid();
+    if (castleActors) camTarget.copy(castleActors.christian.root.position);
+  }),
+  onComplete: () => {
+    quest.castleDone = true;
+    showEnding(
+      '🏰 Chapter XIII Complete',
+      'Doubting Castle',
+      'Christian\'s shortcut through Bypath Meadow led straight to Giant Despair\'s '
+      + 'dungeon. Days of darkness, beatings, and despair — until Christian remembered '
+      + 'the key called Promise that the King had given him all along. One key. '
+      + 'Three locks. Every door flew open. They ran back to the King\'s Highway, '
+      + 'left a warning for those who follow, and walked on — wiser, and more grateful '
+      + 'for the true road than they had ever been before…',
+      () => {
+        worldMap.sloughDone = true;
+        worldMap.moralityDone = true;
+        worldMap.wicketDone = true;
+        worldMap.crossDone = true;
+        worldMap.highwayDone = true;
+        worldMap.hillDone = true;
+        worldMap.palaceDone = true;
+        worldMap.valleyDone = true;
+        worldMap.shadowDone = true;
+        worldMap.vanityDone = true;
+        worldMap.lucreDone = true;
+        worldMap.castleDone = true;
+        worldMap.start([]);
+        worldMap.road = 'main';
+        worldMap.progress = worldMap.castleT;
+        goToMap();
+      },
+    );
+  },
+});
+let castleActors: { christian: import('./bear').BearParts; hopeful: import('./bear').BearParts } | null = null;
+
+function enterCastle(revisit: boolean): void {
+  mode = 'castle';
+  ui.prompt.style.display = 'none';
+  ui.talkBtn.style.display = 'none';
+  // repurpose the Apollyon bar to show Hopeful's HP
+  const apoName = document.querySelector('#battle-ui .brow.apo .bname') as HTMLElement | null;
+  if (apoName) apoName.textContent = '🐻 Hopeful';
+  castleActors = castle.enter(revisit);
+  camTarget.copy(castleActors.christian.root.position);
+}
+
 function enterVanity(revisit: boolean): void {
   mode = 'vanity';
   ui.prompt.style.display = 'none';
@@ -893,6 +963,9 @@ window.addEventListener('keydown', (e) => {
       if (vanity.nearFountain()) vanity.talkFountain();
       else if (vanity.nearCitizen()) vanity.talkCitizen();
     }
+    else if (mode === 'castle') {
+      if (castle.nearDoor()) castle.pressKey();
+    }
     else if (mode === 'valley') valley.tryAttack();
     else if (mode === 'lucre') lucre.tryTouchPillar();
   }
@@ -912,6 +985,7 @@ function tryEnterFromMap(): void {
   else if (spot === 'shadow') enterShadow(quest.shadowDone);
   else if (spot === 'vanity') enterVanity(quest.vanityDone);
   else if (spot === 'lucre') enterLucre(quest.lucreDone);
+  else if (spot === 'castle') enterCastle(quest.castleDone);
 }
 window.addEventListener('keyup', (e) => keys.delete(e.code));
 // don't leave movement keys stuck when the tab loses focus mid-keypress
@@ -1003,6 +1077,7 @@ ui.debugPanel.addEventListener('click', (e) => {
   else if (jump === 'shadow') enterShadow(false);
   else if (jump === 'vanity') enterVanity(false);
   else if (jump === 'lucre') enterLucre(false);
+  else if (jump === 'castle') enterCastle(false);
   else if (jump === 'map') { worldMap.start([]); worldMap.road = 'main'; goToMap(); }
 });
 
@@ -1065,6 +1140,9 @@ ui.talkBtn.addEventListener('click', () => {
   else if (mode === 'vanity') {
     if (vanity.nearFountain()) vanity.talkFountain();
     else if (vanity.nearCitizen()) vanity.talkCitizen();
+  }
+  else if (mode === 'castle') {
+    if (castle.nearDoor()) castle.pressKey();
   }
   else if (mode === 'valley') valley.tryAttack();
   else if (mode === 'lucre') lucre.tryTouchPillar();
@@ -1162,6 +1240,7 @@ function triggerInteract(it: Interactable): void {
 const SPEED = 7;
 const camOffset = new THREE.Vector3(0, 13, 13);
 const HOUSE_CAM_OFFSET = new THREE.Vector3(0, 7.5, 7.5); // closer view inside the Interpreter's House
+const DUNGEON_CAM_OFFSET = new THREE.Vector3(0, 6, -11); // camera looks from outside north wall inward
 const camTarget = new THREE.Vector3();
 let playerMoving = false;
 
@@ -1511,6 +1590,7 @@ function tick(): void {
     if (spot === 'shadow' && !quest.shadowDone) { enterShadow(false); return; }
     if (spot === 'vanity' && !quest.vanityDone) { enterVanity(false); return; }
     if (spot === 'lucre' && !quest.lucreDone) { enterLucre(false); return; }
+    if (spot === 'castle' && !quest.castleDone) { enterCastle(false); return; }
 
     ui.prompt.style.display = spot === 'road' ? 'none' : 'block';
     ui.promptKey.style.display = 'none';
@@ -1565,6 +1645,10 @@ function tick(): void {
       ui.promptWho.textContent = quest.lucreDone
         ? '🧂 Cross the Plain of Ease again'
         : '🧂 Cross the Plain of Ease, past the Hill Lucre';
+    } else if (spot === 'castle') {
+      ui.promptWho.textContent = quest.castleDone
+        ? '🏰 Pass by Doubting Castle again'
+        : '🏰 The King\'s Highway grows rocky — Doubting Castle ahead';
     }
     if (spot !== 'road' && spot !== 'fork') {
       ui.promptKey.style.display = isTouch ? 'none' : 'inline-block';
@@ -2036,6 +2120,53 @@ function tick(): void {
     camera.position.copy(camTarget).add(camOffset);
     camera.lookAt(camTarget.x, camTarget.y + 1.4, camTarget.z);
     renderer.render(lucre.scene, camera);
+    return;
+  }
+
+  if (mode === 'castle' && castleActors) {
+    // ---- Doubting Castle mode ----
+    const cc = castleActors.christian;
+    let mx = 0;
+    let mz = 0;
+    if (keys.has('KeyW') || keys.has('ArrowUp')) mz -= 1;
+    if (keys.has('KeyS') || keys.has('ArrowDown')) mz += 1;
+    if (keys.has('KeyA') || keys.has('ArrowLeft')) mx -= 1;
+    if (keys.has('KeyD') || keys.has('ArrowRight')) mx += 1;
+    mx += joy.x;
+    mz += joy.y;
+    const len = Math.hypot(mx, mz);
+    const factor = castle.moveFactor();
+    const choiceOpen = choiceBox.classList.contains('open');
+    const moving = len > 0.15 && !dialogueOpen && !endingOpen && !choiceOpen && factor > 0;
+    if (moving) {
+      mx /= Math.max(len, 1);
+      mz /= Math.max(len, 1);
+      cc.root.position.x += mx * SPEED * factor * dt;
+      cc.root.position.z += mz * SPEED * factor * dt;
+      cc.root.rotation.y = lerpAngle(cc.root.rotation.y, Math.atan2(mx, mz), 12 * dt);
+    }
+    castle.afterMove();
+    castle.update(dt, t, moving);
+
+    // prompt when near the Promise-key door
+    const canPressKey = castle.nearDoor() && !dialogueOpen && !endingOpen && !choiceOpen;
+    ui.prompt.style.display = canPressKey ? 'block' : 'none';
+    if (canPressKey) {
+      ui.promptKey.style.display = isTouch ? 'none' : 'inline-block';
+      ui.promptWho.textContent = 'Try the Promise key';
+      if (isTouch) {
+        ui.talkBtn.textContent = 'Use Key';
+        ui.talkBtn.style.display = 'block';
+      }
+    } else if (isTouch && !dialogueOpen) {
+      ui.talkBtn.style.display = 'none';
+    }
+
+    const inDungeon = castle.phase === 'dungeon' || castle.phase === 'key';
+    camTarget.lerp(cc.root.position, Math.min(4 * dt, 1));
+    camera.position.copy(camTarget).add(inDungeon ? DUNGEON_CAM_OFFSET : camOffset);
+    camera.lookAt(camTarget.x, camTarget.y + 1.4, camTarget.z);
+    renderer.render(castle.scene, camera);
     return;
   }
 
