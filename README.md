@@ -1,8 +1,15 @@
-# 🐻 Pilgrim's Progress — Voxel RPG
+# 🐻 Pilgrim's Progress 
 
 A cute pastel voxel-style 3D adventure based on John Bunyan's *The Pilgrim's
 Progress*, with an all-bear cast. Christian the bear must leave the City of
 Destruction and journey to the Celestial City.
+
+
+Gameplay rules:
+- Christian shouldn't be able to walk through characters
+- Language is set to modern english.
+- Christian should always face the NPC when interacting with them.
+
 
 ## Chapter I — The City of Destruction
 

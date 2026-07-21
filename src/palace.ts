@@ -105,6 +105,8 @@ export class PalaceScene {
     const helmet = new THREE.Group();
     helmet.add(block(1.02, 0.4, 0.86, STEEL, 0, 0.92, 0));
     helmet.add(block(0.2, 0.24, 0.9, PALETTE.robeGold, 0, 1.16, 0)); // crest
+    helmet.add(block(0.28, 0.28, 0.22, STEEL, -0.38, 1.12, 0)); // left bear ear
+    helmet.add(block(0.28, 0.28, 0.22, STEEL, 0.38, 1.12, 0));  // right bear ear
     this.christian.head.add(helmet);
     const breastplate = block(1.16, 0.62, 0.88, STEEL, 0, 0.42, 0);
     this.christian.body.add(breastplate);
@@ -183,9 +185,11 @@ export class PalaceScene {
     head.position.set(1.25, 1.15, 0);
     head.rotation.y = 0;
     root.add(head);
-    // the chain: a stout post and links trailing to a hind leg
-    const post = block(0.24, 1.4, 0.24, 0x5e5a55, -2.6, 0.7, 0);
-    root.add(post);
+    // the chain post is anchored to the world — it must not move when the lion lunges
+    const postWX = side < 0 ? -5.5 : 4.5;
+    const postWZ = 3.4 * side;
+    const post = block(0.24, 1.4, 0.24, 0x5e5a55, postWX, 0.7, postWZ);
+    this.scene.add(post);
     for (let c = 0; c < 4; c++) {
       const link = new THREE.Mesh(new THREE.TorusGeometry(0.14, 0.05, 6, 10), mat(0x6e6a64));
       link.position.set(-2.2 + c * 0.42, 0.32, 0.06 * (c % 2));
@@ -194,8 +198,8 @@ export class PalaceScene {
     }
     const home = new THREE.Vector3((LION_X0 + LION_X1) / 2 + (side < 0 ? -2.4 : 2.4), 0, 3.4 * side);
     root.position.copy(home);
-    // face the road
-    root.rotation.y = side < 0 ? Math.PI : 0;
+    // face the road (north lion faces south +z, south lion faces north -z)
+    root.rotation.y = side < 0 ? 0 : Math.PI;
     this.scene.add(root);
     return { root, head, home, lunge: 0 };
   }
@@ -265,9 +269,11 @@ export class PalaceScene {
       palace.add(block(3.0, 0.5, 3.0, TRIM, tx, 9.7, tz));
       palace.add(block(2.2, 1.6, 2.2, PALETTE.roofPink, tx, 10.7, tz));
     }
-    // arched gate on the SOUTH face, opening onto the road
-    palace.add(block(3.4, 4.6, 0.8, TRIM, 8, 2.3, 5.2));
-    palace.add(block(2.4, 3.6, 0.9, 0x4a4440, 8, 1.8, 5.35)); // dark doorway
+    // grand arched gate on the EAST face — where pilgrims enter from the road
+    palace.add(block(0.8, 5.2, 4.0, TRIM, 15.3, 2.6, 0));        // arch surround
+    palace.add(block(0.9, 4.0, 2.8, 0x4a4440, 15.5, 2.0, 0));    // dark doorway
+    palace.add(block(0.6, 5.8, 0.6, TRIM, 15.0, 2.9, 2.2));      // pilaster south
+    palace.add(block(0.6, 5.8, 0.6, TRIM, 15.0, 2.9, -2.2));     // pilaster north
     // glowing windows
     for (const [wx, wy, wz] of [
       [5, 4, 5.1], [8, 4.6, 5.1], [11, 4, 5.1],
@@ -280,9 +286,9 @@ export class PalaceScene {
       win.position.set(wx, wy, wz);
       palace.add(win);
     }
-    // a second, smaller door toward the east end of the south face
-    palace.add(block(2.6, 3.8, 0.8, TRIM, 13.5, 1.9, 5.2));
-    palace.add(block(1.8, 3.0, 0.9, 0x4a4440, 13.5, 1.5, 5.35));
+    // decorative porch columns flanking the east gate
+    palace.add(block(0.5, 6.2, 0.5, WHITE, 14.6, 3.1, 2.8));
+    palace.add(block(0.5, 6.2, 0.5, WHITE, 14.6, 3.1, -2.8));
     // the whole palace stands NORTH of the road, so the camera (which looks
     // from the south) never ends up buried inside its walls
     palace.position.set(0, 0, -7.5);
@@ -291,8 +297,8 @@ export class PalaceScene {
     palaceLight.position.set(8, 6, -2);
     s.add(palaceLight);
 
-    // Watchful stands in the gate
-    this.watchful.root.position.set(GATE_X - 5.2, 0, -2.2);
+    // Watchful stands by the east gate, visible to approaching Christian
+    this.watchful.root.position.set(13.5, 0, -4.5);
     this.watchful.root.rotation.y = -Math.PI / 2;
     s.add(this.watchful.root);
 
@@ -318,15 +324,17 @@ export class PalaceScene {
     }
     // a long rug down the middle
     hall.add(block(20, 0.06, 3.4, 0xc9808a, 8, 0.04, 0));
-    // the reading desk with the King's records
-    hall.add(block(2.4, 1.1, 1.2, PALETTE.woodDark, 3, 0.55, -7.6));
-    hall.add(block(1.0, 0.16, 0.7, 0xfdf6e3, 3, 1.18, -7.6));
-    hall.add(block(0.9, 0.5, 0.14, 0xfdf6e3, 3.7, 1.4, -7.9));
-    // the treasure table: relics under a soft glow
-    hall.add(block(3.0, 1.0, 1.4, PALETTE.woodDark, 12, 0.5, -7.5));
-    hall.add(block(0.5, 0.5, 0.5, PALETTE.robeGold, 11.2, 1.25, -7.5)); // ark-like chest
-    hall.add(block(0.16, 0.8, 0.16, 0x8a6f52, 12.2, 1.4, -7.5));        // a rod
-    hall.add(block(0.6, 0.14, 0.6, 0xcfd6dd, 13.1, 1.1, -7.5));         // a silver dish
+    // the reading desk with the King's records (bigger, more imposing)
+    hall.add(block(3.8, 1.4, 1.8, PALETTE.woodDark, 3, 0.7, -7.6));
+    hall.add(block(3.6, 0.16, 1.4, 0xfdf6e3, 3, 1.48, -7.6));   // open book surface
+    hall.add(block(1.6, 0.5, 0.14, 0xfdf6e3, 3.5, 1.7, -8.1));  // open pages
+    hall.add(block(1.6, 0.5, 0.14, 0xfdf6e3, 2.5, 1.7, -8.1));
+    hall.add(block(3.8, 0.5, 0.18, PALETTE.woodDark, 3, 0.7, -8.55)); // desk back panel
+    // the treasure table: relics under a soft glow (larger)
+    hall.add(block(4.5, 1.3, 2.0, PALETTE.woodDark, 12, 0.65, -7.5));
+    hall.add(block(0.6, 0.6, 0.6, PALETTE.robeGold, 11.0, 1.6, -7.5)); // ark-like chest
+    hall.add(block(0.16, 0.9, 0.16, 0x8a6f52, 12.2, 1.7, -7.5));       // a rod
+    hall.add(block(0.65, 0.14, 0.65, 0xcfd6dd, 13.2, 1.35, -7.5));     // a silver dish
     const relicGlow = new THREE.Mesh(
       new THREE.SphereGeometry(1.4, 14, 12),
       new THREE.MeshBasicMaterial({ color: 0xfff3b8, transparent: true, opacity: 0.18, depthWrite: false }),
@@ -339,9 +347,12 @@ export class PalaceScene {
     }
     hall.position.copy(HALL);
     s.add(hall);
-    const hallLight = new THREE.PointLight(0xffeecd, 1.5, 36);
+    const hallLight = new THREE.PointLight(0xffeecd, 2.8, 55);
     hallLight.position.set(HALL.x + 8, 5, 0);
     s.add(hallLight);
+    const hallFill = new THREE.PointLight(0xfff5dc, 1.4, 30);
+    hallFill.position.set(HALL.x + 3, 4, -7);
+    s.add(hallFill);
 
     // ---------- the rooftop (interior area two) ----------
     const roof = new THREE.Group();
@@ -352,15 +363,38 @@ export class PalaceScene {
     }
     roof.add(block(16, 0.3, 0.6, 0xe8e2d2, 0, 0.95, -5.6));
     roof.add(block(16, 0.3, 0.6, 0xe8e2d2, 0, 0.95, 5.6));
-    // the telescope on its stand
+    // the telescope on a tripod, angled east toward the Celestial City
     const scope = new THREE.Group();
-    scope.add(block(0.2, 1.2, 0.2, PALETTE.woodDark, 0, 0.6, 0));
-    const tube = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.24, 1.5, 10), mat(0xb08a3a));
+    // tripod legs
+    scope.add(block(0.1, 1.3, 0.1, PALETTE.woodDark, -0.28, 0.65, -0.28));
+    scope.add(block(0.1, 1.3, 0.1, PALETTE.woodDark, 0.28, 0.65, -0.28));
+    scope.add(block(0.1, 1.3, 0.1, PALETTE.woodDark, 0, 0.65, 0.4));
+    // horizontal mount
+    scope.add(block(0.36, 0.12, 0.36, PALETTE.woodDark, 0, 1.32, 0));
+    // main tube (angled east and up)
+    const tube = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.22, 2.0, 12), mat(0xb08a3a));
     tube.rotation.z = -Math.PI / 3;
-    tube.position.set(0.4, 1.5, 0);
+    tube.position.set(0.5, 1.9, 0);
     scope.add(tube);
-    scope.position.set(4, 0, 0);
+    // eyepiece end (smaller, inner-facing)
+    const eye = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.14, 0.28, 10), mat(0x8a6f52));
+    eye.rotation.z = -Math.PI / 3;
+    eye.position.set(-0.14, 1.24, 0);
+    scope.add(eye);
+    // objective lens end (larger, east-facing)
+    const obj = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.2, 0.18, 12), mat(0xcfd6dd));
+    obj.rotation.z = -Math.PI / 3;
+    obj.position.set(1.14, 2.55, 0);
+    scope.add(obj);
+    scope.position.set(1, 0, 0); // closer to where Christian enters
     roof.add(scope);
+    // stairway down at west end of roof
+    for (let i = 0; i < 5; i++) {
+      roof.add(block(1.8, 0.22 + i * 0.25, 1.0, 0xdfd4bc, -6.4 + i * 0.9, (0.22 + i * 0.25) / 2, 0));
+    }
+    // trapdoor opening surround
+    roof.add(block(2.4, 0.2, 1.6, 0xe8e2d2, -7.0, 0.1, 0));
+    roof.add(block(0.2, 0.8, 1.6, 0xdfd4bc, -5.9, 0.4, 0)); // hatch
     roof.position.copy(ROOF);
     s.add(roof);
     // the Celestial City, impossibly far to the east — a shining hint
@@ -465,6 +499,17 @@ export class PalaceScene {
         p.x = THREE.MathUtils.clamp(p.x, HALL.x - 4, HALL.x + 16.5);
         p.z = THREE.MathUtils.clamp(p.z, -8.6, 8.6);
         p.y = 0.1;
+        // women are solid obstacles
+        for (const w of this.women) {
+          const wp = w.root.position;
+          const dx = p.x - wp.x;
+          const dz = p.z - wp.z;
+          const d = Math.hypot(dx, dz);
+          if (d < 1.4 && d > 0.01) {
+            p.x = wp.x + (dx / d) * 1.4;
+            p.z = wp.z + (dz / d) * 1.4;
+          }
+        }
       } else {
         // the rooftop
         p.x = THREE.MathUtils.clamp(p.x, ROOF.x - 7, ROOF.x + 7);
@@ -574,7 +619,7 @@ export class PalaceScene {
       this.phase = 'armor';
       this.cb.fade?.(() => {
         this.christian.root.position.set(HALL.x + 8, 0.1, -1);
-        this.christian.root.rotation.y = Math.PI; // faces the women
+        this.christian.root.rotation.y = 0; // faces south so camera sees his face
         this.women.forEach((w, i) => {
           w.root.position.copy(this.womenHome[i]);
           w.root.rotation.y = Math.PI;
@@ -669,7 +714,7 @@ export class PalaceScene {
       animateBear(woman, t, true);
       return;
     }
-    woman.root.rotation.y = 0; // faces Christian... (north)
+    woman.root.rotation.y = Math.PI; // faces north toward Christian
     animateBear(woman, t, false);
     this.armorWalkT += dt;
     if (this.armorWalkT < 0.4) return;
@@ -739,6 +784,30 @@ export class PalaceScene {
         });
       }, 700);
     });
+  }
+
+  nearWatchful(): boolean {
+    if (this.phase !== 'walkout' && this.phase !== 'done') return false;
+    return this.christian.root.position.distanceTo(this.watchful.root.position) < 3.5;
+  }
+  talkWatchful(): void {
+    this.cb.playScript([
+      { speaker: 'Watchful', text: 'The road runs down into the Valley of Humiliation from here. Keep your sword close and your armor on — you will need them both.' },
+    ]);
+  }
+  nearWoman(index: number): boolean {
+    if (this.phase !== 'walkout' && this.phase !== 'done') return false;
+    return this.christian.root.position.distanceTo(this.women[index].root.position) < 3.0;
+  }
+  talkWoman(index: number): void {
+    const names = ['Discretion', 'Prudence', 'Piety', 'Charity'];
+    const lines = [
+      'Be wise in all your dealings on the road, Christian — and remember that foolishness often wears the face of reason.',
+      'Meditate on what you saw from the rooftop. Let the vision of the City carry you through the dark valleys.',
+      'We pray for every pilgrim who has left through that gate. The King hears every prayer lifted for His own.',
+      'Give freely as you go — there are others further back on the road who need exactly what you have been given.',
+    ];
+    this.cb.playScript([{ speaker: names[index], text: lines[index] }]);
   }
 
   update(dt: number, t: number, moving: boolean): void {

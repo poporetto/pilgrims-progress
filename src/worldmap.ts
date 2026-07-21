@@ -800,10 +800,13 @@ export class WorldMap {
     const curve = this.road === 'main' ? this.mainCurve : this.branchCurve;
     const param = this.road === 'main' ? this.progress : this.branchP;
     this.placeOn(curve, this.christian.root, param);
-    // pan the camera east once Christian walks past the Cross, keeping the
-    // original zoom level rather than pulling back to fit the whole map
-    const panTarget = Math.max(0, this.christian.root.position.x - CROSS.x);
-    this.camPan += (panTarget - this.camPan) * Math.min(dt * 3, 1);
+    // pan the camera to show the NEXT world on the road ahead of Christian
+    const nextWorlds = [HIGHWAY, HILL, PALACE, VALLEY, SHADOW, VANITY, LUCRE];
+    const nextDones = [this.highwayDone, this.hillDone, this.palaceDone,
+      this.valleyDone, this.shadowDone, this.vanityDone, this.lucreDone];
+    const nextW = nextWorlds.find((_, i) => !nextDones[i]) ?? LUCRE;
+    const panTarget = this.crossDone ? Math.max(0, nextW.x - CROSS.x) : 0;
+    this.camPan += (panTarget - this.camPan) * Math.min(dt * 2.5, 1);
     this.camera.position.x = 5.0 + this.camPan;
     this.camera.lookAt(5.0 + this.camPan, 0.4, 1.4);
     const tan = curve.getTangentAt(THREE.MathUtils.clamp(param, 0, 1));

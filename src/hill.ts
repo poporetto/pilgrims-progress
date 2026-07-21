@@ -423,6 +423,11 @@ export class HillScene {
     p.x = THREE.MathUtils.clamp(p.x, WEST_EDGE - 1, eastCap);
     p.y = this.groundY(p.x);
 
+    // arbor collision: push player out of the structure's footprint
+    if (p.x > ARBOR.x - 1.6 && p.x < ARBOR.x + 1.6 && p.z < ARBOR.z + 1.3) {
+      p.z = ARBOR.z + 1.3;
+    }
+
     if (this.revisit || this.phase === 'done') {
       if (p.x < WEST_EDGE || p.x > LIGHT_X) this.cb.onExit();
       return;
@@ -430,11 +435,7 @@ export class HillScene {
 
     if (this.phase === 'walk' && p.x > FORK_X - 3.5) {
       this.phase = 'fork';
-      // the two step up level with him to survey the hill
-      this.formalist.root.position.set(p.x - 1.2, 0, p.z - 2.0);
-      this.formalist.root.rotation.y = Math.PI / 2;
-      this.hypocrisy.root.position.set(p.x - 1.4, 0, p.z + 2.0);
-      this.hypocrisy.root.rotation.y = Math.PI / 2;
+      // let them remain where the follower logic placed them (no snap)
       this.cb.playScript([
         { speaker: '', text: 'At the foot of the hill the road divides in three: a steep path straight up, marked with the King\'s golden sign — and two easy paths curving round the bottom, one to the left, one to the right.' },
         { speaker: 'Formalist', text: 'Straight UP? In this coat? Gentlemen take the level road. The left way — "Danger", is it? — merely a name. It must wind round and meet you on the far side.' },
@@ -564,9 +565,9 @@ export class HillScene {
     // ---------- the arbor nap ----------
     if (this.phase === 'sleeping') {
       this.sleepT += dt;
-      // he lies down on the bench
-      this.christian.root.rotation.z = -Math.PI / 2 * Math.min(1, this.sleepT / 0.6);
-      this.christian.root.position.y = this.groundY(p.x) + 0.35 * Math.min(1, this.sleepT / 0.6);
+      // he slumps forward on the bench, stays on the ground level
+      this.christian.root.rotation.x = Math.PI / 6 * Math.min(1, this.sleepT / 0.6);
+      this.christian.root.position.y = this.groundY(p.x);
       this.zzzTimer -= dt;
       if (this.zzzTimer <= 0) {
         this.zzzTimer = 0.8;
@@ -578,6 +579,7 @@ export class HillScene {
         }
       }
       if (this.sleepT > 4.2) {
+        this.christian.root.rotation.x = 0;
         this.christian.root.rotation.z = 0;
         this.christian.root.position.y = this.groundY(p.x);
         this.phase = 'climb2';

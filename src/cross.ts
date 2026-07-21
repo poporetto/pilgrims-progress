@@ -32,11 +32,11 @@ type Phase =
   | 'done';
 
 const WEST_EDGE = -32;
-const HILL_R = 11;      // hill radius
-const HILL_PEAK = 7;    // hill height at the summit — tall but walkable
+const HILL_R = 16;      // hill radius — wide gentle mound
+const HILL_PEAK = 6;    // hill height at the summit
 const CROSS_TRIGGER = -1.2; // walking past here starts the scene
-// the tomb sits just below the summit, so the burden's whole roll stays on screen
-const TOMB = new THREE.Vector3(5.2, 0, -2.8);
+// the tomb sits just below the summit, clear of the hill
+const TOMB = new THREE.Vector3(9.0, 0, -1.5);
 const LIGHT_X = 36;
 
 export class CrossScene {
@@ -194,7 +194,7 @@ export class CrossScene {
 
     // ---------- the green hill: tall nested terraces up to the summit ----------
     const terraceColors = [0x9ede97, PALETTE.grass, 0xa8e6a3];
-    const STEPS = 9;
+    const STEPS = 14;
     for (let i = 0; i < STEPS; i++) {
       const rOuter = HILL_R * (1 - i / STEPS) + 0.5;
       const topY = Math.max(this.groundY(HILL_R * (1 - (i + 0.7) / STEPS), 0), 0.5);
@@ -383,6 +383,11 @@ export class CrossScene {
     p.x = THREE.MathUtils.clamp(p.x, WEST_EDGE - 1, LIGHT_X + 2);
     p.y = this.groundY(p.x, p.z);
 
+    // cross collision: the cross is at (0, gy, -2.2), base about 1.5 wide
+    if (Math.abs(p.x) < 1.5 && p.z < -1.3 && p.z > -3.5) {
+      p.z = -1.3;
+    }
+
     if (this.revisit || this.phase === 'done') {
       if (p.x < WEST_EDGE || p.x > LIGHT_X) this.cb.onExit();
       return;
@@ -478,6 +483,17 @@ export class CrossScene {
       const bz = THREE.MathUtils.lerp(this.rollFrom.z, TOMB.z, e);
       this.burdenProp.position.set(bx, this.groundY(bx, bz) + 0.45, bz);
       this.burdenProp.rotation.z -= dt * (2 + u * 8); // tumbling faster and faster
+      // dust trails behind the rolling burden
+      if (Math.random() < dt * 10) {
+        const fd = this.footDust.find((d) => d.life >= 1);
+        if (fd) {
+          fd.life = 0;
+          fd.vx = (Math.random() - 0.5) * 0.6;
+          fd.vz = (Math.random() - 0.5) * 0.6;
+          fd.mesh.position.set(bx + (Math.random() - 0.5) * 0.4, this.groundY(bx, bz) + 0.1, bz + (Math.random() - 0.5) * 0.4);
+          fd.mesh.visible = true;
+        }
+      }
       if (u >= 1) {
         this.burdenProp.visible = false;
         this.burstSparkles(this.burdenProp.position.clone().add(new THREE.Vector3(0, 0.8, 0)), 12, 1.4);
@@ -491,17 +507,17 @@ export class CrossScene {
           this.phase = 'descend';
           this.descendT = 0;
           const p = this.christian.root.position;
-          // angels land south of Christian (positive z = toward camera),
-          // clear of the cross which sits at z ≈ -2.2
+          // angels land NORTH of Christian (negative z = away from camera),
+          // so they appear in front of him as he faces north toward the cross
           this.angelTargets = [
-            new THREE.Vector3(p.x - 2.2, 0, p.z + 1.6),
-            new THREE.Vector3(p.x, 0, p.z + 2.8),
-            new THREE.Vector3(p.x + 2.2, 0, p.z + 1.6),
+            new THREE.Vector3(p.x - 2.2, 0, p.z - 2.0),
+            new THREE.Vector3(p.x, 0, p.z - 3.2),
+            new THREE.Vector3(p.x + 2.2, 0, p.z - 2.0),
           ];
           this.angels.forEach((a, i) => {
             const tg = this.angelTargets[i];
             a.root.position.set(tg.x, this.groundY(tg.x, tg.z) + 9, tg.z);
-            a.root.rotation.y = 0; // facing south, toward Christian
+            a.root.rotation.y = 0; // facing south (+z), toward Christian
             a.root.visible = true;
           });
           this.cb.setObjective('✨ Light gathers on the hilltop…');
@@ -617,5 +633,38 @@ export class CrossScene {
       fd.mat.opacity = 0.55 * (1 - fd.life);
       if (fd.life >= 1) fd.mesh.visible = false;
     }
+  }
+
+  nearCross(): boolean {
+    if (this.phase !== 'joy' && this.phase !== 'done') return false;
+    const p = this.christian.root.position;
+    const crossPos = new THREE.Vector3(0, 0, -2.2);
+    return Math.hypot(p.x - crossPos.x, p.z - crossPos.z) < 4.0;
+  }
+
+  talkCross(): void {
+    if (!this.nearCross()) return;
+    this.cb.playScript([
+      { speaker: '', text: 'The Cross stands quiet on the hilltop — dark wood against the bright sky.' },
+      { speaker: 'Christian', text: 'Here it was. Just here. My burden fell away the moment I looked up at it.' },
+      { speaker: 'Christian', text: 'He hung here in my place — bearing everything I had carried all my life. Not for His own sake, but for mine.' },
+      { speaker: 'Christian', text: 'I cannot repay this. I can only walk on, and never forget.' },
+    ]);
+  }
+
+  nearTomb(): boolean {
+    if (this.phase !== 'joy' && this.phase !== 'done') return false;
+    const p = this.christian.root.position;
+    return Math.hypot(p.x - TOMB.x, p.z - TOMB.z) < 3.5;
+  }
+
+  talkTomb(): void {
+    if (!this.nearTomb()) return;
+    this.cb.playScript([
+      { speaker: '', text: 'The open tomb — its stone rolled aside, its darkness quiet.' },
+      { speaker: 'Christian', text: 'My burden tumbled in here and I never saw it again. He took it all into His grave with Him.' },
+      { speaker: 'Christian', text: 'And then He came out again — but the burden stayed behind. Buried. Done.' },
+      { speaker: 'Christian', text: 'The empty tomb is the proof that His sacrifice was enough. He rose — and my guilt did not.' },
+    ]);
   }
 }

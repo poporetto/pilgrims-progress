@@ -309,18 +309,27 @@ export class LucreScene {
       this.gas.push({ mesh, m, life: 1 });
     }
 
-    // ---------- the pillar of salt ----------
+    // ---------- the pillar of salt: a cat-woman, one arm raised, looking back ----------
     const pillar = new THREE.Group();
     pillar.add(block(1.6, 0.4, 1.6, 0xe8e4dc, 0, 0.2, 0)); // plinth
-    // a pale figure, forever half-turned to look back west
     const salt = 0xf4f0e8;
-    pillar.add(block(0.7, 1.0, 0.55, salt, 0, 0.95, 0));       // gown
-    pillar.add(block(0.55, 0.55, 0.45, salt, 0, 1.7, 0));      // torso
-    const head = block(0.45, 0.45, 0.4, salt, 0.06, 2.2, -0.05);
-    head.rotation.y = -Math.PI * 0.4; // looking BACK, toward Vanity Fair
-    pillar.add(head);
-    pillar.add(block(0.16, 0.5, 0.16, salt, -0.34, 1.55, 0.1));
-    pillar.add(block(0.16, 0.5, 0.16, salt, 0.34, 1.6, -0.1));
+    // wide gown (feminine silhouette)
+    pillar.add(block(1.3, 1.5, 0.9, salt, 0, 0.95, 0));
+    pillar.add(block(0.6, 0.75, 0.62, salt, 0, 2.1, 0)); // bodice
+    // cat head with pointed ears, turned back
+    const catHead = new THREE.Group();
+    catHead.add(block(0.5, 0.46, 0.42, salt, 0, 0, 0));
+    catHead.add(block(0.2, 0.24, 0.14, salt, -0.2, 0.3, 0)); // left ear
+    catHead.add(block(0.2, 0.24, 0.14, salt, 0.2, 0.3, 0));  // right ear
+    catHead.rotation.y = -Math.PI * 0.45; // looking back westward
+    catHead.position.set(0, 2.63, 0);
+    pillar.add(catHead);
+    // right arm down
+    pillar.add(block(0.2, 0.55, 0.2, salt, 0.42, 2.0, 0));
+    // left arm raised up in alarm
+    pillar.add(block(0.2, 0.52, 0.2, salt, -0.42, 2.1, 0));    // upper arm
+    pillar.add(block(0.18, 0.48, 0.18, salt, -0.54, 2.6, -0.1)); // forearm
+    pillar.add(block(0.16, 0.22, 0.16, salt, -0.6, 2.95, -0.18)); // hand
     const pGlow = new THREE.Mesh(
       new THREE.SphereGeometry(1.5, 14, 12),
       new THREE.MeshBasicMaterial({ color: 0xfff9dd, transparent: true, opacity: 0.14, depthWrite: false }),
@@ -478,8 +487,6 @@ export class LucreScene {
 
     if (this.phase === 'walk' && p.x > BYENDS_X - 3) {
       this.phase = 'byends';
-      this.hopeful.root.position.set(p.x - 1.8, 0, p.z + 1.4);
-      this.hopeful.root.rotation.y = Math.PI / 2;
       this.cb.playScript([
         { speaker: '', text: 'They overtake a traveller in spotless, flamboyant gear — and, catching the sun at every step, a pair of gleaming SILVER SLIPPERS.' },
         { speaker: 'By-ends', text: 'Well met, gentlemen! By-ends of Fair-speech, at your service — a pilgrim, like yourselves! Though I confess I differ from the stricter sort in two small points.' },
@@ -508,8 +515,6 @@ export class LucreScene {
 
     if (this.phase === 'toHill' && p.x > DEMAS_X - 5) {
       this.phase = 'demas';
-      this.hopeful.root.position.set(p.x - 1.8, 0, p.z + 1.4);
-      this.hopeful.root.rotation.y = Math.PI / 2;
       this.cb.playScript([
         { speaker: '', text: 'Beside the road rises a jagged, glittering hill — LUCRE — and at a glowing mine-mouth stands a silver-suited fox, beckoning with both paws.' },
         { speaker: 'Demas', text: 'Ho, pilgrims! Turn aside, turn aside! A silver mine, not sixty paces off your road! Dig for a MOMENT and be rich for a LIFETIME — thousands have done it!' },
@@ -578,17 +583,17 @@ export class LucreScene {
   }
 
   private beginDoom(): void {
-    // By-ends and his friends arrive at the mine — and the pit takes them
+    // By-ends and his friends walk FROM the carriage TO the mine — and the pit takes them
     this.phase = 'doom';
     this.doomT = 0;
-    const spots: Array<[number, number]> = [[-1.4, -5.6], [0, -6.2], [1.4, -5.6], [0.2, -4.8]];
     const party = [this.byends, ...this.friends];
     party.forEach((who, i) => {
       who.root.visible = true;
-      who.root.position.set(DEMAS_X + spots[i][0], 0, spots[i][1]);
-      who.root.rotation.y = 0;
+      // start at the carriage
+      who.root.position.set(BYENDS_X + 3 + (i % 2) * 1.6, 0, -7.2 - Math.floor(i / 2) * 1.4);
+      who.root.rotation.y = Math.PI / 2; // facing east, toward mine
     });
-    if (this.carriage) this.carriage.position.set(DEMAS_X - 5, 0, -8.5);
+    if (this.carriage) this.carriage.position.set(BYENDS_X - 2, 0, -8.5);
     this.cb.setObjective('⛏ By-ends and his friends head straight for the mine…');
   }
 
@@ -685,14 +690,23 @@ export class LucreScene {
     if (this.phase === 'doom' && this.doomT >= 0) {
       this.doomT += dt;
       const party = [this.byends, ...this.friends];
-      if (this.doomT < 2.2) {
-        // they crowd eagerly toward the mine mouth
+      if (this.doomT < 4.0) {
+        // they run eagerly across the plain to the mine mouth
         for (const who of party) {
           if (!who.root.visible) continue;
-          who.root.position.z -= dt * 1.1;
-          animateBear(who, t * 1.4, true);
+          const tx = DEMAS_X;
+          const tz = -6.5;
+          const dx = tx - who.root.position.x;
+          const dz = tz - who.root.position.z;
+          const d = Math.hypot(dx, dz);
+          if (d > 0.4) {
+            who.root.position.x += (dx / d) * dt * 4.5;
+            who.root.position.z += (dz / d) * dt * 4.5;
+            who.root.rotation.y = Math.atan2(dx, dz);
+          }
+          animateBear(who, t * 1.4, d > 0.4);
         }
-      } else if (this.doomT < 4.2) {
+      } else if (this.doomT < 6.2) {
         // and the ground takes them, down and down
         for (const who of party) {
           if (!who.root.visible) continue;

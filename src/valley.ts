@@ -227,7 +227,7 @@ export class ValleyScene {
     s.add(ground);
 
     // the descent: broad slabs stepping down from the west
-    const STEPS = 7;
+    const STEPS = 14;
     for (let i = 0; i < STEPS; i++) {
       const x0 = HILL_X0 + (i * (HILL_X1 - HILL_X0)) / STEPS;
       const x1 = HILL_X0 + ((i + 1) * (HILL_X1 - HILL_X0)) / STEPS;
@@ -299,12 +299,28 @@ export class ValleyScene {
     s.add(heal);
     this.healBeam = heal;
     const props = new THREE.Group();
-    props.add(block(0.5, 0.1, 0.5, 0x7fc47f, -0.6, 0.3, 0));       // leaves of the Tree of Life
-    props.add(block(0.4, 0.25, 0.4, 0xd9b36a, 0.2, 0.35, 0.3));    // bread
-    const cup = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.1, 0.3, 8), mat(0x8a3a4a));
-    cup.position.set(0.5, 0.4, -0.3);
-    props.add(cup);
-    props.add(block(0.9, 0.24, 0.9, 0xe8ddc9, 0, 0.12, 0));        // a cloth
+    // white cloth beneath everything
+    props.add(block(1.4, 0.08, 1.0, 0xf5f0e8, 0, 0.04, 0));
+    // leaves of the Tree of Life — a layered cluster
+    props.add(block(0.6, 0.12, 0.5, 0x6fc46f, -0.55, 0.22, 0.05));
+    props.add(block(0.42, 0.10, 0.36, 0x8fcf70, -0.55, 0.32, 0.0));
+    props.add(block(0.28, 0.09, 0.24, 0xa8e070, -0.55, 0.40, -0.05));
+    // loaf of bread — rounded shape
+    props.add(block(0.48, 0.28, 0.36, 0xd9b36a, 0.08, 0.28, 0.28));
+    props.add(block(0.36, 0.14, 0.28, 0xf0cb88, 0.08, 0.38, 0.28));  // crust highlight
+    // wine cup — wider chalice shape
+    const cupBase = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.22, 0.1, 10), mat(0x7a2a3a));
+    cupBase.position.set(0.52, 0.12, -0.28);
+    props.add(cupBase);
+    const cupStem = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.06, 0.18, 8), mat(0x8a3a4a));
+    cupStem.position.set(0.52, 0.25, -0.28);
+    props.add(cupStem);
+    const cupBowl = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.08, 0.28, 10), mat(0x8a3a4a));
+    cupBowl.position.set(0.52, 0.42, -0.28);
+    props.add(cupBowl);
+    const wine = new THREE.Mesh(new THREE.CylinderGeometry(0.19, 0.19, 0.08, 10), mat(0x6a1a2a));
+    wine.position.set(0.52, 0.52, -0.28);
+    props.add(wine);
     props.position.set(APOLLYON_X - 4, 0, 0);
     props.visible = false;
     s.add(props);
@@ -345,7 +361,7 @@ export class ValleyScene {
     this.groundSword.visible = false;
     this.apollyon.visible = !revisit;
     this.apollyon.position.copy(this.apHome);
-    this.apollyon.rotation.set(0, 0, 0);
+    this.apollyon.rotation.set(0, -Math.PI / 2, 0); // face west toward Christian
     if (this.healBeam) (this.healBeam.material as THREE.MeshBasicMaterial).opacity = 0;
     if (this.healProps) this.healProps.visible = false;
     this.cb.battleUI(false);
@@ -387,6 +403,12 @@ export class ValleyScene {
     p.z = THREE.MathUtils.clamp(p.z, -7, 7);
     p.x = THREE.MathUtils.clamp(p.x, WEST_EDGE - 1, LIGHT_X + 2);
     p.y = this.groundY(p.x);
+
+    // Apollyon blocks the road during combat
+    if (this.apollyon.visible && (this.phase === 'confront' || this.phase === 'battle' ||
+        this.phase === 'anim' || this.phase === 'fallen')) {
+      if (p.x > APOLLYON_X - 2.5) p.x = APOLLYON_X - 2.5;
+    }
 
     if (this.revisit || this.phase === 'done') {
       if (p.x < WEST_EDGE || p.x > LIGHT_X) this.cb.onExit();
@@ -491,6 +513,7 @@ export class ValleyScene {
     ], () => {
       // revived — and the sword is the Sword of the Spirit now
       this.knockT = 0;
+      this.christian.root.rotation.x = 0;
       this.christian.root.rotation.z = 0;
       this.chp = 50;
       this.spiritSword = true;
@@ -559,14 +582,15 @@ export class ValleyScene {
     const p = this.christian.root.position;
     animateBear(this.christian, t, moving && this.moveFactor() > 0);
 
-    // knocked down / getting back up
+    // knocked down / getting back up (backward fall, not sideways)
     if (this.knockT > 0 && this.knockT < 90) {
-      // knocked flat, then springing back up as the timer runs out
       this.knockT = Math.max(0, this.knockT - dt);
-      this.christian.root.rotation.z =
-        -(Math.PI / 2) * THREE.MathUtils.clamp(this.knockT / 0.5, 0, 1);
+      this.christian.root.rotation.x =
+        (Math.PI / 2) * THREE.MathUtils.clamp(this.knockT / 0.5, 0, 1);
     } else if (this.knockT >= 90) {
-      this.christian.root.rotation.z = -Math.PI / 2; // stays down during the fallen scene
+      this.christian.root.rotation.x = Math.PI / 2; // stays on back during fallen scene
+    } else {
+      this.christian.root.rotation.x = 0;
     }
 
     // ---------- battle animations ----------
@@ -580,8 +604,7 @@ export class ValleyScene {
         this.swingArc.rotation.set(Math.PI / 2 - 0.4, 0, -u * 2.4);
         (this.swingArc.material as THREE.MeshBasicMaterial).opacity = 0.7 * Math.sin(u * Math.PI);
         (this.swingArc.material as THREE.MeshBasicMaterial).color.set(this.spiritSword ? 0x7ab8ff : 0xd8dee4);
-        // he steps in as he strikes
-        this.christian.root.position.x = p.x + Math.sin(u * Math.PI) * dt * 6;
+        // (player-controlled position; no forced movement during swing)
         if (this.animT >= 0.5) {
           this.swingArc.visible = false;
           this.christian.armR.rotation.x = 0;
@@ -689,10 +712,13 @@ export class ValleyScene {
       const sc = 1 + Math.sin(t * 2.2) * 0.1;
       this.lightBeam.scale.set(sc, 1, sc);
     }
-    // the spirit sword hums
+    // the spirit sword blazes with a living pulse
     if (this.spiritSword) {
-      (this.swordGlow.material as THREE.MeshBasicMaterial).opacity =
-        0.4 + 0.2 * Math.abs(Math.sin(t * 3));
+      const pulse = Math.abs(Math.sin(t * 4));
+      const m = this.swordGlow.material as THREE.MeshBasicMaterial;
+      m.opacity = 0.45 + 0.45 * pulse;
+      m.color.setHSL(0.6 - pulse * 0.08, 1.0, 0.6 + pulse * 0.2);
+      this.swordGlow.scale.set(1 + pulse * 0.3, 1, 1 + pulse * 0.3);
     }
   }
 }

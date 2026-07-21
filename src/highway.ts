@@ -214,11 +214,11 @@ export class HighwayScene {
       s.add(block(2.25, 0.25, 0.95, 0xa39a8c, wx, 1.8, -3.6));
     }
 
-    // the climbers wait unseen behind the wall
-    this.formalist.root.position.set(CLIMB_X - 1.2, 0, -6);
+    // the climbers wait far north, off-screen
+    this.formalist.root.position.set(CLIMB_X - 1.2, 0, -22);
     this.formalist.root.visible = false;
     s.add(this.formalist.root);
-    this.hypocrisy.root.position.set(CLIMB_X + 1.2, 0, -6);
+    this.hypocrisy.root.position.set(CLIMB_X + 1.2, 0, -22);
     this.hypocrisy.root.visible = false;
     s.add(this.hypocrisy.root);
 
@@ -338,7 +338,7 @@ export class HighwayScene {
 
     if (this.phase === 'walk' && p.x > SLEEPERS_X - 4.5) {
       this.phase = 'sleepers';
-      this.christian.root.rotation.y = Math.PI * 0.75; // turns toward them
+      this.christian.root.rotation.y = 0; // faces south toward the sleepers
       this.cb.playScript([
         { speaker: '', text: 'A little way off the road, three figures lie fast asleep in the grass — and about their ankles, iron chains.' },
         { speaker: 'Christian', text: 'Hey! Friends! Wake up! You are like sailors asleep at the top of a mast — the deep sea is right under you!' },
@@ -358,10 +358,13 @@ export class HighwayScene {
     if (this.phase === 'walk2' && p.x > CLIMB_X - 5) {
       this.phase = 'climb';
       this.climbT = 0;
+      // start them running from far north
+      this.formalist.root.position.set(CLIMB_X - 1.2, 0, -22);
+      this.hypocrisy.root.position.set(CLIMB_X + 1.2, 0, -22);
       this.formalist.root.visible = true;
       this.hypocrisy.root.visible = true;
       this.cb.blipSound();
-      this.cb.setObjective('👀 Someone is coming over the wall…');
+      this.cb.setObjective('👀 Someone is running toward the wall from the north…');
       return;
     }
 
@@ -424,24 +427,40 @@ export class HighwayScene {
       if (z.life >= 1) z.mesh.visible = false;
     }
 
-    // ---------- the two come over the wall in staggered arcs ----------
+    // ---------- the two run from the north then jump over the wall ----------
     if (this.phase === 'climb') {
       this.climbT += dt;
+      const RUN_DUR = 1.8; // seconds to run from z=-22 to wall at z=-4
+      const JUMP_DUR = 0.9; // seconds to arc over
       const pair: Array<[BearParts, number, number]> = [
-        [this.formalist, 0, CLIMB_X - 1.2], [this.hypocrisy, 0.7, CLIMB_X + 1.2],
+        [this.formalist, 0, CLIMB_X - 1.2], [this.hypocrisy, 0.5, CLIMB_X + 1.2],
       ];
       let allOver = true;
       for (const [who, delay, wx] of pair) {
-        const u = THREE.MathUtils.clamp((this.climbT - delay) / 1.6, 0, 1);
-        if (u < 1) allOver = false;
-        // from behind the wall (z −6) up and over (peak above the wall) to the road (z −1.6)
+        const ct = this.climbT - delay;
         who.root.position.x = wx;
-        who.root.position.z = THREE.MathUtils.lerp(-6, -1.6, u);
-        who.root.position.y = Math.sin(u * Math.PI) * 2.3;
-        who.root.rotation.y = 0; // facing south, toward the road
-        animateBear(who, t * 1.6, u > 0 && u < 1);
+        if (ct < 0) {
+          // not yet started
+          allOver = false;
+        } else if (ct < RUN_DUR) {
+          // running south toward the wall
+          const u = ct / RUN_DUR;
+          who.root.position.z = THREE.MathUtils.lerp(-22, -4, u);
+          who.root.position.y = 0;
+          who.root.rotation.y = 0; // facing south
+          animateBear(who, t * 1.8, true);
+          allOver = false;
+        } else {
+          // jumping over the wall
+          const ju = THREE.MathUtils.clamp((ct - RUN_DUR) / JUMP_DUR, 0, 1);
+          who.root.position.z = THREE.MathUtils.lerp(-4, -1.6, ju);
+          who.root.position.y = Math.sin(ju * Math.PI) * 2.6;
+          who.root.rotation.y = 0;
+          animateBear(who, t * 1.6, ju > 0 && ju < 1);
+          if (ju < 1) allOver = false;
+        }
       }
-      if (allOver && this.climbT > 2.6) {
+      if (allOver && this.climbT > RUN_DUR + JUMP_DUR + 0.5) {
         this.runDebate();
       }
     }

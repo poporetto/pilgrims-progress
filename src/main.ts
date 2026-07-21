@@ -874,6 +874,25 @@ window.addEventListener('keydown', (e) => {
     else if (mode === 'village') tryTalk();
     else if (mode === 'slough') slough.talkToHelp();
     else if (mode === 'hill') hill.tryPickScroll();
+    else if (mode === 'cross') {
+      if (cross.nearCross()) cross.talkCross();
+      else if (cross.nearTomb()) cross.talkTomb();
+    }
+    else if (mode === 'palace') {
+      if (palace.nearWatchful()) palace.talkWatchful();
+      else {
+        for (let wi = 0; wi < 4; wi++) {
+          if (palace.nearWoman(wi)) { palace.talkWoman(wi); break; }
+        }
+      }
+    }
+    else if (mode === 'shadow') {
+      if (shadow.nearFaithful()) shadow.talkFaithful();
+    }
+    else if (mode === 'vanity') {
+      if (vanity.nearFountain()) vanity.talkFountain();
+      else if (vanity.nearCitizen()) vanity.talkCitizen();
+    }
     else if (mode === 'valley') valley.tryAttack();
     else if (mode === 'lucre') lucre.tryTouchPillar();
   }
@@ -1028,6 +1047,25 @@ ui.talkBtn.addEventListener('click', () => {
   else if (mode === 'village') tryTalk();
   else if (mode === 'slough') slough.talkToHelp();
   else if (mode === 'hill') hill.tryPickScroll();
+  else if (mode === 'cross') {
+    if (cross.nearCross()) cross.talkCross();
+    else if (cross.nearTomb()) cross.talkTomb();
+  }
+  else if (mode === 'palace') {
+    if (palace.nearWatchful()) palace.talkWatchful();
+    else {
+      for (let wi = 0; wi < 4; wi++) {
+        if (palace.nearWoman(wi)) { palace.talkWoman(wi); break; }
+      }
+    }
+  }
+  else if (mode === 'shadow') {
+    if (shadow.nearFaithful()) shadow.talkFaithful();
+  }
+  else if (mode === 'vanity') {
+    if (vanity.nearFountain()) vanity.talkFountain();
+    else if (vanity.nearCitizen()) vanity.talkCitizen();
+  }
   else if (mode === 'valley') valley.tryAttack();
   else if (mode === 'lucre') lucre.tryTouchPillar();
 });
@@ -1672,6 +1710,19 @@ function tick(): void {
     cross.afterMove();
     cross.update(dt, t, moving);
 
+    const canTalkCross = (cross.nearCross() || cross.nearTomb()) && !dialogueOpen && !endingOpen;
+    ui.prompt.style.display = canTalkCross ? 'block' : 'none';
+    if (canTalkCross) {
+      ui.promptKey.style.display = isTouch ? 'none' : 'inline-block';
+      ui.promptWho.textContent = cross.nearCross() ? 'The Cross' : 'The empty tomb';
+      if (isTouch) {
+        ui.talkBtn.textContent = 'Look';
+        ui.talkBtn.style.display = 'block';
+      }
+    } else if (isTouch && !dialogueOpen) {
+      ui.talkBtn.style.display = 'none';
+    }
+
     camTarget.lerp(cc.root.position, Math.min(4 * dt, 1));
     camera.position.copy(camTarget).add(camOffset);
     camera.lookAt(camTarget.x, camTarget.y + 1.4, camTarget.z);
@@ -1779,6 +1830,26 @@ function tick(): void {
     palace.afterMove();
     palace.update(dt, t, moving);
 
+    let palaceTalkTarget = '';
+    if (palace.nearWatchful()) palaceTalkTarget = 'Talk to Watchful';
+    else {
+      for (let wi = 0; wi < 4; wi++) {
+        if (palace.nearWoman(wi)) { palaceTalkTarget = 'Talk to the Keeper'; break; }
+      }
+    }
+    const canTalkPalace = !!palaceTalkTarget && !dialogueOpen && !endingOpen;
+    ui.prompt.style.display = canTalkPalace ? 'block' : 'none';
+    if (canTalkPalace) {
+      ui.promptKey.style.display = isTouch ? 'none' : 'inline-block';
+      ui.promptWho.textContent = palaceTalkTarget;
+      if (isTouch) {
+        ui.talkBtn.textContent = 'Talk';
+        ui.talkBtn.style.display = 'block';
+      }
+    } else if (isTouch && !dialogueOpen) {
+      ui.talkBtn.style.display = 'none';
+    }
+
     camTarget.lerp(pc.root.position, Math.min(4 * dt, 1));
     camera.position.copy(camTarget).add(camOffset);
     camera.lookAt(camTarget.x, camTarget.y + 1.4, camTarget.z);
@@ -1855,6 +1926,19 @@ function tick(): void {
     shadow.afterMove(dt);
     shadow.update(dt, t, moving);
 
+    const canTalkShadow = shadow.nearFaithful() && !dialogueOpen && !endingOpen;
+    ui.prompt.style.display = canTalkShadow ? 'block' : 'none';
+    if (canTalkShadow) {
+      ui.promptKey.style.display = isTouch ? 'none' : 'inline-block';
+      ui.promptWho.textContent = 'Talk to Faithful';
+      if (isTouch) {
+        ui.talkBtn.textContent = 'Talk';
+        ui.talkBtn.style.display = 'block';
+      }
+    } else if (isTouch && !dialogueOpen) {
+      ui.talkBtn.style.display = 'none';
+    }
+
     camTarget.lerp(shc.root.position, Math.min(4 * dt, 1));
     camera.position.copy(camTarget).add(camOffset);
     camera.lookAt(camTarget.x, camTarget.y + 1.4, camTarget.z);
@@ -1885,6 +1969,22 @@ function tick(): void {
     }
     vanity.afterMove();
     vanity.update(dt, t, moving);
+
+    let vanityTalkTarget = '';
+    if (vanity.nearFountain()) vanityTalkTarget = 'The fountain';
+    else if (vanity.nearCitizen()) vanityTalkTarget = 'Talk to a citizen';
+    const canTalkVanity = !!vanityTalkTarget && !dialogueOpen && !endingOpen;
+    ui.prompt.style.display = canTalkVanity ? 'block' : 'none';
+    if (canTalkVanity) {
+      ui.promptKey.style.display = isTouch ? 'none' : 'inline-block';
+      ui.promptWho.textContent = vanityTalkTarget;
+      if (isTouch) {
+        ui.talkBtn.textContent = vanity.nearFountain() ? 'Look' : 'Talk';
+        ui.talkBtn.style.display = 'block';
+      }
+    } else if (isTouch && !dialogueOpen) {
+      ui.talkBtn.style.display = 'none';
+    }
 
     camTarget.lerp(vfc.root.position, Math.min(4 * dt, 1));
     camera.position.copy(camTarget).add(camOffset);

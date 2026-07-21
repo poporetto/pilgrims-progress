@@ -69,6 +69,7 @@ export class ShadowScene {
   private storyFigures: BearParts[] = [];
   private splashes: Array<{ mesh: THREE.Mesh; m: THREE.MeshBasicMaterial; life: number; vx: number; vz: number }> = [];
   private lightBeam: THREE.Mesh | null = null;
+  private meetingDialogueStarted = false;
   private revisit = false;
   private built = false;
 
@@ -209,7 +210,7 @@ export class ShadowScene {
     shame.root.position.set(HOUSE.x + 21, 0.1, -5.2);
     this.storyFigures = [wanton, adam, moses, discontent, shame];
     for (const f of this.storyFigures) {
-      f.root.rotation.y = Math.PI; // facing into the hall
+      f.root.rotation.y = 0; // face south toward Christian
       this.scene.add(f.root);
     }
 
@@ -314,7 +315,7 @@ export class ShadowScene {
     // ---------- the ditch and the quagmire ----------
     const offPath = Math.abs(p.z) > PATH_HALF;
     const day = this.dawnP > 0.6;
-    if (offPath && p.z < 0 && p.x < 12 && !day) {
+    if (offPath && p.z < 0 && p.x < 12) {
       // the ditch: one step too far and the edge gives way
       if (p.z < -1.8) {
         this.cb.rumbleSound();
@@ -327,7 +328,7 @@ export class ShadowScene {
           ]);
         }
       }
-    } else if (offPath && p.z > 0 && p.x < 12 && !day) {
+    } else if (offPath && p.z > 0 && p.x < 12) {
       // the quagmire: it pulls slowly, then all at once
       this.sink = Math.min(1.3, this.sink + dt * 0.7);
       if (Math.random() < dt * 6) this.spawnSplash(p.x, p.z);
@@ -411,6 +412,12 @@ export class ShadowScene {
   }
 
   private runMeeting(): void {
+    // Faithful runs to Christian first; dialogue fires once they meet
+    this.meetingDialogueStarted = false;
+  }
+
+  private startMeetingDialogue(): void {
+    this.meetingDialogueStarted = true;
     this.cb.playScript([
       { speaker: '', text: 'And there, at the valley\'s end, stands the owner of the voice: a white sheep with a traveller\'s pack, squinting back up the path.' },
       { speaker: 'Faithful', text: 'Baa—! CHRISTIAN?! Of the City of Destruction? Neighbour, it\'s ME — Faithful! I told you our roads would meet past the dark places!' },
@@ -501,6 +508,17 @@ export class ShadowScene {
     d.mesh.visible = true;
   }
 
+  nearFaithful(): boolean {
+    if (!this.faithful.root.visible) return false;
+    if (!this.faithfulJoined && this.phase !== 'walkfinal' && this.phase !== 'done') return false;
+    return this.christian.root.position.distanceTo(this.faithful.root.position) < 2.5;
+  }
+  talkFaithful(): void {
+    this.cb.playScript([
+      { speaker: 'Faithful', text: 'Keep walking, friend — the Celestial City won\'t come looking for us.' },
+    ]);
+  }
+
   update(dt: number, t: number, moving: boolean): void {
     if (!this.built) return;
     this.applyDawn(dt);
@@ -517,9 +535,11 @@ export class ShadowScene {
       }
     }
 
-    // Faithful: waits, then follows once joined
+    // Faithful: runs to Christian at 'meet', follows during story and walkfinal
     if (this.faithful.root.visible) {
-      if (this.faithfulJoined) {
+      const inStory = this.phase === 'story1' || this.phase === 'story2' ||
+        this.phase === 'story3' || this.phase === 'story4' || this.phase === 'return';
+      if (this.faithfulJoined || inStory) {
         const p = this.christian.root.position;
         const wp = this.faithful.root.position;
         const dx = (p.x - 2.0) - wp.x;
@@ -533,6 +553,23 @@ export class ShadowScene {
           animateBear(this.faithful, t + 0.6, true);
         } else {
           animateBear(this.faithful, t + 0.6, false);
+        }
+      } else if (this.phase === 'meet' && !this.meetingDialogueStarted) {
+        // Faithful runs toward Christian before dialogue fires
+        const p = this.christian.root.position;
+        const wp = this.faithful.root.position;
+        const dx = p.x - wp.x;
+        const dz = p.z - wp.z;
+        const d = Math.hypot(dx, dz);
+        if (d > 1.4) {
+          const sp = Math.min(5.0, d * 2.0) * dt;
+          wp.x += (dx / d) * sp;
+          wp.z += (dz / d) * sp;
+          this.faithful.root.rotation.y = Math.atan2(dx, dz);
+          animateBear(this.faithful, t + 0.6, true);
+        } else {
+          animateBear(this.faithful, t + 0.6, false);
+          this.startMeetingDialogue();
         }
       } else {
         animateBear(this.faithful, t + 0.6, false);

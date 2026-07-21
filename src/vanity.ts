@@ -496,6 +496,28 @@ export class VanityScene {
       p.z = THREE.MathUtils.clamp(p.z, p.x > CITY_X0 && p.x < CITY_X1 ? -8.6 : -9, p.x > CITY_X0 && p.x < CITY_X1 ? 8.6 : 9);
       p.x = THREE.MathUtils.clamp(p.x, WEST_EDGE - 1, LIGHT_X + 2);
       p.y = 0;
+      // fountain is solid
+      if (p.x > CITY_X0 && p.x < CITY_X1) {
+        const fd = Math.hypot(p.x - 17, p.z - 0.2);
+        if (fd < 2.1 && fd > 0.01) {
+          const a = Math.atan2(p.z - 0.2, p.x - 17);
+          p.x = 17 + Math.cos(a) * 2.1;
+          p.z = 0.2 + Math.sin(a) * 2.1;
+        }
+      }
+      // wandering citizens are solid obstacles in the fair
+      if (p.x > CITY_X0 && p.x < CITY_X1) {
+        for (let wi = 0; wi < 14; wi++) {
+          const wp = this.wanderers[wi].parts.root.position;
+          const dx = p.x - wp.x;
+          const dz = p.z - wp.z;
+          const d = Math.hypot(dx, dz);
+          if (d < 1.15 && d > 0.01) {
+            p.x = wp.x + (dx / d) * 1.15;
+            p.z = wp.z + (dz / d) * 1.15;
+          }
+        }
+      }
     }
 
     if (this.revisit || this.phase === 'done') {
@@ -505,8 +527,6 @@ export class VanityScene {
 
     if (this.phase === 'walk' && p.x > TALKATIVE_X - 3) {
       this.phase = 'talkative';
-      this.faithful.root.position.set(p.x - 1.6, 0, p.z + 1.6);
-      this.faithful.root.rotation.y = Math.PI / 2;
       this.cb.playScript([
         { speaker: '', text: 'A monkey with truly magnificent ears falls into step beside them, talking before anyone has said a word.' },
         { speaker: 'Talkative', text: 'Pilgrims! Marvellous! I LOVE to talk of pilgrimage. Grace! Redemption! The vanity of earthly things! Name any holy subject, friends, and I shall discourse upon it for HOURS.' },
@@ -527,8 +547,6 @@ export class VanityScene {
 
     if (this.phase === 'toCity' && p.x > MARKET_X) {
       this.phase = 'market';
-      this.faithful.root.position.set(p.x - 1.8, 0, p.z + 1.4);
-      this.faithful.root.rotation.y = Math.PI / 2;
       this.cb.setMusic?.('fair');
       this.cb.playScript([
         { speaker: '', text: 'The street swallows them whole. Stalls upon stalls, colour upon colour: wealth, pleasure, titles, kingdoms — everything under the sun for sale, and all of it shouting.' },
@@ -546,7 +564,6 @@ export class VanityScene {
 
     if (this.phase === 'toEnd' && p.x > MOB_X) {
       this.phase = 'mob';
-      this.faithful.root.position.set(p.x - 1.8, 0, p.z + 1.4);
       this.cb.rumbleSound();
       this.cb.playScript([
         { speaker: '', text: 'At the east end of the street the crowd closes in — jeering faces on every side, and the town watch shoving through with pikes.' },
@@ -666,6 +683,30 @@ export class VanityScene {
     }
   }
 
+  nearCitizen(): boolean {
+    if (this.phase !== 'market' && this.phase !== 'toEnd' && this.phase !== 'done') return false;
+    const p = this.christian.root.position;
+    return this.wanderers.slice(0, 14).some((w) => p.distanceTo(w.parts.root.position) < 2.5);
+  }
+  talkCitizen(): void {
+    const gossip = [
+      'What\'ll it be, pilgrim? We\'ve got honour, ease, pleasure, and kingdoms! All very fairly priced.',
+      'Strange clothes, strange speech — but coin is coin if you want to buy something.',
+      'Never seen your kind here before. Are you one of those heavenly-road people?',
+      'Don\'t mind the shouting — everyone who refuses to buy gets a bit of that. City tradition.',
+    ];
+    this.cb.playScript([{ speaker: 'Citizen', text: gossip[Math.floor(Math.random() * gossip.length)] }]);
+  }
+  nearFountain(): boolean {
+    if (this.phase !== 'market' && this.phase !== 'toEnd' && this.phase !== 'done') return false;
+    return Math.hypot(this.christian.root.position.x - 17, this.christian.root.position.z - 0.2) < 3.5;
+  }
+  talkFountain(): void {
+    this.cb.playScript([
+      { speaker: 'Christian', text: 'Gold coins for water — and they call it a fountain. Everything here is dressed up as something it isn\'t.' },
+    ]);
+  }
+
   update(dt: number, t: number, moving: boolean): void {
     if (!this.built) return;
     animateBear(this.christian, t, moving && this.moveFactor() > 0);
@@ -730,20 +771,34 @@ export class VanityScene {
           this.phase = 'burning';
           this.burnT = 0;
           this.faithful.root.rotation.z = 0;
-          // to the stake
-          this.faithful.root.position.set(COURT.x - 6.5, 0.35, COURT.z - 3.5);
-          this.faithful.root.rotation.y = Math.PI;
+          // soldiers step aside — Faithful walks to the stake in burning phase
           this.soldiers.forEach((so, i) => {
             so.root.position.set(COURT.x - 6.5 - 2.4 + i * 2.4, 0, COURT.z - 0.6);
             so.root.rotation.y = Math.PI;
           });
-          for (const f of this.flames) f.visible = true;
           this.cb.rumbleSound();
         }
       } else if (this.phase === 'burning') {
         this.burnT += dt;
         const fp = this.faithful.root.position;
-        if (this.burnT < 2.2) {
+        const stakeX = COURT.x - 6.5;
+        const stakeZ = COURT.z - 3.5;
+        if (this.burnT < 1.0) {
+          // Faithful walks calmly to the stake
+          const dx = stakeX - fp.x;
+          const dz = stakeZ - fp.z;
+          const d = Math.hypot(dx, dz);
+          if (d > 0.25) {
+            fp.x += (dx / d) * dt * 3.0;
+            fp.z += (dz / d) * dt * 3.0;
+            this.faithful.root.rotation.y = Math.atan2(dx, dz);
+            animateBear(this.faithful, t, true);
+          } else {
+            this.faithful.root.rotation.y = Math.PI;
+            animateBear(this.faithful, t, false);
+            for (const f of this.flames) f.visible = true;
+          }
+        } else if (this.burnT < 3.2) {
           // the fire leaps; smoke climbs
           if (Math.random() < dt * 16) this.spawnSmoke(fp.x, 1.6 + Math.random(), fp.z);
           animateBear(this.faithful, t, false);
@@ -753,14 +808,14 @@ export class VanityScene {
             const m = this.ascendBeam.material as THREE.MeshBasicMaterial;
             m.opacity = Math.min(0.55, m.opacity + dt * 0.8);
           }
-          fp.y += dt * (1.5 + (this.burnT - 2.2) * 2.2);
+          fp.y += dt * (1.5 + (this.burnT - 3.2) * 2.2);
           this.faithful.root.rotation.y += dt * 1.2;
           if (Math.random() < dt * 12) {
             this.burst(fp.x, fp.y - 0.4, fp.z, 2, 0xfff0b8);
           }
-          for (const f of this.flames) f.visible = this.burnT < 3.0;
+          for (const f of this.flames) f.visible = this.burnT < 4.0;
           animateBear(this.faithful, t * 0.3, false);
-          if (this.burnT > 4.6 && fp.y > 12) {
+          if (this.burnT > 5.6 && fp.y > 12) {
             this.faithful.root.visible = false;
             if (this.ascendBeam) (this.ascendBeam.material as THREE.MeshBasicMaterial).opacity = 0;
             this.runAscension();
@@ -779,8 +834,26 @@ export class VanityScene {
     }
 
     // ---------- the fair lives its noisy life ----------
-    for (const w of this.wanderers) {
+    const cp = this.christian.root.position;
+    for (let wi = 0; wi < this.wanderers.length; wi++) {
+      const w = this.wanderers[wi];
       const pos = w.parts.root.position;
+      // in the mob phase, fair citizens converge on Christian and Faithful
+      if (this.phase === 'mob' && wi < 14) {
+        const angle = (wi / 14) * Math.PI * 2;
+        const tx = cp.x + Math.cos(angle) * 2.4;
+        const tz = cp.z + Math.sin(angle) * 2.4;
+        const dx = tx - pos.x;
+        const dz = tz - pos.z;
+        const d = Math.hypot(dx, dz);
+        if (d > 0.3) {
+          pos.x += (dx / d) * 2.6 * dt;
+          pos.z += (dz / d) * 2.6 * dt;
+          w.parts.root.rotation.y = Math.atan2(cp.x - pos.x, cp.z - pos.z);
+        }
+        animateBear(w.parts, t + pos.x, d > 0.3);
+        continue;
+      }
       if (w.moving) {
         const dx = w.target.x - pos.x;
         const dz = w.target.z - pos.z;
