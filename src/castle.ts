@@ -106,9 +106,8 @@ export class CastleScene {
   private exitWalkFrom = new THREE.Vector3();
   private exitWalkTo = new THREE.Vector3();
 
-  // exit beacon (matches the beam+halo used at every other chapter's end)
+  // exit beacon (a plain beam, matching the recent chapters' end light)
   private lightBeam: THREE.Mesh | null = null;
-  private lightHalo: THREE.Mesh | null = null;
 
   // animation timers
   private sleepT   = 0;
@@ -415,18 +414,19 @@ export class CastleScene {
       const rock = block(rw, rh, rd, rockColors[i % 3], rx, rh / 2, rz);
       s.add(rock);
     }
-    // a solid rock boundary right at the lane's edge, so the invisible
-    // movement clamp reads as an intentional rocky wall instead of an
-    // unexplained stop. Sized so the nearest possible rock face never comes
-    // closer than LANE_HALF_WIDTH — otherwise Christian could visibly clip
-    // into a rock whose near edge landed inside his walkable range.
-    const BOUNDARY_Z = LANE_HALF_WIDTH + 0.7; // rock row centre line
-    for (let bx = WEST_EDGE; bx <= LIGHT_X; bx += rng(1.1, 1.6)) {
+    // a continuous rock wall right at the lane's edge, so the movement clamp
+    // reads as running into rocks rather than an unexplained stop. The row is
+    // placed so each rock's near face sits essentially on the clamp line
+    // (LANE_HALF_WIDTH): centre = LANE_HALF_WIDTH + half-depth. Stepped tightly
+    // and slightly overlapping so there are no walk-through gaps in the wall.
+    const BOUNDARY_HALF_DEPTH = 0.35;
+    const BOUNDARY_Z = LANE_HALF_WIDTH + BOUNDARY_HALF_DEPTH; // near face ≈ lane edge
+    for (let bx = WEST_EDGE; bx <= LIGHT_X; bx += rng(0.8, 1.1)) {
       for (const bz of [-BOUNDARY_Z, BOUNDARY_Z]) {
-        const bw = rng(0.7, 1.3);
-        const bh = rng(0.5, 1.0);
-        const bd = rng(0.4, 0.6); // half-depth ≤0.3, keeping the near face ≥LANE_HALF_WIDTH+0.4
-        s.add(block(bw, bh, bd, rockColors[Math.floor(rng(0, 3))], bx + rng(-0.3, 0.3), bh / 2, bz));
+        const bw = rng(0.9, 1.4);
+        const bh = rng(0.55, 1.1);
+        const bd = BOUNDARY_HALF_DEPTH * 2;
+        s.add(block(bw, bh, bd, rockColors[Math.floor(rng(0, 3))], bx + rng(-0.2, 0.2), bh / 2, bz));
       }
     }
     // a few rocks actually on the path (the difficult parts), scattered the full length
@@ -471,24 +471,20 @@ export class CastleScene {
     const CASTLE_Z = -7;
     this.buildDoubtingCastleExterior(CASTLE_X, CASTLE_Z, 0.42);
 
-    // ---- Exit light (chapter end beacon, matching every other chapter) ----
+    // ---- Exit light (chapter end beacon) — a plain beam, exactly as in the
+    // recent chapters (Shadow, Vanity Fair, Hill Lucre): opacity 0.55, no halo
+    // sphere. Castle previously added an extra glowing ball at the base, which
+    // made this chapter's beacon look different from the one just before it.
     const beam = new THREE.Mesh(
       new THREE.CylinderGeometry(1.4, 2.0, 14, 18, 1, true),
       new THREE.MeshBasicMaterial({
-        color: PALETTE.light, transparent: true, opacity: 0.5,
+        color: PALETTE.light, transparent: true, opacity: 0.55,
         side: THREE.DoubleSide, depthWrite: false, fog: false,
       }),
     );
     beam.position.set(LIGHT_X + 1.5, 7, 0);
     s.add(beam);
     this.lightBeam = beam;
-    const halo = new THREE.Mesh(
-      new THREE.SphereGeometry(2.4, 18, 14),
-      new THREE.MeshBasicMaterial({ color: 0xfff9dd, transparent: true, opacity: 0.4, depthWrite: false, fog: false }),
-    );
-    halo.position.set(LIGHT_X + 1.5, 1.6, 0);
-    s.add(halo);
-    this.lightHalo = halo;
 
     // ---- Dungeon interior (at DUNGEON, far east) ----
     this.buildDungeon();
@@ -692,10 +688,11 @@ export class CastleScene {
       case 'enter':   return 0.45;   // rocky, hard going
       case 'meadow-walk': return 0;  // scripted — control is locked until they arrive
       case 'meadow':  return 1.0;
-      case 'storm': {
-        const t = Math.max(0, this.tiringFactor);
-        return t * 0.9;              // gradually slower
-      }
+      // storm: a steady, slightly-heavy walking pace. Previously this scaled
+      // by tiringFactor as it drained to 0, which made them appear to walk on
+      // the spot; now they keep moving through the dark at a constant speed
+      // until sleep is triggered by time/distance (see update()).
+      case 'storm':   return 0.8;
       case 'escape':  return 1.6;    // sprinting!
       case 'highway': return 1.0;
       case 'sign':    return 0.8;
@@ -717,9 +714,10 @@ export class CastleScene {
 
     if (this.phase === 'meadow') {
       p.x = Math.max(FORK_X - 0.5, Math.min(p.x, SLEEP_X + 6));
-      // lower bound reaches back to the highway's own range so there's no snap
-      // the moment the choice is made — they simply keep walking where they are
-      p.z = Math.max(HWY_Z - LANE_HALF_WIDTH, Math.min(p.z, MEADOW_Z + 2.5));
+      // keep them on the green: the scripted meadow-walk already placed them on
+      // the meadow band (z ≈ MEADOW_Z), so clamp to the meadow's own width
+      // rather than letting them wander back onto the highway
+      p.z = Math.max(MEADOW_Z - 2.5, Math.min(p.z, MEADOW_Z + 2.5));
       if (p.x >= STORM_X && this.phase === 'meadow') this.triggerStorm();
     }
 
@@ -1127,15 +1125,18 @@ export class CastleScene {
 
     // ---- storm darkness ----
     if (this.phase === 'storm') {
-      this.stormDark = Math.min(1, this.stormDark + dt * 0.18);
+      this.stormDark = Math.min(1, this.stormDark + dt * 0.28);
       const dark = this.stormDark;
       this.hemi.intensity = THREE.MathUtils.lerp(1.0, 0.08, dark);
       this.hemi.color.set(new THREE.Color().lerpColors(new THREE.Color(0xdff0ff), new THREE.Color(0x202535), dark));
       this.sun.intensity = THREE.MathUtils.lerp(1.6, 0, dark);
       this.applySkyDarkness(dark);
 
-      // tiring effect
-      this.tiringFactor = Math.max(0, this.tiringFactor - dt * 0.04);
+      // tiredness now only counts DOWN a sleep timer — it no longer slows their
+      // pace (see moveFactor). It only advances while they are actually walking,
+      // so the player walks a real stretch through the dark before sleep takes
+      // them; if they stop pressing, they simply wait, wide awake, in the storm.
+      if (moving) this.tiringFactor = Math.max(0, this.tiringFactor - dt * 0.13);
 
       // lightning
       this.lightningTimer -= dt;
@@ -1145,7 +1146,7 @@ export class CastleScene {
         this.cb.rumbleSound();
       }
 
-      // auto-sleep when too tired
+      // auto-sleep once they've walked long enough into the dark
       if (this.tiringFactor <= 0 && this.phase === 'storm') {
         this.triggerSleep();
       }
@@ -1287,10 +1288,6 @@ export class CastleScene {
     if (this.lightBeam) {
       const sc = 1 + Math.sin(t * 2.2) * 0.1;
       this.lightBeam.scale.set(sc, 1, sc);
-    }
-    if (this.lightHalo) {
-      (this.lightHalo.material as THREE.MeshBasicMaterial).opacity =
-        0.3 + 0.2 * Math.abs(Math.sin(t * 1.7));
     }
 
     // ---- character animations ----

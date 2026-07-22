@@ -120,9 +120,11 @@ export function makeBear(opts: CharacterOptions = {}): BearParts {
   const tummyD = opts.plump ? 0.17 : 0.1;
   body.add(block(bodyW, 0.78, bodyD, fur, 0, 0.4, 0));
   body.add(block(tummyW, 0.5, tummyD, belly, 0, 0.38, 0.28)); // tummy
-  // neck: bridges the body top (y 0.79) and the head bottom (y 1.15) so the
-  // head never looks chopped off when it sways or the character lies down
-  body.add(block(0.52, 0.44, 0.46, fur, 0, 1.0, 0));
+  // neck: bridges the body top (y 0.79) and the head bottom so the head never
+  // looks chopped off when it sways or the character lies down. Height halved
+  // (0.44 → 0.22) for a shorter, stockier neck; the head is lowered to match
+  // (see head.position.y below) so no gap opens up.
+  body.add(block(0.52, 0.22, 0.46, fur, 0, 0.88, 0));
 
   // species tails
   if (species === 'bear') {
@@ -169,7 +171,9 @@ export function makeBear(opts: CharacterOptions = {}): BearParts {
 
   // --- head group ---
   const head = new THREE.Group();
-  head.position.y = 1.16;
+  // lowered from 1.16 to 0.98 to sit atop the now-shorter neck (see neck block
+  // above) — keeps the head connected to the body rather than floating
+  head.position.y = 0.98;
   body.add(head);
 
   head.add(block(0.95, 0.82, 0.8, fur, 0, 0.4, 0));

@@ -11,7 +11,8 @@ import { makeBear, animateBear, BearParts, block, mat } from './bear';
 
 export type MapSpot =
   | 'city' | 'road' | 'slough' | 'fork' | 'morality' | 'beyond' | 'cross'
-  | 'highway' | 'hill' | 'palace' | 'valley' | 'shadow' | 'vanity' | 'lucre' | 'castle';
+  | 'highway' | 'hill' | 'palace' | 'valley' | 'shadow' | 'vanity' | 'lucre'
+  | 'castle' | 'mountain';
 
 const CITY = new THREE.Vector3(-14.5, 0, 0);
 const SLOUGH = new THREE.Vector3(-3.5, 0, 0);
@@ -27,6 +28,7 @@ const SHADOW = new THREE.Vector3(65.5, 0, -0.5);
 const VANITY = new THREE.Vector3(73.5, 0, 1);
 const LUCRE   = new THREE.Vector3(81.5, 0, -0.5);
 const CASTLE  = new THREE.Vector3(89.5, 0, 1.0);
+const MOUNTAIN = new THREE.Vector3(97.5, 0, -0.5);
 
 // island centres + how close the road must be to count as "on land"
 const ISLANDS: Array<{ c: THREE.Vector3; r: number }> = [
@@ -44,6 +46,7 @@ const ISLANDS: Array<{ c: THREE.Vector3; r: number }> = [
   { c: VANITY, r: 4.2 },
   { c: LUCRE,   r: 4.0 },
   { c: CASTLE,  r: 4.0 },
+  { c: MOUNTAIN, r: 4.2 },
 ];
 
 export class WorldMap {
@@ -64,6 +67,7 @@ export class WorldMap {
   vanityDone = false;
   lucreDone   = false;
   castleDone  = false;
+  mountainDone = false;
   justDiverted = false; // set when the barred way shunts Christian onto the byway
   // t-parameters along the main curve nearest each stop, resolved in ctor
   cityT = 0.02;
@@ -78,7 +82,8 @@ export class WorldMap {
   shadowT = 0.92;
   vanityT = 0.96;
   lucreT  = 0.99;
-  castleT = 1.00;
+  castleT = 0.995;
+  mountainT = 1.00;
   private mainCurve: THREE.CatmullRomCurve3;
   private branchCurve: THREE.CatmullRomCurve3;
   private branchSpeed = 1; // t-speed scale so ground speed matches the main road
@@ -141,6 +146,9 @@ export class WorldMap {
       // …and on to the rocky stretch past Doubting Castle
       new THREE.Vector3(85.4, 0.62, 0.2),
       new THREE.Vector3(CASTLE.x - 0.6, 0.62, CASTLE.z),
+      // …and up into the bright Delectable Mountains
+      new THREE.Vector3(93.4, 0.62, 0.4),
+      new THREE.Vector3(MOUNTAIN.x - 0.6, 0.62, MOUNTAIN.z),
     ]);
     this.cityT = this.tForPoint(CITY);
     this.sloughT = this.tForPoint(SLOUGH);
@@ -155,6 +163,7 @@ export class WorldMap {
     this.vanityT = this.tForPoint(VANITY);
     this.lucreT  = this.tForPoint(LUCRE);
     this.castleT = this.tForPoint(CASTLE);
+    this.mountainT = this.tForPoint(MOUNTAIN);
     // the byway begins exactly where the main road passes the crossroad,
     // so switching roads never makes Christian jump
     const forkPoint = this.mainCurve.getPointAt(this.forkT);
@@ -610,6 +619,22 @@ export class WorldMap {
     castleIsle.add(block(0.8, 0.2, 0.08, 0xfff8ef, -1.4, 1.4, 1.2));
     this.label('Doubting Castle', CASTLE.x, CASTLE.z, 5.2, '#7a4a6a');
 
+    // ---------- Delectable Mountains island ----------
+    const mtnIsle = this.island(MOUNTAIN.x, MOUNTAIN.z, 4.2, 0x8fd06a);
+    // bright green peaks
+    mtnIsle.add(block(1.4, 3.0, 1.4, 0x7bc258, -0.9, 2.0, -0.6));
+    mtnIsle.add(block(1.2, 2.4, 1.2, 0x86c862,  0.9, 1.7, -0.4));
+    mtnIsle.add(block(1.0, 3.6, 1.0, 0x74b850,  0.1, 2.4, -1.1));
+    // snowy/bright caps
+    mtnIsle.add(block(0.7, 0.5, 0.7, 0xffffff,  0.1, 4.3, -1.1));
+    mtnIsle.add(block(0.6, 0.4, 0.6, 0xfff4d0, -0.9, 3.6, -0.6));
+    // a tiny fruit tree and a blue lake
+    mtnIsle.add(this.miniTree(1.9, 0.6, false));
+    mtnIsle.add(block(1.6, 0.08, 1.0, 0x8fd0ea, -1.6, 0.6, 1.2)); // lake
+    // road stripe through
+    mtnIsle.add(block(4.0, 0.1, 0.8, 0xeed9b4, 0.0, 0.62, 1.4));
+    this.label('Delectable Mountains', MOUNTAIN.x, MOUNTAIN.z, 5.4, '#3f8a4a');
+
     // ---------- both roads: stones on land, plank bridges over water ----------
     this.buildRoad(this.mainCurve, 80);
     this.buildRoad(this.branchCurve, 26);
@@ -738,7 +763,8 @@ export class WorldMap {
     if (this.progress < this.cityT + 0.03) return 'city';
     if (Math.abs(this.progress - this.sloughT) < 0.03) return 'slough';
     if (Math.abs(this.progress - this.forkT) < 0.025) return 'fork';
-    if (this.progress > this.castleT - 0.015) return 'castle';
+    if (this.progress > this.mountainT - 0.015) return 'mountain';
+    if (Math.abs(this.progress - this.castleT) < 0.015) return 'castle';
     if (Math.abs(this.progress - this.lucreT) < 0.015) return 'lucre';
     if (Math.abs(this.progress - this.vanityT) < 0.015) return 'vanity';
     if (Math.abs(this.progress - this.shadowT) < 0.015) return 'shadow';
@@ -766,7 +792,9 @@ export class WorldMap {
         this.moving = true;
         // the long road east stays barred until Morality is settled;
         // the road past the Gate opens only once the Gate chapter is done
-        const maxP = this.lucreDone
+        const maxP = this.castleDone
+          ? this.mountainT + 0.01
+          : this.lucreDone
           ? this.castleT + 0.01
           : this.vanityDone
           ? this.lucreT + 0.01

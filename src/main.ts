@@ -17,6 +17,7 @@ import { ShadowScene } from './shadow';
 import { VanityScene } from './vanity';
 import { LucreScene } from './lucre';
 import { CastleScene } from './castle';
+import { MountainScene } from './mountain';
 
 // ---------------------------------------------------------------- setup
 
@@ -91,13 +92,15 @@ const quest: QuestState = {
   vanityDone: false,
   lucreDone: false,
   castleDone: false,
+  mountainDone: false,
 };
 
 const music = new Music();
 const worldMap = new WorldMap(window.innerWidth / window.innerHeight);
 let mode:
   | 'village' | 'map' | 'slough' | 'morality' | 'wicket' | 'cross'
-  | 'highway' | 'hill' | 'palace' | 'valley' | 'shadow' | 'vanity' | 'lucre' | 'castle' = 'village';
+  | 'highway' | 'hill' | 'palace' | 'valley' | 'shadow' | 'vanity' | 'lucre' | 'castle'
+  | 'mountain' = 'village';
 
 // ---------------------------------------------------------------- UI refs
 
@@ -200,8 +203,10 @@ function goToMap(): void {
   mode = 'map';
   music.setStyle('map');
   ui.promptKey.style.display = 'none';
-  setObjective(quest.castleDone
-    ? '🗺 Doubting Castle is behind you — the road to the Celestial City goes on!'
+  setObjective(quest.mountainDone
+    ? '🗺 The Delectable Mountains are behind you — the Celestial City draws near!'
+    : quest.castleDone
+    ? '🗺 Doubting Castle is behind you — bright mountains rise ahead: a place of rest'
     : quest.lucreDone
     ? '🗺 Past the silver hill — the King\'s Highway grows rocky ahead. Beware Bypath Meadow!'
     : quest.vanityDone
@@ -851,6 +856,58 @@ function enterCastle(revisit: boolean): void {
   camTarget.copy(castleActors.christian.root.position);
 }
 
+// ---------- Chapter XIV: the Delectable Mountains ----------
+const mountain = new MountainScene({
+  playScript,
+  setObjective,
+  onExit: () => goToMap(),
+  blipSound: () => music.blip(),
+  rumbleSound: () => music.rumble(),
+  setMusic: (style) => music.setStyle(style),
+  onComplete: () => {
+    quest.mountainDone = true;
+    showEnding(
+      '⛰ Chapter XIV Complete',
+      'The Delectable Mountains',
+      'In the bright mountains of the Lord, four shepherds — Knowledge, Experience, '
+      + 'Watchful, and Sincere — fed the weary pilgrims and showed them four sights: '
+      + 'the cliff of Hill Error, the blind wanderers of Mount Caution, a smoking door '
+      + 'into Hell, and, through a trembling glass, the far golden towers of the '
+      + 'Celestial City itself. Warned to keep the King\'s Highway and beware every '
+      + 'shortcut, Christian and Hopeful walked on — rested, instructed, and full of '
+      + 'fresh hope, for now they had seen where the long road ends…',
+      () => {
+        worldMap.sloughDone = true;
+        worldMap.moralityDone = true;
+        worldMap.wicketDone = true;
+        worldMap.crossDone = true;
+        worldMap.highwayDone = true;
+        worldMap.hillDone = true;
+        worldMap.palaceDone = true;
+        worldMap.valleyDone = true;
+        worldMap.shadowDone = true;
+        worldMap.vanityDone = true;
+        worldMap.lucreDone = true;
+        worldMap.castleDone = true;
+        worldMap.mountainDone = true;
+        worldMap.start(mapParty());
+        worldMap.road = 'main';
+        worldMap.progress = worldMap.mountainT;
+        goToMap();
+      },
+    );
+  },
+});
+let mountainActors: { christian: import('./bear').BearParts; hopeful: import('./bear').BearParts } | null = null;
+
+function enterMountain(revisit: boolean): void {
+  mode = 'mountain';
+  ui.prompt.style.display = 'none';
+  ui.talkBtn.style.display = 'none';
+  mountainActors = mountain.enter(revisit);
+  camTarget.copy(mountainActors.christian.root.position);
+}
+
 function enterVanity(revisit: boolean): void {
   mode = 'vanity';
   ui.prompt.style.display = 'none';
@@ -1051,6 +1108,7 @@ function tryEnterFromMap(): void {
   else if (spot === 'vanity') enterVanity(quest.vanityDone);
   else if (spot === 'lucre') enterLucre(quest.lucreDone);
   else if (spot === 'castle') enterCastle(quest.castleDone);
+  else if (spot === 'mountain') enterMountain(quest.mountainDone);
 }
 window.addEventListener('keyup', (e) => keys.delete(e.code));
 // don't leave movement keys stuck when the tab loses focus mid-keypress
@@ -1114,7 +1172,7 @@ ui.debugPanel.addEventListener('click', (e) => {
   // flags agree with wherever we're jumping to — otherwise a later visit to
   // the map can snap Christian's progress back to an earlier chapter
   // each jump implies every earlier chapter is behind us
-  const ORDER = ['village', 'slough', 'morality', 'wicket-approach', 'cross', 'highway', 'hill', 'palace', 'valley', 'shadow', 'vanity', 'lucre'];
+  const ORDER = ['village', 'slough', 'morality', 'wicket-approach', 'cross', 'highway', 'hill', 'palace', 'valley', 'shadow', 'vanity', 'lucre', 'castle', 'mountain'];
   const rank = ORDER.indexOf(
     jump === 'wicket-highway' || jump === 'interpreter' ? 'wicket-approach' : jump === 'map' ? 'village' : jump,
   );
@@ -1128,6 +1186,8 @@ ui.debugPanel.addEventListener('click', (e) => {
   if (rank >= 9) { worldMap.valleyDone = true; quest.valleyDone = true; }
   if (rank >= 10) { worldMap.shadowDone = true; quest.shadowDone = true; }
   if (rank >= 11) { worldMap.vanityDone = true; quest.vanityDone = true; }
+  if (rank >= 12) { worldMap.lucreDone = true; quest.lucreDone = true; }
+  if (rank >= 13) { worldMap.castleDone = true; quest.castleDone = true; }
   if (jump === 'village') enterVillage();
   else if (jump === 'slough') enterSlough(false);
   else if (jump === 'morality') enterMorality(false);
@@ -1143,6 +1203,7 @@ ui.debugPanel.addEventListener('click', (e) => {
   else if (jump === 'vanity') enterVanity(false);
   else if (jump === 'lucre') enterLucre(false);
   else if (jump === 'castle') enterCastle(false);
+  else if (jump === 'mountain') enterMountain(false);
   else if (jump === 'map') { worldMap.start(mapParty()); worldMap.road = 'main'; goToMap(); }
 });
 
@@ -1653,6 +1714,7 @@ function tick(): void {
     if (spot === 'vanity' && !quest.vanityDone) { enterVanity(false); return; }
     if (spot === 'lucre' && !quest.lucreDone) { enterLucre(false); return; }
     if (spot === 'castle' && !quest.castleDone) { enterCastle(false); return; }
+    if (spot === 'mountain' && !quest.mountainDone) { enterMountain(false); return; }
 
     ui.prompt.style.display = spot === 'road' ? 'none' : 'block';
     ui.promptKey.style.display = 'none';
@@ -1711,6 +1773,10 @@ function tick(): void {
       ui.promptWho.textContent = quest.castleDone
         ? '🏰 Pass by Doubting Castle again'
         : '🏰 The King\'s Highway grows rocky — Doubting Castle ahead';
+    } else if (spot === 'mountain') {
+      ui.promptWho.textContent = quest.mountainDone
+        ? '⛰ Rest again in the Delectable Mountains'
+        : '⛰ Climb into the bright Delectable Mountains';
     }
     if (spot !== 'road' && spot !== 'fork') {
       ui.promptKey.style.display = isTouch ? 'none' : 'inline-block';
@@ -2231,6 +2297,37 @@ function tick(): void {
     return;
   }
 
+  if (mode === 'mountain' && mountainActors) {
+    // ---- Delectable Mountains mode (outdoor, standard camera) ----
+    const mc = mountainActors.christian;
+    let mx = 0;
+    let mz = 0;
+    if (keys.has('KeyW') || keys.has('ArrowUp')) mz -= 1;
+    if (keys.has('KeyS') || keys.has('ArrowDown')) mz += 1;
+    if (keys.has('KeyA') || keys.has('ArrowLeft')) mx -= 1;
+    if (keys.has('KeyD') || keys.has('ArrowRight')) mx += 1;
+    mx += joy.x;
+    mz += joy.y;
+    const len = Math.hypot(mx, mz);
+    const factor = mountain.moveFactor();
+    const moving = len > 0.15 && !dialogueOpen && !endingOpen && factor > 0;
+    if (moving) {
+      mx /= Math.max(len, 1);
+      mz /= Math.max(len, 1);
+      mc.root.position.x += mx * SPEED * factor * dt;
+      mc.root.position.z += mz * SPEED * factor * dt;
+      mc.root.rotation.y = lerpAngle(mc.root.rotation.y, Math.atan2(mx, mz), 12 * dt);
+    }
+    mountain.afterMove();
+    mountain.update(dt, t, moving);
+
+    camTarget.lerp(mc.root.position, Math.min(4 * dt, 1));
+    camera.position.copy(camTarget).add(camOffset);
+    camera.lookAt(camTarget.x, camTarget.y + 1.4, camTarget.z);
+    renderer.render(mountain.scene, camera);
+    return;
+  }
+
   // ---- village mode ----
   if (started) {
     updatePlayer(dt, t);
@@ -2287,7 +2384,7 @@ tick();
   wicket, enterWicket, cross, enterCross, highway, enterHighway, hill, enterHill,
   palace, enterPalace, valley, enterValley, shadow, enterShadow,
   vanity, enterVanity, lucre, enterLucre, playScript, goToMap,
-  castle, enterCastle, renderer, camera, camOffset, DUNGEON_CAM_OFFSET,
+  castle, enterCastle, mountain, enterMountain, renderer, camera, camOffset, DUNGEON_CAM_OFFSET,
   get mode() { return mode; },
   get castleActors() { return castleActors; },
   get keys() { return keys; },
