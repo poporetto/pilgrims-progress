@@ -700,7 +700,7 @@ export class WorldMap {
 
   // ------------------------------------------------------------ runtime
 
-  start(party: Array<'pliable'>): void {
+  start(party: Array<'pliable' | 'hopeful'>): void {
     this.build();
     // after the Cross, the burden is gone and the garments are new
     if (this.christianHasBurden !== !this.crossDone) {
@@ -713,7 +713,7 @@ export class WorldMap {
     this.followers = party.map((id) => {
       const parts = id === 'pliable'
         ? makeBear({ species: 'rabbit', outfit: 'shirt', outfitColor: 0xffd6a5, scale: 0.44 })
-        : makeBear({ scale: 0.44 });
+        : makeBear({ species: 'dog', fur: 0xd9b088, outfit: 'shirt', outfitColor: 0x7fb8a2, scale: 0.44 });
       this.scene.add(parts.root);
       return parts;
     });
@@ -827,12 +827,9 @@ export class WorldMap {
     const curve = this.road === 'main' ? this.mainCurve : this.branchCurve;
     const param = this.road === 'main' ? this.progress : this.branchP;
     this.placeOn(curve, this.christian.root, param);
-    // pan the camera to show the NEXT world on the road ahead of Christian
-    const nextWorlds = [HIGHWAY, HILL, PALACE, VALLEY, SHADOW, VANITY, LUCRE, CASTLE];
-    const nextDones = [this.highwayDone, this.hillDone, this.palaceDone,
-      this.valleyDone, this.shadowDone, this.vanityDone, this.lucreDone, this.castleDone];
-    const nextW = nextWorlds.find((_, i) => !nextDones[i]) ?? CASTLE;
-    const panTarget = this.crossDone ? Math.max(0, nextW.x - CROSS.x) : 0;
+    // keep the camera centred on Christian's actual position, not a fixed
+    // "reveal the next island" pan target
+    const panTarget = this.christian.root.position.x - 5.0;
     this.camPan += (panTarget - this.camPan) * Math.min(dt * 2.5, 1);
     this.camera.position.x = 5.0 + this.camPan;
     this.camera.lookAt(5.0 + this.camPan, 0.4, 1.4);

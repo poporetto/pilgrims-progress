@@ -187,6 +187,15 @@ continueBtn.addEventListener('click', () => {
   endingAction = null;
 });
 
+// small companions who should be visible walking with Christian on the
+// world map, once the story has actually introduced them
+function mapParty(): Array<'pliable' | 'hopeful'> {
+  const party: Array<'pliable' | 'hopeful'> = [];
+  if (quest.pliableFollowing && !quest.pliableLeft) party.push('pliable');
+  if (quest.vanityDone) party.push('hopeful');
+  return party;
+}
+
 function goToMap(): void {
   mode = 'map';
   music.setStyle('map');
@@ -244,7 +253,7 @@ const slough = new SloughScene({
       + 'strong paw, came through the mire, burden and all. The road runs on…',
       () => {
         worldMap.sloughDone = true;
-        worldMap.start([]);
+        worldMap.start(mapParty());
         worldMap.progress = worldMap.sloughT;
         goToMap();
       },
@@ -271,7 +280,7 @@ const morality = new MoralityScene({
         worldMap.moralityDone = true;
         worldMap.road = 'main';
         worldMap.progress = worldMap.forkT;
-        worldMap.start([]);
+        worldMap.start(mapParty());
         goToMap();
       },
     );
@@ -321,7 +330,7 @@ const wicket = new WicketGateScene({
         worldMap.sloughDone = true;
         worldMap.moralityDone = true;
         worldMap.wicketDone = true;
-        worldMap.start([]);
+        worldMap.start(mapParty());
         worldMap.road = 'main';
         worldMap.progress = worldMap.beyondT;
         goToMap();
@@ -354,7 +363,7 @@ const cross = new CrossScene({
         worldMap.moralityDone = true;
         worldMap.wicketDone = true;
         worldMap.crossDone = true;
-        worldMap.start([]);
+        worldMap.start(mapParty());
         worldMap.road = 'main';
         worldMap.progress = worldMap.crossT;
         goToMap();
@@ -388,7 +397,7 @@ const highway = new HighwayScene({
         worldMap.wicketDone = true;
         worldMap.crossDone = true;
         worldMap.highwayDone = true;
-        worldMap.start([]);
+        worldMap.start(mapParty());
         worldMap.road = 'main';
         worldMap.progress = worldMap.highwayT;
         goToMap();
@@ -423,7 +432,7 @@ const hill = new HillScene({
         worldMap.crossDone = true;
         worldMap.highwayDone = true;
         worldMap.hillDone = true;
-        worldMap.start([]);
+        worldMap.start(mapParty());
         worldMap.road = 'main';
         worldMap.progress = worldMap.hillT;
         goToMap();
@@ -472,7 +481,7 @@ const palace = new PalaceScene({
         worldMap.highwayDone = true;
         worldMap.hillDone = true;
         worldMap.palaceDone = true;
-        worldMap.start([]);
+        worldMap.start(mapParty());
         worldMap.road = 'main';
         worldMap.progress = worldMap.palaceT;
         goToMap();
@@ -527,7 +536,7 @@ const valley = new ValleyScene({
         worldMap.hillDone = true;
         worldMap.palaceDone = true;
         worldMap.valleyDone = true;
-        worldMap.start([]);
+        worldMap.start(mapParty());
         worldMap.road = 'main';
         worldMap.progress = worldMap.valleyT;
         goToMap();
@@ -579,7 +588,7 @@ const shadow = new ShadowScene({
         worldMap.palaceDone = true;
         worldMap.valleyDone = true;
         worldMap.shadowDone = true;
-        worldMap.start([]);
+        worldMap.start(mapParty());
         worldMap.road = 'main';
         worldMap.progress = worldMap.shadowT;
         goToMap();
@@ -624,7 +633,7 @@ const vanity = new VanityScene({
         worldMap.valleyDone = true;
         worldMap.shadowDone = true;
         worldMap.vanityDone = true;
-        worldMap.start([]);
+        worldMap.start(mapParty());
         worldMap.road = 'main';
         worldMap.progress = worldMap.vanityT;
         goToMap();
@@ -656,6 +665,65 @@ function pickChoice(pick: 0 | 1): void {
 }
 choiceA.addEventListener('click', () => pickChoice(0));
 choiceB.addEventListener('click', () => pickChoice(1));
+
+// ---------- the Promise-key minigame: drag the orb along the cross ----------
+// mouse and touch both go through Pointer Events, so no separate touch path is needed
+const keyGameBox = document.getElementById('key-game')!;
+const keyTrack = document.querySelector('#key-game .cross-track')! as HTMLElement;
+const keyOrb = document.getElementById('key-orb')!;
+const keyWaypoints = ['n', 'e', 's', 'w'].map((dir) => ({
+  el: document.querySelector(`#key-game .wp-${dir}`)! as HTMLElement,
+  arm: document.querySelector(`#key-game .arm-${dir}`)! as HTMLElement,
+  visited: false,
+}));
+let keyDragActive = false;
+let keyDragId = -1;
+let keyGameOpen = false;
+
+function resetKeyGame(): void {
+  for (const wp of keyWaypoints) {
+    wp.visited = false;
+    wp.el.classList.remove('lit');
+    wp.arm.classList.remove('lit');
+  }
+  keyOrb.style.left = '50%';
+  keyOrb.style.top = '30%';
+}
+
+function checkKeyWaypoints(clientX: number, clientY: number): void {
+  for (const wp of keyWaypoints) {
+    if (wp.visited) continue;
+    const r = wp.el.getBoundingClientRect();
+    const dist = Math.hypot(clientX - (r.left + r.width / 2), clientY - (r.top + r.height / 2));
+    if (dist < 28) {
+      wp.visited = true;
+      wp.el.classList.add('lit');
+      wp.arm.classList.add('lit'); // fill the line so progress is visible
+      castle.advanceKeyStage();
+    }
+  }
+}
+
+keyOrb.addEventListener('pointerdown', (e) => {
+  keyDragActive = true;
+  keyDragId = e.pointerId;
+  try { (keyOrb as HTMLElement).setPointerCapture(e.pointerId); } catch { /* no-op: browsers reject capture for a pointer that isn't currently active */ }
+});
+keyOrb.addEventListener('pointermove', (e) => {
+  if (!keyDragActive || e.pointerId !== keyDragId) return;
+  const rect = keyTrack.getBoundingClientRect();
+  const x = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
+  const y = Math.min(1, Math.max(0, (e.clientY - rect.top) / rect.height));
+  keyOrb.style.left = `${x * 100}%`;
+  keyOrb.style.top = `${y * 100}%`;
+  checkKeyWaypoints(e.clientX, e.clientY);
+});
+function endKeyDrag(e: PointerEvent): void {
+  if (e.pointerId !== keyDragId) return;
+  keyDragActive = false;
+}
+keyOrb.addEventListener('pointerup', endKeyDrag);
+keyOrb.addEventListener('pointercancel', endKeyDrag);
 
 // ---------- Chapter XII: the Plain of Ease & the Hill Lucre ----------
 const lucre = new LucreScene({
@@ -699,7 +767,7 @@ const lucre = new LucreScene({
         worldMap.shadowDone = true;
         worldMap.vanityDone = true;
         worldMap.lucreDone = true;
-        worldMap.start([]);
+        worldMap.start(mapParty());
         worldMap.road = 'main';
         worldMap.progress = worldMap.lucreT;
         goToMap();
@@ -762,7 +830,7 @@ const castle = new CastleScene({
         worldMap.vanityDone = true;
         worldMap.lucreDone = true;
         worldMap.castleDone = true;
-        worldMap.start([]);
+        worldMap.start(mapParty());
         worldMap.road = 'main';
         worldMap.progress = worldMap.castleT;
         goToMap();
@@ -778,7 +846,7 @@ function enterCastle(revisit: boolean): void {
   ui.talkBtn.style.display = 'none';
   // repurpose the Apollyon bar to show Hopeful's HP
   const apoName = document.querySelector('#battle-ui .brow.apo .bname') as HTMLElement | null;
-  if (apoName) apoName.textContent = '🐻 Hopeful';
+  if (apoName) apoName.textContent = '🐕 Hopeful';
   castleActors = castle.enter(revisit);
   camTarget.copy(castleActors.christian.root.position);
 }
@@ -963,9 +1031,6 @@ window.addEventListener('keydown', (e) => {
       if (vanity.nearFountain()) vanity.talkFountain();
       else if (vanity.nearCitizen()) vanity.talkCitizen();
     }
-    else if (mode === 'castle') {
-      if (castle.nearDoor()) castle.pressKey();
-    }
     else if (mode === 'valley') valley.tryAttack();
     else if (mode === 'lucre') lucre.tryTouchPillar();
   }
@@ -1013,7 +1078,7 @@ window.addEventListener('keydown', (e) => {
   }
   worldMap.sloughDone = true;
   worldMap.moralityDone = quest.moralityDone;
-  worldMap.start([]);
+  worldMap.start(mapParty());
   worldMap.road = 'main';
   worldMap.progress = quest.moralityDone ? worldMap.forkT : worldMap.sloughT;
   goToMap();
@@ -1078,7 +1143,7 @@ ui.debugPanel.addEventListener('click', (e) => {
   else if (jump === 'vanity') enterVanity(false);
   else if (jump === 'lucre') enterLucre(false);
   else if (jump === 'castle') enterCastle(false);
-  else if (jump === 'map') { worldMap.start([]); worldMap.road = 'main'; goToMap(); }
+  else if (jump === 'map') { worldMap.start(mapParty()); worldMap.road = 'main'; goToMap(); }
 });
 
 // touch joystick
@@ -1140,9 +1205,6 @@ ui.talkBtn.addEventListener('click', () => {
   else if (mode === 'vanity') {
     if (vanity.nearFountain()) vanity.talkFountain();
     else if (vanity.nearCitizen()) vanity.talkCitizen();
-  }
-  else if (mode === 'castle') {
-    if (castle.nearDoor()) castle.pressKey();
   }
   else if (mode === 'valley') valley.tryAttack();
   else if (mode === 'lucre') lucre.tryTouchPillar();
@@ -1410,7 +1472,7 @@ function updatePlayer(dt: number, t: number): void {
         + 'Through the Wicket Gate and into the wide world — the first step on the '
         + 'long road to the Celestial City…',
         () => {
-          worldMap.start(quest.pliableFollowing && !quest.pliableLeft ? ['pliable'] : []);
+          worldMap.start(mapParty());
           goToMap();
         },
       );
@@ -2126,6 +2188,7 @@ function tick(): void {
   if (mode === 'castle' && castleActors) {
     // ---- Doubting Castle mode ----
     const cc = castleActors.christian;
+    const inDungeon = castle.phase === 'dungeon' || castle.phase === 'key' || castle.phase === 'exit-door';
     let mx = 0;
     let mz = 0;
     if (keys.has('KeyW') || keys.has('ArrowUp')) mz -= 1;
@@ -2134,6 +2197,13 @@ function tick(): void {
     if (keys.has('KeyD') || keys.has('ArrowRight')) mx += 1;
     mx += joy.x;
     mz += joy.y;
+    // the dungeon camera looks from the opposite side (see DUNGEON_CAM_OFFSET),
+    // a ~180° yaw from the usual view — invert both axes so on-screen left/right
+    // and forward/back still match the pressed keys
+    if (inDungeon) {
+      mx = -mx;
+      mz = -mz;
+    }
     const len = Math.hypot(mx, mz);
     const factor = castle.moveFactor();
     const choiceOpen = choiceBox.classList.contains('open');
@@ -2148,21 +2218,12 @@ function tick(): void {
     castle.afterMove();
     castle.update(dt, t, moving);
 
-    // prompt when near the Promise-key door
-    const canPressKey = castle.nearDoor() && !dialogueOpen && !endingOpen && !choiceOpen;
-    ui.prompt.style.display = canPressKey ? 'block' : 'none';
-    if (canPressKey) {
-      ui.promptKey.style.display = isTouch ? 'none' : 'inline-block';
-      ui.promptWho.textContent = 'Try the Promise key';
-      if (isTouch) {
-        ui.talkBtn.textContent = 'Use Key';
-        ui.talkBtn.style.display = 'block';
-      }
-    } else if (isTouch && !dialogueOpen) {
-      ui.talkBtn.style.display = 'none';
-    }
+    // the drag-the-cross minigame, shown when near the Promise-key door
+    const showKeyGame = castle.nearDoor() && !dialogueOpen && !endingOpen && !choiceOpen;
+    if (showKeyGame && !keyGameOpen) resetKeyGame();
+    keyGameOpen = showKeyGame;
+    keyGameBox.classList.toggle('open', showKeyGame);
 
-    const inDungeon = castle.phase === 'dungeon' || castle.phase === 'key';
     camTarget.lerp(cc.root.position, Math.min(4 * dt, 1));
     camera.position.copy(camTarget).add(inDungeon ? DUNGEON_CAM_OFFSET : camOffset);
     camera.lookAt(camTarget.x, camTarget.y + 1.4, camTarget.z);
@@ -2226,5 +2287,17 @@ tick();
   wicket, enterWicket, cross, enterCross, highway, enterHighway, hill, enterHill,
   palace, enterPalace, valley, enterValley, shadow, enterShadow,
   vanity, enterVanity, lucre, enterLucre, playScript, goToMap,
+  castle, enterCastle, renderer, camera, camOffset, DUNGEON_CAM_OFFSET,
   get mode() { return mode; },
+  get castleActors() { return castleActors; },
+  get keys() { return keys; },
+  renderCastleNow() {
+    if (!castleActors) return;
+    const cc = castleActors.christian;
+    const inDungeon = castle.phase === 'dungeon' || castle.phase === 'key' || castle.phase === 'exit-door';
+    camTarget.copy(cc.root.position);
+    camera.position.copy(camTarget).add(inDungeon ? DUNGEON_CAM_OFFSET : camOffset);
+    camera.lookAt(camTarget.x, camTarget.y + 1.4, camTarget.z);
+    renderer.render(castle.scene, camera);
+  },
 };

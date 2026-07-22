@@ -26,13 +26,15 @@ interface CastleCallbacks {
 }
 
 type Phase =
-  | 'enter'    // rocky highway — slow movement east
-  | 'choice'   // fork: paused, choice presented
-  | 'meadow'   // easy bypath — walking east freely
+  | 'enter'       // rocky highway — slow movement east
+  | 'choice'      // fork: paused, choice presented
+  | 'meadow-walk' // scripted walk from the fork onto the meadow, control locked
+  | 'meadow'      // easy bypath — walking east freely
   | 'storm'    // night falls, rain, thunder, tiring
   | 'sleep'    // fall asleep → captured → thrown in dungeon
   | 'dungeon'  // scripted daily imprisonment beats
-  | 'key'      // Promise-key minigame: press E × 3 near the door
+  | 'key'      // Promise-key minigame: trace the cross to unlock the door
+  | 'exit-door' // scripted: door swings open, then walk out through it
   | 'escape'   // run east through the castle gates
   | 'highway'  // back on the King's Highway
   | 'sign'     // place warning sign; then complete
@@ -44,7 +46,14 @@ const FORK_X      =   0;   // where bypath branches off
 const STORM_X     =  16;   // meadow: storm triggers here
 const SLEEP_X     =  22;   // meadow: tiredness threshold → sleep
 const SIGN_X      =  -2;   // highway: spot where Christian places the sign
-const LIGHT_X     =  38;   // highway: exit light / chapter end
+const LIGHT_X     =  72;   // highway: exit light / chapter end — well out past the
+                            // sign, so the finale is a proper stretch of road, not a
+                            // couple of steps
+
+// how far off the road's centre line Christian & Hopeful can walk — kept
+// safely inside the boundary rocks' nearest possible edge (see the boundary
+// rock loop below) so they can never clip into/through them
+const LANE_HALF_WIDTH = 1.4;
 
 // interiors (placed far east on the same scene, like HALL / MINE patterns)
 const DUNGEON = new THREE.Vector3(160, 0, 0);
@@ -53,8 +62,11 @@ const DUNGEON = new THREE.Vector3(160, 0, 0);
 const MEADOW_Z = 6;
 // highway z-centre
 const HWY_Z = 0;
-// how far outside the dungeon's bars (relative to DUNGEON.z) Giant Despair stands
-const GIANT_Z = 6.6;
+// how far outside the dungeon's bars (relative to DUNGEON.z) Giant Despair
+// stands. Bars sit at DUNGEON.z + 5.7 — at his 2.4x scale his torso reaches
+// roughly 0.7 units in front of his root, so this needs real clearance or
+// the beating lunge visibly clips through the bars (see beatingT below).
+const GIANT_Z = 8.5;
 
 export class CastleScene {
   scene = new THREE.Scene();
@@ -85,11 +97,24 @@ export class CastleScene {
   // key minigame
   private keyPresses = 0;
   private doorGlow: THREE.Mesh | null = null;
-  private doorBars: THREE.Group | null = null;
+  private doorHinge: THREE.Group | null = null;
+  private doorWorldX = 0; // world x of the door gap's centre, set in buildDungeon()
+
+  // door-exit animation (swing open, then walk through into the antechamber)
+  private doorSwingT = 0;
+  private exitWalkT = -1;
+  private exitWalkFrom = new THREE.Vector3();
+  private exitWalkTo = new THREE.Vector3();
+
+  // exit beacon (matches the beam+halo used at every other chapter's end)
+  private lightBeam: THREE.Mesh | null = null;
+  private lightHalo: THREE.Mesh | null = null;
 
   // animation timers
   private sleepT   = 0;
   private captureT = -1;
+  private captureDialogueStarted = false;
+  private captureGrabT = -1;
   private escapeT  = -1;
   private beatingT = 0; // >0 while Giant Despair is mid-beating animation
   private tiringFactor = 1.0; // movement scalar during storm (drops to 0)
@@ -97,6 +122,14 @@ export class CastleScene {
   // sign group
   private signMesh: THREE.Group | null = null;
   private signPlaced = false;
+
+  // scripted walk from the fork onto the meadow (locked control)
+  private meadowWalkT = 0;
+  private meadowWalkFrom = new THREE.Vector3();
+  private meadowWalkTo = new THREE.Vector3();
+
+  // seconds remaining while Giant Despair & Diffidence walk off before the key attempt
+  private giantLeaveT = -1;
 
   private revisit = false;
   private built   = false;
@@ -134,12 +167,95 @@ export class CastleScene {
       species: 'bear', fur: 0x4a3a26, outfit: 'shirt', outfitColor: 0x4a3826,
       scale: 2.4,
     });
-    // buffalo horns on Despair's head
+    // curved buffalo horns on Despair's head — bigger and thicker than a
+    // first pass, angled base + upward-curving tip, kept clear of the
+    // default bear ears (x ±0.36, y 0.9) by starting lower and sweeping wide
     const hornC = 0x2e2414;
-    this.giant.head.add(block(0.22, 0.72, 0.2, hornC,  0.36, 0.62,  0.04));
-    this.giant.head.add(block(0.22, 0.72, 0.2, hornC, -0.36, 0.62,  0.04));
-    this.giant.head.add(block(0.18, 0.22, 0.18, hornC,  0.48, 1.12, 0.1));
-    this.giant.head.add(block(0.18, 0.22, 0.18, hornC, -0.48, 1.12, 0.1));
+    for (const side of [-1, 1]) {
+      const horn = new THREE.Group();
+      const base = block(0.3, 0.74, 0.28, hornC, 0, 0.37, 0);
+      horn.add(base);
+      const mid = block(0.22, 0.5, 0.2, hornC, 0, 0.85, 0.06);
+      horn.add(mid);
+      const tip = block(0.15, 0.42, 0.15, hornC, 0, 1.2, 0.24);
+      tip.rotation.x = -0.7; // curl upward and forward
+      horn.add(tip);
+      horn.position.set(0.42 * side, 0.58, -0.02);
+      horn.rotation.z = 0.32 * side;
+      this.giant.head.add(horn);
+    }
+    // a nose ring — a small bull detail that reads clearly even at a distance
+    const ring = new THREE.Mesh(
+      new THREE.TorusGeometry(0.09, 0.025, 8, 16),
+      mat(0x8a8a92),
+    );
+    ring.position.set(0, 0.22, 0.55);
+    this.giant.head.add(ring);
+    // glowing red eyes — overlaid just in front of the default dark eyes
+    // (bear-species eyes: x ±0.24, y 0.5, z 0.41) for real menace
+    for (const side of [-1, 1]) {
+      const glowEye = new THREE.Mesh(
+        new THREE.SphereGeometry(0.045, 8, 8),
+        new THREE.MeshBasicMaterial({ color: 0xff3020 }),
+      );
+      glowEye.position.set(0.24 * side, 0.5, 0.44);
+      this.giant.head.add(glowEye);
+    }
+    // a shaggy mane across the neck and shoulders, like a bull's hackles —
+    // breaks up the "scaled-up bear" silhouette more than armor alone
+    const maneC = 0x1e150c;
+    for (let i = 0; i < 10; i++) {
+      const side = i % 2 === 0 ? -1 : 1;
+      const mx = side * (0.35 + (i % 5) * 0.06);
+      const mz = -0.25 - (i % 3) * 0.08;
+      const tuft = block(0.16, 0.3 + (i % 3) * 0.08, 0.14, maneC, mx, 0.95 - (i % 3) * 0.08, mz);
+      tuft.rotation.z = 0.15 * side;
+      this.giant.body.add(tuft);
+    }
+    // a heavy, scowling brow over each eye (bear-species eyes sit at x ±0.24, y 0.5, z 0.41)
+    const browC = 0x241a10;
+    const browL = block(0.18, 0.09, 0.1, browC, -0.24, 0.6, 0.42);
+    browL.rotation.z = 0.32;
+    this.giant.head.add(browL);
+    const browR = block(0.18, 0.09, 0.1, browC, 0.24, 0.6, 0.42);
+    browR.rotation.z = -0.32;
+    this.giant.head.add(browR);
+    // a jagged scar through one brow
+    const scar = block(0.06, 0.34, 0.06, 0x7a3838, -0.3, 0.66, 0.45);
+    scar.rotation.z = 0.6;
+    this.giant.head.add(scar);
+    // lower fangs jutting up past the mouth, plus small side tusks (snout
+    // front sits at z 0.46, y 0.26)
+    this.giant.head.add(block(0.07, 0.16, 0.06, 0xf3ecd8, -0.1, 0.18, 0.52));
+    this.giant.head.add(block(0.07, 0.16, 0.06, 0xf3ecd8,  0.1, 0.18, 0.52));
+    for (const side of [-1, 1]) {
+      const tusk = block(0.07, 0.24, 0.07, 0xf3ecd8, 0.26 * side, 0.16, 0.4);
+      tusk.rotation.z = 0.5 * side;
+      tusk.rotation.x = -0.2;
+      this.giant.head.add(tusk);
+    }
+
+    // hulking shoulder armor — broadens the silhouette so he reads as
+    // something heavier and more menacing than a plain scaled-up bear
+    const armorC = 0x2f2620;
+    for (const side of [-1, 1]) {
+      const pauldron = block(0.5, 0.36, 0.5, armorC, 0.62 * side, 1.0, 0);
+      this.giant.body.add(pauldron);
+      const stud = block(0.1, 0.1, 0.1, 0x6a5a3a, 0.62 * side, 1.14, 0.2);
+      this.giant.body.add(stud);
+    }
+    // a chest strap crossing the shirt
+    const strap = block(0.14, 1.0, 0.05, 0x3a2a18, 0, 0.55, 0.42);
+    strap.rotation.z = 0.35;
+    this.giant.body.add(strap);
+
+    // clawed fingers on the free hand (right hand grips the cudgel)
+    for (const cw of [-0.1, 0, 0.1]) {
+      const claw = block(0.05, 0.16, 0.05, 0xe8e0cc, cw, -0.85, 0.12);
+      claw.rotation.x = 0.4;
+      this.giant.armL.add(claw);
+    }
+
     // cudgel in right arm
     const cg = new THREE.Group();
     cg.add(block(0.3, 2.0, 0.3, 0x3a2a18, 0, 0.1, 0));
@@ -153,17 +269,30 @@ export class CastleScene {
     this.giant.root.traverse((obj) => {
       const mesh = obj as THREE.Mesh;
       if (!mesh.isMesh) return;
+      // only Lambert materials have `.emissive` — the glowing red eyes use a
+      // basic (unlit) material and must be left alone, or the mismatched
+      // uniforms crash the renderer once this mesh's material is swapped
+      if ((mesh.material as THREE.Material).type !== 'MeshLambertMaterial') return;
       const src = mesh.material as THREE.MeshLambertMaterial;
       const own = src.clone();
       own.emissive = new THREE.Color(src.color).multiplyScalar(0.85);
       mesh.material = own;
     });
 
-    // Diffidence — his wife, large dark bear
+    // Diffidence — his wife, large dark bear, with matching (smaller) bull horns
     this.diffidence = makeBear({
       species: 'bear', fur: 0x2e1a0a, outfit: 'shirt', outfitColor: 0x3c2216,
       scale: 1.6,
     });
+    // a lighter, ash-grey horn colour — her fur (0x2e1a0a) is nearly black,
+    // so a same-dark horn would be camouflaged against her own head
+    const diffHornC = 0x8a7a68;
+    for (const side of [-1, 1]) {
+      const horn = block(0.16, 0.55, 0.16, diffHornC, 0.34 * side, 0.78, 0.02);
+      horn.rotation.z = 0.35 * side;
+      horn.rotation.x = -0.35;
+      this.diffidence.head.add(horn);
+    }
 
     // lighting placeholders (populated in build())
     this.hemi = new THREE.HemisphereLight(0xdff0ff, 0xc9e8c0, 1.0);
@@ -185,9 +314,13 @@ export class CastleScene {
     this.lightningTimer = 2.5;
     this.sleepT = 0;
     this.captureT = -1;
+    this.captureDialogueStarted = false;
+    this.captureGrabT = -1;
     this.escapeT = -1;
     this.tiringFactor = 1.0;
     this.signPlaced = false;
+    this.meadowWalkT = 0;
+    this.giantLeaveT = -1;
     this.choiceTriggered = false;
     this.stormTriggered = false;
     this.captureTriggered = false;
@@ -200,9 +333,9 @@ export class CastleScene {
     // reset rain visibility
     for (const r of this.rainDrops) r.mesh.visible = false;
     if (this.doorGlow)  this.doorGlow.visible = false;
-    if (this.doorBars && !this.scene.children.includes(this.doorBars)) {
-      this.scene.add(this.doorBars);
-    }
+    if (this.doorHinge) this.doorHinge.rotation.y = 0; // door starts closed
+    this.doorSwingT = 0;
+    this.exitWalkT = -1;
     if (this.signMesh) this.signMesh.visible = false;
     this.giant.root.visible = false;
     this.diffidence.root.visible = false;
@@ -211,6 +344,7 @@ export class CastleScene {
     this.hemi.intensity = 1.0;
     this.hemi.color.set(0xdff0ff);
     this.sun.intensity = 1.6;
+    this.applySkyDarkness(0);
 
     if (revisit) {
       this.phase = 'highway';
@@ -225,8 +359,10 @@ export class CastleScene {
     }
     this.christian.root.rotation.x = 0;
     this.hopeful.root.rotation.x   = 0;
-    this.christian.root.rotation.y = -Math.PI / 2;
-    this.hopeful.root.rotation.y   = -Math.PI / 2;
+    // face east — the direction they'll be walking (rotation.y = π/2 ↔ world +x,
+    // matching the atan2(mx, mz) convention used for movement facing below)
+    this.christian.root.rotation.y = Math.PI / 2;
+    this.hopeful.root.rotation.y   = Math.PI / 2;
 
     return { christian: this.christian, hopeful: this.hopeful };
   }
@@ -264,20 +400,37 @@ export class CastleScene {
     hwyEast.position.set((FORK_X + LIGHT_X) / 2, 0.01, HWY_Z);
     s.add(hwyEast);
 
-    // rocks along the whole highway — rough going from end to end
+    // rocks along the whole highway — rough going from end to end. Kept clear
+    // of the walkable lane (|z| up to ~1.8 across the enter/highway/sign
+    // phases) so they read as scenery rather than something Christian clips
+    // through mid-stride.
     const rockColors = [0x7a6e62, 0x6e6258, 0x8a7e72];
     const rng = (a: number, b: number) => a + Math.random() * (b - a);
     for (let i = 0; i < 60; i++) {
       const rx = rng(WEST_EDGE + 1, LIGHT_X - 1);
-      const rz = (Math.random() < 0.5 ? -1 : 1) * rng(0.3, 1.8);
+      const rz = (Math.random() < 0.5 ? -1 : 1) * rng(2.0, 3.6);
       const rw = rng(0.4, 1.2);
       const rh = rng(0.25, 0.8);
       const rd = rng(0.3, 1.0);
       const rock = block(rw, rh, rd, rockColors[i % 3], rx, rh / 2, rz);
       s.add(rock);
     }
+    // a solid rock boundary right at the lane's edge, so the invisible
+    // movement clamp reads as an intentional rocky wall instead of an
+    // unexplained stop. Sized so the nearest possible rock face never comes
+    // closer than LANE_HALF_WIDTH — otherwise Christian could visibly clip
+    // into a rock whose near edge landed inside his walkable range.
+    const BOUNDARY_Z = LANE_HALF_WIDTH + 0.7; // rock row centre line
+    for (let bx = WEST_EDGE; bx <= LIGHT_X; bx += rng(1.1, 1.6)) {
+      for (const bz of [-BOUNDARY_Z, BOUNDARY_Z]) {
+        const bw = rng(0.7, 1.3);
+        const bh = rng(0.5, 1.0);
+        const bd = rng(0.4, 0.6); // half-depth ≤0.3, keeping the near face ≥LANE_HALF_WIDTH+0.4
+        s.add(block(bw, bh, bd, rockColors[Math.floor(rng(0, 3))], bx + rng(-0.3, 0.3), bh / 2, bz));
+      }
+    }
     // a few rocks actually on the path (the difficult parts), scattered the full length
-    const pathRockXs = [-28, -24, -19, -14, -9, -5, 4, 9, 15, 21, 27, 33];
+    const pathRockXs = [-28, -24, -19, -14, -9, -5, 4, 9, 15, 21, 27, 33, 40, 47, 54, 61, 67];
     for (const px of pathRockXs) {
       const pz = (Math.random() < 0.5 ? -0.6 : 0.6);
       s.add(block(rng(0.5, 0.9), rng(0.3, 0.55), rng(0.4, 0.7), 0x7a6e62, px, 0.25, pz));
@@ -300,36 +453,42 @@ export class CastleScene {
       s.add(block(0.18, 0.28, 0.18, flowerColors[i % 3], fx, 0.14, fz));
     }
 
-    // ---- Fork sign (at x = FORK_X - 2) ----
+    // ---- Fork sign (at x = FORK_X - 2) — a single weathered board ----
     const forkSign = new THREE.Group();
     forkSign.add(block(0.12, 1.4, 0.12, 0x7a5c38, 0, 0.7, 0)); // post
-    forkSign.add(block(1.8, 0.45, 0.14, 0xfff8ef, 0, 1.55, 0)); // board: highway
-    forkSign.add(block(1.8, 0.45, 0.14, 0xd4e8b8, 0, 1.55, 0.28)); // board: meadow (green)
+    forkSign.add(block(1.8, 0.45, 0.14, 0xfff8ef, 0, 1.55, 0)); // board
     forkSign.position.set(FORK_X - 2, 0, 1.4);
     s.add(forkSign);
 
-    // ---- Doubting Castle exterior (a distant silhouette, well clear of the meadow/rain) ----
-    const castleSt = 0x4a4440;
-    const castleX  = SLEEP_X + 22; // far past the meadow, out of the storm's airspace
-    const castleZ  = 26;           // set well back from the path so nothing looms over it
+    // ---- Doubting Castle exterior ----
+    // NOTE: the game's camera looks down at a steep, fixed angle (offset
+    // (0,13,13) — confirmed by projecting world points to NDC and by direct
+    // screenshot testing), so its visible "sky"/background band is narrow.
+    // A full-size castle placed at a truly distant depth (z ≳ 18-20 from the
+    // road) falls entirely outside the frustum; this is the calibrated,
+    // screenshot-verified spot and scale that stays on-screen.
+    const CASTLE_X = FORK_X + 12;
+    const CASTLE_Z = -7;
+    this.buildDoubtingCastleExterior(CASTLE_X, CASTLE_Z, 0.42);
 
-    // distant towers (large, placed far behind the meadow)
-    s.add(block(5, 14, 5, castleSt, castleX,      7,  castleZ));
-    s.add(block(5, 14, 5, castleSt, castleX + 12, 7,  castleZ));
-    s.add(block(12, 4,  5, castleSt, castleX + 6,  13.5, castleZ)); // battlements connector
-    s.add(block(14, 1,  5, 0x3a3430, castleX + 6,  16,   castleZ)); // parapet
-    // castle gate facing south (toward road)
-    s.add(block(3.5, 8, 5, 0x302c28, castleX + 6,  4, castleZ - 2));
-    s.add(block(5.5, 1.6, 5, 0x3a3430, castleX + 6, 8.2, castleZ - 2));
-
-    // ---- Exit light (chapter end beacon) ----
-    const exitGlow = block(1.2, 3.5, 1.2, 0xfffcaa, LIGHT_X, 1.75, 0);
-    (exitGlow.material as THREE.MeshLambertMaterial).emissive = new THREE.Color(0xfffca0);
-    (exitGlow.material as THREE.MeshLambertMaterial).emissiveIntensity = 0.9;
-    s.add(exitGlow);
-    s.add(new THREE.PointLight(0xfffce8, 2.4, 18), );
-    const exitLight = s.children[s.children.length - 1] as THREE.PointLight;
-    exitLight.position.set(LIGHT_X, 4, 0);
+    // ---- Exit light (chapter end beacon, matching every other chapter) ----
+    const beam = new THREE.Mesh(
+      new THREE.CylinderGeometry(1.4, 2.0, 14, 18, 1, true),
+      new THREE.MeshBasicMaterial({
+        color: PALETTE.light, transparent: true, opacity: 0.5,
+        side: THREE.DoubleSide, depthWrite: false, fog: false,
+      }),
+    );
+    beam.position.set(LIGHT_X + 1.5, 7, 0);
+    s.add(beam);
+    this.lightBeam = beam;
+    const halo = new THREE.Mesh(
+      new THREE.SphereGeometry(2.4, 18, 14),
+      new THREE.MeshBasicMaterial({ color: 0xfff9dd, transparent: true, opacity: 0.4, depthWrite: false, fog: false }),
+    );
+    halo.position.set(LIGHT_X + 1.5, 1.6, 0);
+    s.add(halo);
+    this.lightHalo = halo;
 
     // ---- Dungeon interior (at DUNGEON, far east) ----
     this.buildDungeon();
@@ -347,6 +506,60 @@ export class CastleScene {
 
     // ---- Warning sign (built hidden) ----
     this.buildWarningSign();
+  }
+
+  // Built at local-origin scale, then positioned+scaled as one group — the
+  // camera's frustum here is unusually tight (steep fixed downward pitch,
+  // confirmed by NDC projection testing), so a full-size castle placed at a
+  // truly "distant" depth simply isn't visible; scaling the whole model down
+  // lets it sit close enough to render while still reading as a real castle.
+  private buildDoubtingCastleExterior(castleX: number, castleZ: number, scale: number): void {
+    const g = new THREE.Group();
+    const STONE    = 0x4a4440;
+    const STONE_DK = 0x39332f;
+    const ROOF     = 0x5a3a34;
+
+    // corner towers — cylindrical, with conical roofs and a crenellated ring
+    for (const side of [-1, 1]) {
+      const tx = 6 + side * 9;
+      const tower = new THREE.Mesh(new THREE.CylinderGeometry(2.4, 2.7, 13, 12), mat(STONE));
+      tower.position.set(tx, 6.5, 0);
+      g.add(tower);
+      const roof = new THREE.Mesh(new THREE.ConeGeometry(3.1, 4.2, 12), mat(ROOF));
+      roof.position.set(tx, 15.1, 0);
+      g.add(roof);
+      for (let i = 0; i < 8; i++) {
+        const ang = (i / 8) * Math.PI * 2;
+        g.add(block(0.6, 0.9, 0.6, STONE_DK, tx + Math.cos(ang) * 2.5, 13.2, Math.sin(ang) * 2.5));
+      }
+    }
+
+    // central keep, taller than the flanking towers, with a pyramid roof and flag
+    g.add(block(7, 17, 7, STONE, 6, 8.5, 1));
+    const keepRoof = new THREE.Mesh(new THREE.ConeGeometry(5.6, 5, 4), mat(ROOF));
+    keepRoof.rotation.y = Math.PI / 4;
+    keepRoof.position.set(6, 19.5, 1);
+    g.add(keepRoof);
+    g.add(block(0.15, 3, 0.15, 0x2a2015, 6, 23.5, 1));
+    g.add(block(1.2, 0.7, 0.06, 0xc9535f, 6.65, 24.2, 1));
+
+    // curtain wall linking the towers, crenellated along the top edge
+    g.add(block(20, 7, 3, STONE, 6, 5.5, 0));
+    for (let mx = -3; mx <= 15; mx += 1.6) {
+      g.add(block(0.7, 1.0, 1.3, STONE_DK, mx, 9.5, 0));
+    }
+
+    // gatehouse facing south, toward the road, with a dark archway and portcullis
+    g.add(block(4.4, 9, 4.4, STONE_DK, 6, 4.5, -2));
+    g.add(block(3, 5.4, 3.2, 0x1c1610, 6, 2.7, -1.8));
+    for (let i = -1; i <= 1; i++) {
+      g.add(block(0.1, 4.8, 0.1, 0x161616, 6 + i, 2.5, -1.6));
+    }
+    g.add(block(3, 0.1, 0.1, 0x161616, 6, 4.7, -1.6)); // crossbar
+
+    g.position.set(castleX, 0, castleZ);
+    g.scale.setScalar(scale);
+    this.scene.add(g);
   }
 
   private buildDungeon(): void {
@@ -377,21 +590,45 @@ export class CastleScene {
     s.add(block(0.5, 7,   4, ANTE_WALL, d.x + 9, 3, d.z + 8));  // east wall
     s.add(block(18,  7,   0.5, ANTE_WALL, d.x, 3, d.z + 10));   // back wall
 
-    // iron bars on the south face (door side)
+    // iron bars on the south face (door side) — run the full width of the
+    // cell (matching the side walls at d.x ± 9) so Christian and Hopeful are
+    // fully enclosed, with a gap left for an actual door (below)
     const IRON = 0x2a2a32;
+    const GAP_LO = 1.15, GAP_HI = 5.15; // clear span reserved for the door
     const bars = new THREE.Group();
     bars.position.set(d.x, 0, d.z + 5.7);
-    for (let i = -3; i <= 3; i++) {
-      bars.add(block(0.18, 6.5, 0.18, IRON, i * 1.05, 3.25, 0));
+    for (let i = -8; i <= 8; i++) {
+      const x = i * 1.05;
+      if (x > GAP_LO - 0.2 && x < GAP_HI + 0.2) continue; // leave the door gap clear
+      bars.add(block(0.18, 6.5, 0.18, IRON, x, 3.25, 0));
     }
-    // horizontal cross-bars
-    bars.add(block(7.5, 0.22, 0.22, IRON, 0, 2, 0));
-    bars.add(block(7.5, 0.22, 0.22, IRON, 0, 4, 0));
-    this.doorBars = bars;
+    // horizontal cross-bars, split around the door gap
+    for (const y of [1.6, 3.4, 5.2]) {
+      const westLen = GAP_LO - (-8.75);
+      bars.add(block(westLen, 0.22, 0.22, IRON, -8.75 + westLen / 2, y, 0));
+      const eastLen = 8.75 - GAP_HI;
+      bars.add(block(eastLen, 0.22, 0.22, IRON, GAP_HI + eastLen / 2, y, 0));
+    }
     this.scene.add(bars);
 
-    // a glowing keyhole / door glow
-    const glow = block(0.55, 0.55, 0.55, 0xffe89a, d.x + 3.0, 2.2, d.z + 5.5);
+    // the jail door itself — a studded wooden panel hinged at the gap's west
+    // edge, swinging open into the antechamber when the Promise key succeeds
+    const DOOR_W = GAP_HI - GAP_LO;
+    const doorHinge = new THREE.Group();
+    doorHinge.position.set(d.x + GAP_LO, 0, d.z + 5.7);
+    const doorPanel = block(DOOR_W, 6.3, 0.16, 0x3a2a1a, DOOR_W / 2, 3.15, 0);
+    doorHinge.add(doorPanel);
+    for (const ry of [1.2, 3.15, 5.0]) {
+      for (const rx of [0.5, DOOR_W / 2, DOOR_W - 0.5]) {
+        doorHinge.add(block(0.14, 0.14, 0.06, IRON, rx, ry, 0.1));
+      }
+    }
+    this.doorHinge = doorHinge;
+    this.doorWorldX = d.x + GAP_LO + DOOR_W / 2;
+    this.scene.add(doorHinge);
+
+    // a glowing keyhole / door glow, on the door panel itself
+    const glow = block(0.55, 0.55, 0.55, 0xffe89a, d.x + GAP_LO + 0.7, 2.2, d.z + 5.6);
     (glow.material as THREE.MeshLambertMaterial).emissive = new THREE.Color(0xffdc70);
     (glow.material as THREE.MeshLambertMaterial).emissiveIntensity = 1.4;
     glow.visible = false;
@@ -411,11 +648,11 @@ export class CastleScene {
     // lights his camera-facing side rather than leaving him a black silhouette
     // (raised to head height, since his scale is 2.4x — a low light would only
     // catch his legs and leave his head/shoulders dark)
-    const pt3 = new THREE.PointLight(0xffcf8a, 10, 24);
-    pt3.position.set(d.x + 0.5, 5.5, d.z + 6.0);
+    const pt3 = new THREE.PointLight(0xffcf8a, 12, 26);
+    pt3.position.set(d.x + 0.5, 5.5, d.z + 7.8);
     this.scene.add(pt3);
-    const pt4 = new THREE.PointLight(0xffd9a0, 6, 18);
-    pt4.position.set(d.x + 0.5, 3, d.z + 6.0);
+    const pt4 = new THREE.PointLight(0xffd9a0, 7, 20);
+    pt4.position.set(d.x + 0.5, 3, d.z + 7.8);
     this.scene.add(pt4);
 
     // some damp stones / puddles on dungeon floor
@@ -441,9 +678,8 @@ export class CastleScene {
 
   private buildWarningSign(): void {
     const g = new THREE.Group();
-    g.add(block(0.14, 1.6, 0.14, 0x7a5c38, 0, 0.8, 0));       // post
-    g.add(block(2.4,  0.5, 0.16, 0xfff8ef, 0, 1.75, 0));        // board
-    g.add(block(0.5,  0.5, 0.16, 0xe87070, -0.75, 1.75, 0.02)); // red X symbol
+    g.add(block(0.14, 1.6, 0.14, 0x7a5c38, 0, 0.8, 0));   // post
+    g.add(block(2.4,  0.5, 0.16, 0xfff8ef, 0, 1.75, 0));  // board
     g.position.set(SIGN_X, 0, 2.0);
     g.visible = false;
     this.signMesh = g;
@@ -454,6 +690,7 @@ export class CastleScene {
   moveFactor(): number {
     switch (this.phase) {
       case 'enter':   return 0.45;   // rocky, hard going
+      case 'meadow-walk': return 0;  // scripted — control is locked until they arrive
       case 'meadow':  return 1.0;
       case 'storm': {
         const t = Math.max(0, this.tiringFactor);
@@ -463,6 +700,7 @@ export class CastleScene {
       case 'highway': return 1.0;
       case 'sign':    return 0.8;
       case 'key':     return 0.7;    // shuffle to the glowing door and try the key
+      case 'exit-door': return 0;    // scripted — door swing + walk-through
       default:        return 0;      // scripted / sleeping / dungeon
     }
   }
@@ -472,7 +710,7 @@ export class CastleScene {
 
     if (this.phase === 'enter') {
       p.x = Math.max(WEST_EDGE, Math.min(p.x, FORK_X - 0.5));
-      p.z = Math.max(HWY_Z - 1.6, Math.min(p.z, HWY_Z + 1.6));
+      p.z = Math.max(HWY_Z - LANE_HALF_WIDTH, Math.min(p.z, HWY_Z + LANE_HALF_WIDTH));
       // trigger choice when they reach the fork
       if (p.x >= FORK_X - 1.5) this.triggerChoice();
     }
@@ -481,12 +719,15 @@ export class CastleScene {
       p.x = Math.max(FORK_X - 0.5, Math.min(p.x, SLEEP_X + 6));
       // lower bound reaches back to the highway's own range so there's no snap
       // the moment the choice is made — they simply keep walking where they are
-      p.z = Math.max(HWY_Z - 1.6, Math.min(p.z, MEADOW_Z + 2.5));
+      p.z = Math.max(HWY_Z - LANE_HALF_WIDTH, Math.min(p.z, MEADOW_Z + 2.5));
       if (p.x >= STORM_X && this.phase === 'meadow') this.triggerStorm();
     }
 
     if (this.phase === 'storm') {
-      p.x = Math.max(FORK_X, Math.min(p.x, SLEEP_X + 4));
+      // wide open dark field — they keep walking, lost, until they tire out and
+      // fall asleep (see tiringFactor in update()); the x bound is generous so
+      // they never feel stopped by a wall while still wide awake
+      p.x = Math.max(FORK_X, Math.min(p.x, SLEEP_X + 90));
       p.z = Math.max(MEADOW_Z - 3.5, Math.min(p.z, MEADOW_Z + 3.5));
     }
 
@@ -497,13 +738,13 @@ export class CastleScene {
 
     if (this.phase === 'escape') {
       p.x = Math.max(FORK_X - 2, Math.min(p.x, LIGHT_X - 0.5));
-      p.z = Math.max(HWY_Z - 2, Math.min(p.z, HWY_Z + 2));
+      p.z = Math.max(HWY_Z - LANE_HALF_WIDTH, Math.min(p.z, HWY_Z + LANE_HALF_WIDTH));
       if (p.x >= LIGHT_X - 2) this.completeEscape();
     }
 
     if (this.phase === 'highway') {
       p.x = Math.max(WEST_EDGE, Math.min(p.x, LIGHT_X - 0.5));
-      p.z = Math.max(HWY_Z - 1.8, Math.min(p.z, HWY_Z + 1.8));
+      p.z = Math.max(HWY_Z - LANE_HALF_WIDTH, Math.min(p.z, HWY_Z + LANE_HALF_WIDTH));
       if (p.x >= SIGN_X - 0.5 && p.x <= SIGN_X + 2.5 && !this.signPlaced) {
         this.triggerSign();
       }
@@ -511,7 +752,7 @@ export class CastleScene {
 
     if (this.phase === 'sign') {
       p.x = Math.max(WEST_EDGE, Math.min(p.x, LIGHT_X - 0.5));
-      p.z = Math.max(HWY_Z - 1.8, Math.min(p.z, HWY_Z + 1.8));
+      p.z = Math.max(HWY_Z - LANE_HALF_WIDTH, Math.min(p.z, HWY_Z + LANE_HALF_WIDTH));
       if (p.x >= LIGHT_X - 2) this.triggerExit();
     }
 
@@ -530,29 +771,35 @@ export class CastleScene {
   nearDoor(): boolean {
     if (this.phase !== 'key') return false;
     const p = this.christian.root.position;
-    return Math.hypot(p.x - (DUNGEON.x + 3), p.z - (DUNGEON.z + 4.5)) < 3.5;
+    return Math.hypot(p.x - this.doorWorldX, p.z - (DUNGEON.z + 4.5)) < 3.5;
   }
 
-  pressKey(): void {
-    if (!this.nearDoor()) return;
+  // called by the drag-the-cross minigame in main.ts each time the player's
+  // orb reaches a new arm of the cross — 4 arms, 4 stages
+  advanceKeyStage(): void {
+    if (this.phase !== 'key') return;
     this.keyPresses++;
     this.cb.blipSound();
     if (this.keyPresses === 1) {
       this.cb.playScript([
-        { speaker: 'Christian', text: 'I have a key called Promise! I\'m trying it on the lock...' },
+        { speaker: 'Christian', text: 'I have a key called Promise! I\'m tracing it along the sign...' },
       ]);
     } else if (this.keyPresses === 2) {
       this.cb.playScript([
         { speaker: 'Christian', text: 'It\'s working — I can feel something turning!' },
         { speaker: 'Hopeful',   text: 'Keep going! Don\'t stop!' },
       ]);
+    } else if (this.keyPresses === 3) {
+      this.cb.playScript([
+        { speaker: 'Hopeful', text: 'Almost there — just a little further!' },
+      ]);
     } else {
       this.cb.playScript([
         { speaker: 'Christian', text: 'The door swings open! Quick — follow me!' },
-      ], () => this.beginEscape());
+      ], () => this.beginDoorExit());
     }
     if (this.doorGlow) {
-      (this.doorGlow.material as THREE.MeshLambertMaterial).emissiveIntensity = 0.6 + this.keyPresses * 0.6;
+      (this.doorGlow.material as THREE.MeshLambertMaterial).emissiveIntensity = 0.6 + this.keyPresses * 0.45;
     }
   }
 
@@ -587,16 +834,23 @@ export class CastleScene {
   }
 
   private goToMeadow(reason: 'taken' | 'persuaded'): void {
-    this.phase = 'meadow';
-    this.cb.setObjective('🌿 Walking the smooth meadow path — how easy it feels!');
+    // a scripted walk onto the green — control is locked until they arrive
+    this.phase = 'meadow-walk';
+    this.meadowWalkT = 0;
+    this.meadowWalkFrom.copy(this.christian.root.position);
+    this.meadowWalkTo.set(FORK_X + 4, 0, MEADOW_Z);
+    this.cb.setObjective('🌿 Stepping onto the smooth meadow path...');
     if (reason === 'taken') {
       this.cb.playScript([
         { speaker: 'Christian', text: 'Wonderful! The ground is soft as velvet. We made a good choice.' },
         { speaker: 'Hopeful',   text: 'The path goes on for miles! This is so much nicer.' },
       ]);
     }
-    // Christian and Hopeful stay exactly where they are and simply keep walking east —
-    // no teleport onto the meadow.
+  }
+
+  private finishMeadowWalk(): void {
+    this.phase = 'meadow';
+    this.cb.setObjective('🌿 Walking the smooth meadow path — how easy it feels!');
   }
 
   private stormTriggered = false;
@@ -609,7 +863,7 @@ export class CastleScene {
     this.cb.rumbleSound();
 
     this.cb.playScript([
-      { speaker: 'Narrator',  text: 'Night falls suddenly. Thunder crashes above. Rain pours down in sheets.' },
+      { speaker: '',  text: 'Night falls suddenly. Thunder crashes above. Rain pours down in sheets.' },
       { speaker: 'Christian', text: 'Where is the path? I can\'t see anything!' },
       { speaker: 'Hopeful',   text: 'I can\'t find the way back to the highway... we\'re lost.' },
     ], () => {
@@ -623,42 +877,59 @@ export class CastleScene {
     }
   }
 
+  private static readonly SKY_DAY = new THREE.Color(0xacd6f5);
+  private static readonly SKY_NIGHT = new THREE.Color(0x141c30);
+
+  // darkens the sky background and fog to match the storm's lighting —
+  // previously only hemi/sun dimmed, leaving the sky plane bright blue
+  // even at full storm darkness
+  private applySkyDarkness(dark: number): void {
+    const sky = new THREE.Color().lerpColors(CastleScene.SKY_DAY, CastleScene.SKY_NIGHT, dark);
+    (this.scene.background as THREE.Color).copy(sky);
+    (this.scene.fog as THREE.Fog).color.copy(sky);
+  }
+
   private triggerSleep(): void {
     if (this.phase !== 'storm') return;
     this.phase = 'sleep';
     this.sleepT = 0;
 
     this.cb.playScript([
-      { speaker: 'Narrator',  text: 'Utterly exhausted, the two pilgrims lie down in the field and fall fast asleep.' },
-      { speaker: 'Narrator',  text: 'Early the next morning, a voice like rolling thunder shakes the ground.' },
+      { speaker: '',  text: 'Utterly exhausted, the two pilgrims lie down in the field and fall fast asleep.' },
+      { speaker: '',  text: 'Early the next morning, a voice like rolling thunder shakes the ground.' },
     ], () => this.triggerCapture());
   }
 
   private captureTriggered = false;
+  private captureGiantStartX = 0;
   private triggerCapture(): void {
     if (this.captureTriggered) return;
     this.captureTriggered = true;
     this.captureT = 0;
+    this.captureDialogueStarted = false;
 
-    // show Giant Despair
+    // it's a bright morning now — any rain still mid-fall from the night
+    // before would otherwise hang frozen in the sunny sky once it stops animating
+    for (const r of this.rainDrops) r.mesh.visible = false;
+
+    // Giant Despair appears at a distance and strides in — a visible
+    // abduction rather than a jump-cut straight to dialogue
+    this.captureGiantStartX = this.christian.root.position.x + 14;
     this.giant.root.visible = true;
-    this.giant.root.position.set(
-      this.christian.root.position.x + 4,
-      0,
-      this.christian.root.position.z - 2,
-    );
-    this.giant.root.rotation.y = Math.PI; // faces west toward pilgrims
+    this.giant.root.position.set(this.captureGiantStartX, 0, this.christian.root.position.z - 2);
+    // rotation.y = -π/2 ↔ world -x: he's east of the sleeping pair and walks
+    // toward -x to reach them, so this also faces him toward Christian
+    this.giant.root.rotation.y = -Math.PI / 2;
+    this.cb.rumbleSound();
+  }
 
+  private startCaptureDialogue(): void {
     this.cb.playScript([
       { speaker: 'Giant Despair', text: 'What are YOU doing on MY land?! Trespassers! OFF my property!' },
       { speaker: 'Christian',     text: 'We wandered from the King\'s Highway in the storm... I\'m sorry.' },
       { speaker: 'Giant Despair', text: 'Sorry? SORRY?! Come with me. You\'re mine now.' },
     ], () => {
-      if (this.cb.fade) {
-        this.cb.fade(() => this.enterDungeon());
-      } else {
-        this.enterDungeon();
-      }
+      this.captureGrabT = 1.1;
     });
   }
 
@@ -678,8 +949,12 @@ export class CastleScene {
     this.hopeful.root.rotation.y = 0.3;
     this.christian.root.rotation.x = 0;  // stand up straight — no longer lying asleep
     this.hopeful.root.rotation.x = 0;
-    this.giant.root.rotation.y = 0;       // faces north, into the cell
-    this.diffidence.root.rotation.y = 0;
+    // rotation.y = π ↔ world -z: they stand at the higher-z antechamber side
+    // and must face back toward the lower-z cell to look in at the prisoners
+    // (and so their faces read on camera instead of the backs of their heads)
+    this.giant.root.rotation.y = Math.PI;
+    this.giant.armL.rotation.x = 0;       // reset from the grab animation
+    this.diffidence.root.rotation.y = Math.PI;
 
     // dim the scene: dungeon is underground, but still clearly visible
     this.hemi.intensity = 0.6;
@@ -693,7 +968,7 @@ export class CastleScene {
 
     this.cb.setObjective('🏰 Locked in Doubting Castle — endure the darkness');
     this.cb.playScript([
-      { speaker: 'Narrator',      text: 'They are thrown into a dark, cold dungeon. No food. No water. No light — except a faint glow near the door.' },
+      { speaker: '',      text: 'They are thrown into a dark, cold dungeon. No food. No water. No light — except a faint glow near the door.' },
       { speaker: 'Diffidence',    text: '(whispering to her husband) Beat them every morning. And every night.' },
     ], () => { this.dungeonReady = true; });
   }
@@ -711,7 +986,7 @@ export class CastleScene {
       this.cb.rumbleSound();
       this.beatingT = 2.4;
       this.cb.playScript([
-        { speaker: 'Narrator',      text: 'The giant beats them mercilessly. Christian\'s paws ache. Hopeful can barely stand.' },
+        { speaker: '',      text: 'The giant beats them mercilessly. Christian\'s paws ache. Hopeful can barely stand.' },
         { speaker: 'Christian',     text: 'This is my fault. I was the one who said to leave the highway. I\'m so sorry, Hopeful.' },
         { speaker: 'Hopeful',       text: 'Don\'t blame yourself. We both chose to go. And we\'re going to get out of here.' },
       ], () => { this.dungeonReady = true; });
@@ -734,7 +1009,7 @@ export class CastleScene {
       this.cb.rumbleSound();
       this.beatingT = 2.4;
       this.cb.playScript([
-        { speaker: 'Narrator',      text: 'Another day. Another beating. Their strength is nearly gone.' },
+        { speaker: '',      text: 'Another day. Another beating. Their strength is nearly gone.' },
         { speaker: 'Giant Despair', text: 'Still here? Then you must want more suffering. I can arrange that.' },
         { speaker: 'Diffidence',    text: 'Make them wish they had taken your advice while they still had the chance.' },
         { speaker: 'Hopeful',       text: 'Christian — do you remember what we\'ve seen? The Cross. The Palace. The scroll.' },
@@ -742,26 +1017,39 @@ export class CastleScene {
       ], () => { this.dungeonReady = true; });
 
     } else if (this.dungeonStep === 4) {
-      // Christian remembers the key — transition to minigame
-      this.cb.setObjective('🔑 Christian remembers! Try the Promise key on the door (press E near it)');
-      this.doorGlow && (this.doorGlow.visible = true);
+      // Giant Despair and Diffidence leave first — Christian only dares try
+      // the key once they're gone
       this.cb.playScript([
-        { speaker: 'Christian', text: 'Wait. WAIT. What a fool I have been!' },
-        { speaker: 'Hopeful',   text: 'What? What is it?' },
-        { speaker: 'Christian', text: 'I have a key — I\'ve had it all along! A key the King gave me, called Promise.' },
-        { speaker: 'Christian', text: 'It is written: every Promise of the King will unlock any door in his kingdom!' },
-        { speaker: 'Hopeful',   text: 'Try it on that lock over there — quickly, before the giant comes back!' },
+        { speaker: 'Giant Despair', text: 'Enough for today. I\'m off to see to the other cells.' },
+        { speaker: 'Diffidence',    text: 'Don\'t dawdle, dear — supper\'s waiting.' },
       ], () => {
-        this.phase = 'key';
-        this.keyPresses = 0;
+        this.giantLeaveT = 1.3;
+        this.cb.playScript([
+          { speaker: 'Christian', text: 'Wait. WAIT. What a fool I have been!' },
+          { speaker: 'Hopeful',   text: 'What? What is it?' },
+          { speaker: 'Christian', text: 'I have a key — I\'ve had it all along! A key the King gave me, called Promise.' },
+          { speaker: 'Christian', text: 'It is written: every Promise of the King will unlock any door in his kingdom!' },
+          { speaker: 'Hopeful',   text: 'Try it on that lock over there — quickly, before he comes back!' },
+        ], () => {
+          this.cb.setObjective('🔑 Christian remembers! Go to the door and trace the Promise key along the cross');
+          this.doorGlow && (this.doorGlow.visible = true);
+          this.phase = 'key';
+          this.keyPresses = 0;
+        });
       });
     }
+  }
+
+  private beginDoorExit(): void {
+    this.phase = 'exit-door';
+    this.doorSwingT = 0;
+    this.exitWalkT = -1;
+    this.cb.rumbleSound(); // the heavy door creaking open
   }
 
   private beginEscape(): void {
     this.phase = 'escape';
     this.escapeT = 0;
-    if (this.doorBars) this.scene.remove(this.doorBars);
 
     if (this.cb.fade) {
       this.cb.fade(() => this.placeOnHighway());
@@ -775,6 +1063,7 @@ export class CastleScene {
     this.hemi.intensity = 1.0;
     this.hemi.color.set(0xdff0ff);
     this.sun.intensity = 1.6;
+    this.applySkyDarkness(0);
     this.stormDark = 0;
     for (const r of this.rainDrops) r.mesh.visible = false;
 
@@ -789,7 +1078,7 @@ export class CastleScene {
 
     this.cb.setObjective('🏃 Run east along the King\'s Highway — get away from the castle!');
     this.cb.playScript([
-      { speaker: 'Narrator',  text: 'The same key opens the castle doors and the outer gate. They flee into the morning light.' },
+      { speaker: '',  text: 'The same key opens the castle doors and the outer gate. They flee into the morning light.' },
       { speaker: 'Hopeful',   text: 'We\'re out! Don\'t stop running — get back to the King\'s Highway!' },
     ], () => {
       this.christianHP = Math.min(100, this.christianHP + 25);
@@ -815,7 +1104,7 @@ export class CastleScene {
     this.cb.setObjective('⚠️ Warning sign placed! Now continue east along the highway');
     if (this.signMesh) this.signMesh.visible = true;
     this.cb.playScript([
-      { speaker: 'Narrator',  text: 'Christian carves a warning into a wooden board and plants it firmly at the meadow entrance.' },
+      { speaker: '',  text: 'Christian carves a warning into a wooden board and plants it firmly at the meadow entrance.' },
       { speaker: 'Christian', text: 'BEWARE: Bypath Meadow leads to Doubting Castle. Keep to the King\'s Highway.' },
       { speaker: 'Hopeful',   text: 'Whoever reads this — may they be wiser than we were.' },
     ], () => {
@@ -843,6 +1132,7 @@ export class CastleScene {
       this.hemi.intensity = THREE.MathUtils.lerp(1.0, 0.08, dark);
       this.hemi.color.set(new THREE.Color().lerpColors(new THREE.Color(0xdff0ff), new THREE.Color(0x202535), dark));
       this.sun.intensity = THREE.MathUtils.lerp(1.6, 0, dark);
+      this.applySkyDarkness(dark);
 
       // tiring effect
       this.tiringFactor = Math.max(0, this.tiringFactor - dt * 0.04);
@@ -861,6 +1151,16 @@ export class CastleScene {
       }
     }
 
+    // ---- dawn: the storm's darkness lifts as morning comes and the giant arrives ----
+    if (this.phase === 'sleep' && this.captureTriggered) {
+      this.stormDark = Math.max(0, this.stormDark - dt * 1.2);
+      const dark = this.stormDark;
+      this.hemi.intensity = THREE.MathUtils.lerp(1.0, 0.08, dark);
+      this.hemi.color.set(new THREE.Color().lerpColors(new THREE.Color(0xdff0ff), new THREE.Color(0x202535), dark));
+      this.sun.intensity = THREE.MathUtils.lerp(1.6, 0, dark);
+      this.applySkyDarkness(dark);
+    }
+
     // lightning flash decay
     if (this.lightningFlash > 0) {
       this.lightningFlash = Math.max(0, this.lightningFlash - dt * 1.8);
@@ -869,13 +1169,59 @@ export class CastleScene {
 
     // ---- rain ----
     if (this.phase === 'storm' || (this.phase === 'sleep' && this.sleepT < 1)) {
+      // during the storm the rain recenters on Christian each drop, so the
+      // downpour keeps following them across the widened dark field instead
+      // of being left behind at its original fixed patch
+      const cx = chr.root.position.x;
+      const cz = chr.root.position.z;
       for (const r of this.rainDrops) {
         r.mesh.position.y -= r.spd * dt;
         if (r.mesh.position.y < 0) {
           r.mesh.position.y = 11 + Math.random() * 3;
-          r.mesh.position.x = r.x + (Math.random() - 0.5) * 6;
-          r.mesh.position.z = r.z + (Math.random() - 0.5) * 6;
+          r.mesh.position.x = cx + (Math.random() - 0.5) * 16;
+          r.mesh.position.z = cz + (Math.random() - 0.5) * 12;
         }
+      }
+    }
+
+    // ---- scripted walk from the fork onto the meadow (control locked) ----
+    if (this.phase === 'meadow-walk') {
+      const DUR = 1.8;
+      this.meadowWalkT = Math.min(DUR, this.meadowWalkT + dt);
+      const p = this.meadowWalkT / DUR;
+      const eased = p * p * (3 - 2 * p); // smoothstep
+      chr.root.position.lerpVectors(this.meadowWalkFrom, this.meadowWalkTo, eased);
+      chr.root.rotation.y = Math.atan2(
+        this.meadowWalkTo.x - this.meadowWalkFrom.x,
+        this.meadowWalkTo.z - this.meadowWalkFrom.z,
+      );
+      if (this.meadowWalkT >= DUR) this.finishMeadowWalk();
+    }
+
+    // ---- the jail door swings open, then they walk out through it ----
+    if (this.phase === 'exit-door') {
+      const SWING_DUR = 0.6;
+      if (this.doorSwingT < SWING_DUR) {
+        this.doorSwingT = Math.min(SWING_DUR, this.doorSwingT + dt);
+        const p = this.doorSwingT / SWING_DUR;
+        const eased = p * p * (3 - 2 * p);
+        if (this.doorHinge) this.doorHinge.rotation.y = -Math.PI * 0.55 * eased;
+        if (this.doorSwingT >= SWING_DUR) {
+          this.exitWalkT = 0;
+          this.exitWalkFrom.copy(chr.root.position);
+          this.exitWalkTo.set(this.doorWorldX, 0, DUNGEON.z + 9);
+        }
+      } else if (this.exitWalkT >= 0) {
+        const WALK_DUR = 1.3;
+        this.exitWalkT = Math.min(WALK_DUR, this.exitWalkT + dt);
+        const p = this.exitWalkT / WALK_DUR;
+        const eased = p * p * (3 - 2 * p);
+        chr.root.position.lerpVectors(this.exitWalkFrom, this.exitWalkTo, eased);
+        chr.root.rotation.y = Math.atan2(
+          this.exitWalkTo.x - this.exitWalkFrom.x,
+          this.exitWalkTo.z - this.exitWalkFrom.z,
+        );
+        if (this.exitWalkT >= WALK_DUR) this.beginEscape();
       }
     }
 
@@ -886,6 +1232,39 @@ export class CastleScene {
       const lieDown = Math.min(1, this.sleepT * 1.2);
       chr.root.rotation.x = lieDown * (Math.PI / 2);
       hop.root.rotation.x = lieDown * (Math.PI / 2) * 0.9;
+    }
+
+    // ---- Giant Despair strides in before the capture dialogue starts ----
+    if (this.captureTriggered && !this.captureDialogueStarted) {
+      this.captureT += dt;
+      const APPROACH = 1.8;
+      const p2 = Math.min(1, this.captureT / APPROACH);
+      const targetX = chr.root.position.x + 3;
+      this.giant.root.position.x = THREE.MathUtils.lerp(this.captureGiantStartX, targetX, p2);
+      animateBear(this.giant, t, true);
+      if (p2 >= 1) {
+        this.captureDialogueStarted = true;
+        this.startCaptureDialogue();
+      }
+    }
+
+    // ---- the grab: Giant Despair scoops up the sleeping pair before the fade ----
+    if (this.captureGrabT > 0) {
+      this.captureGrabT = Math.max(0, this.captureGrabT - dt);
+      const p3 = 1 - this.captureGrabT / 1.1;
+      this.giant.armL.rotation.x = -Math.min(1, p3 * 1.6) * 1.6;
+      const lift = Math.min(1, p3 * 1.6);
+      chr.root.position.y = lift * 1.1;
+      hop.root.position.y = lift * 0.9;
+      chr.root.rotation.x = (1 - lift) * (Math.PI / 2);
+      hop.root.rotation.x = (1 - lift) * (Math.PI / 2) * 0.9;
+      if (this.captureGrabT === 0) {
+        if (this.cb.fade) {
+          this.cb.fade(() => this.enterDungeon());
+        } else {
+          this.enterDungeon();
+        }
+      }
     }
 
     // ---- dungeon phase steps ----
@@ -904,9 +1283,22 @@ export class CastleScene {
       this.escapeT += dt;
     }
 
+    // ---- exit beacon pulse ----
+    if (this.lightBeam) {
+      const sc = 1 + Math.sin(t * 2.2) * 0.1;
+      this.lightBeam.scale.set(sc, 1, sc);
+    }
+    if (this.lightHalo) {
+      (this.lightHalo.material as THREE.MeshBasicMaterial).opacity =
+        0.3 + 0.2 * Math.abs(Math.sin(t * 1.7));
+    }
+
     // ---- character animations ----
     const walkPhases: Phase[] = ['enter', 'meadow', 'storm', 'escape', 'highway', 'sign', 'key'];
-    const isWalking = walkPhases.includes(this.phase) && moving;
+    // the meadow walk-in is scripted (moveFactor is 0, so `moving` never goes
+    // true) but should still show a walk cycle, not an idle pose
+    const isWalking = (walkPhases.includes(this.phase) && moving) || this.phase === 'meadow-walk' ||
+      (this.phase === 'exit-door' && this.exitWalkT >= 0);
     animateBear(chr, t, isWalking);
     if (this.phase !== 'sleep') {
       animateBear(hop, t, isWalking);
@@ -922,26 +1314,46 @@ export class CastleScene {
       hop.root.position.y = 0;
     }
 
-    // Giant Despair idle sway (when visible, and only pre-dungeon — in the dungeon he faces in at 0)
-    if (this.giant.root.visible && this.phase !== 'escape' && this.phase !== 'dungeon' && this.phase !== 'key') {
-      this.giant.root.rotation.y = Math.PI + Math.sin(t * 0.6) * 0.15;
-    }
-
-    // Giant Despair beating Christian and Hopeful through the bars
+    // Giant Despair beating Christian and Hopeful through the bars — a
+    // slower, weighted downward strike (rather than a frantic windmill), and
+    // a shallow lunge that keeps his torso well clear of the bars at all
+    // times (GIANT_Z gives him real standoff distance; only the swinging
+    // arm/cudgel reaches toward the bar line)
     if (this.beatingT > 0) {
       this.beatingT = Math.max(0, this.beatingT - dt);
-      const swing = Math.sin(t * 9) * 0.9 + 0.9; // 0..1.8, fast overhead swings
+      const swing = Math.sin(t * 4.5) * 0.7 + 0.7; // 0..1.4, weighted overhead swings
       this.giant.armR.rotation.x = -swing;
       this.giant.armL.rotation.x = -swing * 0.5;
-      // lunge toward the bars on each downswing, then back
-      const lunge = Math.max(0, Math.sin(t * 9));
-      this.giant.root.position.z = DUNGEON.z + GIANT_Z - lunge * 0.8;
-      this.giant.root.rotation.x = lunge * 0.12;
+      // lean toward the bars on each downswing, then back — well short of
+      // the bars themselves, which sit 2.8 units in front of his root
+      const lunge = Math.max(0, Math.sin(t * 4.5));
+      this.giant.root.position.z = DUNGEON.z + GIANT_Z - lunge * 0.4;
+      this.giant.root.rotation.x = lunge * 0.1;
       if (this.beatingT === 0) {
         this.giant.armR.rotation.x = 0;
         this.giant.armL.rotation.x = 0;
         this.giant.root.rotation.x = 0;
         this.giant.root.position.z = DUNGEON.z + GIANT_Z;
+      }
+    }
+
+    // Giant Despair & Diffidence turn and walk off into the antechamber
+    // before Christian dares try the key
+    if (this.giantLeaveT > 0) {
+      this.giantLeaveT = Math.max(0, this.giantLeaveT - dt);
+      const walk = 1 - this.giantLeaveT / 1.3; // 0 → 1
+      // rotation.y = 0 ↔ world +z, matching the direction they actually walk
+      // (deeper into the antechamber, away north from the cell) — previously
+      // the facing (east) didn't match the motion (+z), so they crab-walked
+      this.giant.root.rotation.y = 0;
+      this.giant.root.position.z = DUNGEON.z + GIANT_Z + walk * 2.6;
+      this.diffidence.root.rotation.y = 0;
+      this.diffidence.root.position.z = DUNGEON.z + GIANT_Z - 0.5 + walk * 2.6;
+      animateBear(this.giant, t, true);
+      animateBear(this.diffidence, t, true);
+      if (this.giantLeaveT === 0) {
+        this.giant.root.visible = false;
+        this.diffidence.root.visible = false;
       }
     }
   }

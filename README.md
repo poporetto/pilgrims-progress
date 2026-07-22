@@ -9,6 +9,7 @@ Gameplay rules:
 - Christian shouldn't be able to walk through characters
 - Language is set to modern english.
 - Christian should always face the NPC when interacting with them.
+-  make sure when the event is triggered character positions won’t jump
 
 
 ## Chapter I — The City of Destruction
