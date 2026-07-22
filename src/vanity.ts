@@ -93,13 +93,15 @@ export class VanityScene {
     this.christian = makeBear({
       species: 'bear', fur: PALETTE.bearBrown,
       outfit: 'shirt', outfitColor: PALETTE.robeWhite,
-      sling: true, plump: true,
+      sling: false, plump: true,
     });
     this.christian.body.add(block(1.18, 0.14, 0.86, PALETTE.robeGold, 0, 0.3, 0));
     const STEEL = 0xcfd6dd;
     const helmet = new THREE.Group();
-    helmet.add(block(1.02, 0.4, 0.86, STEEL, 0, 0.92, 0));
-    helmet.add(block(0.2, 0.24, 0.9, PALETTE.robeGold, 0, 1.16, 0));
+    helmet.add(block(1.02, 0.28, 0.86, STEEL, 0, 0.84, 0));
+    helmet.add(block(0.18, 0.16, 0.9, PALETTE.robeGold, 0, 1.05, 0));
+    helmet.add(block(0.26, 0.24, 0.22, PALETTE.bearBrown, -0.38, 1.08, 0));
+    helmet.add(block(0.26, 0.24, 0.22, PALETTE.bearBrown, 0.38, 1.08, 0));
     this.christian.head.add(helmet);
     this.christian.body.add(block(1.16, 0.62, 0.88, STEEL, 0, 0.42, 0));
     const sword = new THREE.Group();

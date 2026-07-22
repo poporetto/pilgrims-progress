@@ -69,6 +69,12 @@ export class ValleyScene {
   private knockT = 0; // Christian knocked down, getting back up
   private dart: THREE.Mesh;
   private swingArc: THREE.Mesh;
+  // a blade ray hurled from the sword on each swing, flying out to strike Apollyon
+  private bladeRay: THREE.Mesh;
+  private rayActive = false;
+  private rayT = 0;
+  private rayFrom = new THREE.Vector3();
+  private rayTo = new THREE.Vector3();
   private mutters = 0;
   private smoke: Array<{ mesh: THREE.Mesh; m: THREE.MeshBasicMaterial; life: number }> = [];
   private smokeTimer = 0;
@@ -86,13 +92,17 @@ export class ValleyScene {
     this.christian = makeBear({
       species: 'bear', fur: PALETTE.bearBrown,
       outfit: 'shirt', outfitColor: PALETTE.robeWhite,
-      sling: true, plump: true,
+      // The travel sling was removed when he received his armour at Palace
+      // Beautiful; its rear strap otherwise intersects the backplate and flickers.
+      sling: false, plump: true,
     });
     this.christian.body.add(block(1.18, 0.14, 0.86, PALETTE.robeGold, 0, 0.3, 0));
     const STEEL = 0xcfd6dd;
     const helmet = new THREE.Group();
-    helmet.add(block(1.02, 0.4, 0.86, STEEL, 0, 0.92, 0));
-    helmet.add(block(0.2, 0.24, 0.9, PALETTE.robeGold, 0, 1.16, 0));
+    helmet.add(block(1.02, 0.28, 0.86, STEEL, 0, 0.84, 0));
+    helmet.add(block(0.18, 0.16, 0.9, PALETTE.robeGold, 0, 1.05, 0));
+    helmet.add(block(0.26, 0.24, 0.22, PALETTE.bearBrown, -0.38, 1.08, 0));
+    helmet.add(block(0.26, 0.24, 0.22, PALETTE.bearBrown, 0.38, 1.08, 0));
     this.christian.head.add(helmet);
     this.christian.body.add(block(1.16, 0.62, 0.88, STEEL, 0, 0.42, 0));
     const shield = new THREE.Group();
@@ -135,6 +145,20 @@ export class ValleyScene {
       new THREE.MeshBasicMaterial({ color: 0xd8dee4, transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide }),
     );
     this.swingArc.visible = false;
+
+    // the flung blade ray — an elongated crescent that shoots out to Apollyon
+    const rayGroup = new THREE.Mesh(
+      new THREE.ConeGeometry(0.42, 3.2, 8),
+      new THREE.MeshBasicMaterial({
+        color: 0xe8f0ff, transparent: true, opacity: 0,
+        depthWrite: false, blending: THREE.AdditiveBlending,
+      }),
+    );
+    // the cone points along local +z after this tilt, so it flies point-first
+    rayGroup.geometry.rotateX(Math.PI / 2);
+    rayGroup.visible = false;
+    rayGroup.renderOrder = 5;
+    this.bladeRay = rayGroup;
 
     // ---------- APOLLYON ----------
     const a = new THREE.Group();
@@ -269,6 +293,7 @@ export class ValleyScene {
     s.add(this.groundSword);
     s.add(this.dart);
     s.add(this.swingArc);
+    s.add(this.bladeRay);
 
     // belly smoke pool
     for (let i = 0; i < 12; i++) {
@@ -350,6 +375,8 @@ export class ValleyScene {
     this.ahp = 100;
     this.turn = 'busy';
     this.animKind = null;
+    this.rayActive = false;
+    this.bladeRay.visible = false;
     this.dartThrown = false;
     this.spiritSword = false;
     this.mutters = 0;
@@ -395,6 +422,23 @@ export class ValleyScene {
     this.phase = 'anim';
     this.animKind = 'swing';
     this.animT = 0;
+    this.cb.blipSound();
+  }
+
+  // launch the blade ray from the sword toward Apollyon; playerHit() lands when
+  // it arrives (see the ray-flight update in update())
+  private launchBladeRay(): void {
+    const p = this.christian.root.position;
+    this.rayFrom.set(p.x + 0.9, 1.6, p.z);
+    this.rayTo.set(this.apollyon.position.x - 1.2, 2.6, this.apollyon.position.z);
+    this.bladeRay.position.copy(this.rayFrom);
+    const dx = this.rayTo.x - this.rayFrom.x;
+    const dz = this.rayTo.z - this.rayFrom.z;
+    this.bladeRay.rotation.set(0, Math.atan2(dx, dz), 0);
+    (this.bladeRay.material as THREE.MeshBasicMaterial).color.set(this.spiritSword ? 0x7ab8ff : 0xe8f0ff);
+    this.bladeRay.visible = true;
+    this.rayActive = true;
+    this.rayT = 0;
     this.cb.blipSound();
   }
 
@@ -609,7 +653,7 @@ export class ValleyScene {
           this.swingArc.visible = false;
           this.christian.armR.rotation.x = 0;
           this.animKind = null;
-          this.playerHit();
+          this.launchBladeRay(); // fling a blade ray; the hit lands when it reaches Apollyon
         }
       } else if (this.animKind === 'claw') {
         if (this.animT >= 0) {
@@ -643,6 +687,23 @@ export class ValleyScene {
             this.dartHit();
           }
         }
+      }
+    }
+
+    // ---------- the flung blade ray in flight ----------
+    if (this.rayActive) {
+      this.rayT += dt;
+      const u = THREE.MathUtils.clamp(this.rayT / 0.22, 0, 1);
+      this.bladeRay.position.lerpVectors(this.rayFrom, this.rayTo, u);
+      const rm = this.bladeRay.material as THREE.MeshBasicMaterial;
+      rm.opacity = 0.85 * Math.sin(u * Math.PI) + 0.15;
+      // stretch as it flies, then snap short on impact
+      this.bladeRay.scale.set(1, 1, 1 + u * 0.6);
+      if (u >= 1) {
+        this.rayActive = false;
+        this.bladeRay.visible = false;
+        this.bladeRay.scale.set(1, 1, 1);
+        this.playerHit();
       }
     }
 

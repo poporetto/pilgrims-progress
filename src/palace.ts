@@ -86,7 +86,9 @@ export class PalaceScene {
     this.christian = makeBear({
       species: 'bear', fur: PALETTE.bearBrown,
       outfit: 'shirt', outfitColor: PALETTE.robeWhite,
-      sling: true, plump: true,
+      // Palace Beautiful is where the sling is exchanged for his armour;
+      // keeping its back strap beneath the breastplate causes z-fighting.
+      sling: false, plump: true,
     });
     this.christian.body.add(block(1.18, 0.14, 0.86, PALETTE.robeGold, 0, 0.3, 0));
     const seal = block(0.10, 0.10, 0.04, PALETTE.robeGold, 0, 0.62, 0.42);
@@ -103,10 +105,13 @@ export class PalaceScene {
     // ---------- the Armor of God, hidden until each piece is given ----------
     const STEEL = 0xcfd6dd;
     const helmet = new THREE.Group();
-    helmet.add(block(1.02, 0.4, 0.86, STEEL, 0, 0.92, 0));
-    helmet.add(block(0.2, 0.24, 0.9, PALETTE.robeGold, 0, 1.16, 0)); // crest
-    helmet.add(block(0.28, 0.28, 0.22, STEEL, -0.38, 1.12, 0)); // left bear ear
-    helmet.add(block(0.28, 0.28, 0.22, STEEL, 0.38, 1.12, 0));  // right bear ear
+    // A low helmet leaves Christian recognisably bear-shaped instead of turning
+    // his head into a tall metal block. The small fur-lined ear caps sit clear
+    // of the crown and remain visible from behind.
+    helmet.add(block(1.02, 0.28, 0.86, STEEL, 0, 0.84, 0));
+    helmet.add(block(0.18, 0.16, 0.9, PALETTE.robeGold, 0, 1.05, 0)); // crest
+    helmet.add(block(0.26, 0.24, 0.22, PALETTE.bearBrown, -0.38, 1.08, 0)); // left ear
+    helmet.add(block(0.26, 0.24, 0.22, PALETTE.bearBrown, 0.38, 1.08, 0));  // right ear
     this.christian.head.add(helmet);
     const breastplate = block(1.16, 0.62, 0.88, STEEL, 0, 0.42, 0);
     this.christian.body.add(breastplate);
@@ -258,44 +263,108 @@ export class PalaceScene {
     const palace = new THREE.Group();
     const WHITE = 0xfaf8f2;
     const TRIM = 0xe8e2d2;
-    // main hall
-    palace.add(block(14, 7, 10, WHITE, 8, 3.5, 0));
-    palace.add(block(14.6, 0.6, 10.6, TRIM, 8, 7.3, 0));
-    palace.add(block(12, 2.4, 8, WHITE, 8, 8.8, 0));
-    palace.add(block(12.6, 0.5, 8.6, PALETTE.roofPink, 8, 10.2, 0));
-    // corner towers with rosy caps
-    for (const [tx, tz] of [[2, -5.5], [2, 5.5], [14, -5.5], [14, 5.5]] as const) {
-      palace.add(block(2.6, 9.5, 2.6, WHITE, tx, 4.75, tz));
-      palace.add(block(3.0, 0.5, 3.0, TRIM, tx, 9.7, tz));
-      palace.add(block(2.2, 1.6, 2.2, PALETTE.roofPink, tx, 10.7, tz));
+    const GOLD = PALETTE.robeGold;
+    const STONE = 0xd8d0c4;
+
+    // terraced front steps rising from the road toward the east gate
+    for (let i = 0; i < 4; i++) {
+      palace.add(block(5.6 - i * 0.3, 0.18, 4.8 - i * 0.4, STONE, 14.8, 0.09 + i * 0.18, 0));
     }
-    // grand arched gate on the EAST face — where pilgrims enter from the road
-    palace.add(block(0.8, 5.2, 4.0, TRIM, 15.3, 2.6, 0));        // arch surround
-    palace.add(block(0.9, 4.0, 2.8, 0x4a4440, 15.5, 2.0, 0));    // dark doorway
-    palace.add(block(0.6, 5.8, 0.6, TRIM, 15.0, 2.9, 2.2));      // pilaster south
-    palace.add(block(0.6, 5.8, 0.6, TRIM, 15.0, 2.9, -2.2));     // pilaster north
-    // glowing windows
+
+    // main hall — wider, with a raised clerestory band
+    palace.add(block(16, 8, 11, WHITE, 8, 4, 0));
+    palace.add(block(16.8, 0.7, 11.8, TRIM, 8, 8.35, 0));          // roof coping
+    palace.add(block(13, 2.8, 9, WHITE, 8, 9.8, 0));               // upper storey
+    palace.add(block(13.6, 0.55, 9.6, PALETTE.roofPink, 8, 11.5, 0));
+    // crenellations along the roofline
+    for (let c = 0; c < 9; c++) {
+      palace.add(block(0.7, 0.65, 0.7, TRIM, 1.5 + c * 1.6, 12.1, 4.9));
+      palace.add(block(0.7, 0.65, 0.7, TRIM, 1.5 + c * 1.6, 12.1, -4.9));
+    }
+
+    // corner towers with rosy caps and narrow windows
+    for (const [tx, tz] of [[1.5, -6], [1.5, 6], [14.5, -6], [14.5, 6]] as const) {
+      palace.add(block(3.0, 11, 3.0, WHITE, tx, 5.5, tz));
+      palace.add(block(3.4, 0.55, 3.4, TRIM, tx, 11.2, tz));
+      palace.add(block(2.4, 2.0, 2.4, PALETTE.roofPink, tx, 12.4, tz));
+      palace.add(block(0.14, 0.14, 0.5, GOLD, tx, 8.2, tz + (tz < 0 ? -1.55 : 1.55))); // banner pole
+      palace.add(block(0.9, 0.6, 0.06, 0xc9535f, tx, 9.0, tz + (tz < 0 ? -1.58 : 1.58)));
+      // warm slit windows up the tower
+      for (let wy = 3; wy <= 9; wy += 2.5) {
+        const win = new THREE.Mesh(
+          new THREE.BoxGeometry(0.12, 0.9, 0.5),
+          new THREE.MeshBasicMaterial({ color: 0xffe9a0 }),
+        );
+        win.position.set(tx + (tz < 0 ? 1.55 : -1.55) * (tz < 0 ? 1 : 1), wy, tz);
+        palace.add(win);
+      }
+    }
+
+    // side wings flanking the central block
+    for (const side of [-1, 1]) {
+      palace.add(block(5, 5.5, 4, WHITE, 2.5, 2.75, side * 8.5));
+      palace.add(block(5.4, 0.45, 4.4, TRIM, 2.5, 5.7, side * 8.5));
+      palace.add(block(4.2, 1.4, 3.2, PALETTE.roofMint, 2.5, 6.6, side * 8.5));
+    }
+
+    // grand arched gate on the EAST face
+    palace.add(block(1.0, 6.0, 4.6, TRIM, 16.0, 3.0, 0));           // arch surround
+    palace.add(block(1.1, 4.6, 3.2, 0x3a3632, 16.2, 2.3, 0));     // dark doorway
+    palace.add(block(0.7, 6.6, 0.7, TRIM, 15.6, 3.3, 2.5));       // pilaster south
+    palace.add(block(0.7, 6.6, 0.7, TRIM, 15.6, 3.3, -2.5));      // pilaster north
+    palace.add(block(4.8, 0.35, 0.35, GOLD, 16.0, 5.8, 0));       // arch keystone band
+    // glowing windows — south and north façades
     for (const [wx, wy, wz] of [
-      [5, 4, 5.1], [8, 4.6, 5.1], [11, 4, 5.1],
-      [5, 4, -5.1], [8, 4.6, -5.1], [11, 4, -5.1],
+      [4, 4.2, 5.6], [8, 5.0, 5.6], [12, 4.2, 5.6],
+      [4, 4.2, -5.6], [8, 5.0, -5.6], [12, 4.2, -5.6],
+      [4, 7.2, 5.2], [12, 7.2, 5.2], [4, 7.2, -5.2], [12, 7.2, -5.2],
     ] as const) {
       const win = new THREE.Mesh(
-        new THREE.BoxGeometry(1.0, 1.4, 0.12),
+        new THREE.BoxGeometry(1.1, 1.5, 0.14),
         new THREE.MeshBasicMaterial({ color: 0xffe9a0 }),
       );
       win.position.set(wx, wy, wz);
       palace.add(win);
+      palace.add(block(1.2, 0.14, 0.18, TRIM, wx, wy + 0.85, wz)); // window sill
     }
-    // decorative porch columns flanking the east gate
-    palace.add(block(0.5, 6.2, 0.5, WHITE, 14.6, 3.1, 2.8));
-    palace.add(block(0.5, 6.2, 0.5, WHITE, 14.6, 3.1, -2.8));
-    // the whole palace stands NORTH of the road, so the camera (which looks
-    // from the south) never ends up buried inside its walls
+    // porch columns and a small portico roof over the gate
+    for (const z of [-3.2, 3.2]) {
+      palace.add(block(0.55, 6.8, 0.55, WHITE, 15.2, 3.4, z));
+      palace.add(block(0.6, 0.6, 0.6, GOLD, 15.2, 6.9, z));        // capital
+    }
+    palace.add(block(3.8, 0.3, 7.2, TRIM, 15.0, 7.1, 0));
+
+    // courtyard garden north of the road — hedges, lamps, a little fountain
+    for (const hx of [4, 10, 16]) {
+      palace.add(block(3.5, 0.7, 0.5, 0x5a8a4a, hx, 0.35, -3.2));
+      palace.add(block(3.5, 0.7, 0.5, 0x5a8a4a, hx, 0.35, 3.2));
+    }
+    for (const [lx, lz] of [[6, -2], [12, 2]] as const) {
+      const lamp = new THREE.Group();
+      lamp.add(block(0.16, 2.6, 0.16, PALETTE.woodDark, 0, 1.3, 0));
+      const bulb = block(0.38, 0.38, 0.38, PALETTE.light, 0, 2.7, 0);
+      (bulb.material as THREE.MeshLambertMaterial).emissive = new THREE.Color(0xfff0b0);
+      (bulb.material as THREE.MeshLambertMaterial).emissiveIntensity = 0.5;
+      lamp.add(bulb);
+      lamp.position.set(lx, 0, lz);
+      palace.add(lamp);
+    }
+    // fountain basin in the forecourt
+    palace.add(block(2.4, 0.5, 2.4, STONE, 10, 0.25, -2.8));
+    palace.add(block(1.6, 0.35, 1.6, PALETTE.water, 10, 0.55, -2.8));
+    palace.add(block(0.5, 1.2, 0.5, STONE, 10, 0.9, -2.8));
+    for (const side of [-1, 1]) {
+      palace.add(block(0.14, 0.5, 0.14, STONE, 10 + side * 0.9, 1.1, -2.8 + side * 0.5));
+    }
+
     palace.position.set(0, 0, -7.5);
     s.add(palace);
-    const palaceLight = new THREE.PointLight(0xffe9c0, 1.6, 30);
-    palaceLight.position.set(8, 6, -2);
+    const palaceLight = new THREE.PointLight(0xffe9c0, 2.0, 34);
+    palaceLight.position.set(8, 7, -2);
     s.add(palaceLight);
+    const gateGlow = new THREE.PointLight(0xfff0c8, 1.4, 14);
+    gateGlow.position.set(15.5, 3.5, -7.5);
+    s.add(gateGlow);
 
     // Watchful stands by the east gate, visible to approaching Christian
     this.watchful.root.position.set(13.5, 0, -4.5);
@@ -313,38 +382,129 @@ export class PalaceScene {
 
     // ---------- the great hall (interior, reached by fade) ----------
     const hall = new THREE.Group();
-    hall.add(block(26, 0.6, 20, 0xe8ddc9, 8, -0.3, 0));             // floor
-    hall.add(block(26, 7, 0.8, 0xf2ead8, 8, 3.5, -10));             // walls
-    hall.add(block(26, 7, 0.8, 0xf2ead8, 8, 3.5, 10));
-    hall.add(block(0.8, 7, 20, 0xf2ead8, -5, 3.5, 0));
-    hall.add(block(0.8, 7, 20, 0xf2ead8, 21, 3.5, 0));
-    for (let i = 0; i < 4; i++) {
-      hall.add(block(0.7, 6, 0.7, 0xdfd4bc, -1 + i * 6, 3, -6));
-      hall.add(block(0.7, 6, 0.7, 0xdfd4bc, -1 + i * 6, 3, 6));
+    const WALL = 0xf2ead8;
+    const WOOD = PALETTE.woodDark;
+    const CREAM = 0xe8ddc9;
+
+    // floor, walls, ceiling
+    hall.add(block(26, 0.6, 20, CREAM, 8, -0.3, 0));
+    hall.add(block(26, 0.4, 20, 0xdfd4bc, 8, 6.8, 0));              // ceiling
+    hall.add(block(26, 7, 0.8, WALL, 8, 3.5, -10));
+    hall.add(block(26, 7, 0.8, WALL, 8, 3.5, 10));
+    hall.add(block(0.8, 7, 20, WALL, -5, 3.5, 0));
+    hall.add(block(0.8, 7, 20, WALL, 21, 3.5, 0));
+    // timber ceiling beams
+    for (let bx = 0; bx < 5; bx++) {
+      hall.add(block(24, 0.22, 0.5, WOOD, 8, 6.5, -8 + bx * 4));
     }
-    // a long rug down the middle
-    hall.add(block(20, 0.06, 3.4, 0xc9808a, 8, 0.04, 0));
-    // the reading desk with the King's records (bigger, more imposing)
-    hall.add(block(3.8, 1.4, 1.8, PALETTE.woodDark, 3, 0.7, -7.6));
-    hall.add(block(3.6, 0.16, 1.4, 0xfdf6e3, 3, 1.48, -7.6));   // open book surface
-    hall.add(block(1.6, 0.5, 0.14, 0xfdf6e3, 3.5, 1.7, -8.1));  // open pages
-    hall.add(block(1.6, 0.5, 0.14, 0xfdf6e3, 2.5, 1.7, -8.1));
-    hall.add(block(3.8, 0.5, 0.18, PALETTE.woodDark, 3, 0.7, -8.55)); // desk back panel
-    // the treasure table: relics under a soft glow (larger)
-    hall.add(block(4.5, 1.3, 2.0, PALETTE.woodDark, 12, 0.65, -7.5));
-    hall.add(block(0.6, 0.6, 0.6, PALETTE.robeGold, 11.0, 1.6, -7.5)); // ark-like chest
-    hall.add(block(0.16, 0.9, 0.16, 0x8a6f52, 12.2, 1.7, -7.5));       // a rod
-    hall.add(block(0.65, 0.14, 0.65, 0xcfd6dd, 13.2, 1.35, -7.5));     // a silver dish
+
+    // paired columns down the nave
+    for (let i = 0; i < 5; i++) {
+      const cx = -1 + i * 5;
+      for (const z of [-6.5, 6.5]) {
+        hall.add(block(0.75, 6.2, 0.75, 0xdfd4bc, cx, 3.1, z));
+        hall.add(block(0.85, 0.35, 0.85, GOLD, cx, 6.35, z));       // capital
+      }
+    }
+
+    // wall tapestries between the columns
+    for (const [tx, tz, col] of [
+      [1, -9.5, 0xc9808a], [6, -9.5, 0xa8c4d9], [11, -9.5, 0xc9e2b8], [16, -9.5, 0xf2e2c9],
+    ] as const) {
+      hall.add(block(3.2, 3.6, 0.12, col, tx, 3.2, tz));
+      hall.add(block(3.4, 0.18, 0.16, WOOD, tx, 5.1, tz));         // rod
+    }
+
+    // hanging chandeliers
+    for (const cx of [5, 11]) {
+      const ch = new THREE.Group();
+      ch.add(block(0.14, 1.8, 0.14, WOOD, 0, 5.8, 0));
+      ch.add(block(0.9, 0.14, 0.9, GOLD, 0, 4.9, 0));
+      for (const a of [0, 1.57, 3.14, 4.71]) {
+        const arm = block(0.5, 0.08, 0.08, GOLD, Math.cos(a) * 0.35, 4.75, Math.sin(a) * 0.35);
+        ch.add(arm);
+        const flame = block(0.14, 0.2, 0.14, 0xffe08a, Math.cos(a) * 0.55, 4.65, Math.sin(a) * 0.55);
+        (flame.material as THREE.MeshLambertMaterial).emissive = new THREE.Color(0xffd070);
+        (flame.material as THREE.MeshLambertMaterial).emissiveIntensity = 0.6;
+        ch.add(flame);
+      }
+      ch.position.set(cx, 0, 0);
+      hall.add(ch);
+    }
+
+    // long rug with border stripes down the middle
+    hall.add(block(20, 0.06, 3.6, 0xc9808a, 8, 0.04, 0));
+    hall.add(block(20, 0.04, 0.22, 0xa85a68, 8, 0.05, 1.7));
+    hall.add(block(20, 0.04, 0.22, 0xa85a68, 8, 0.05, -1.7));
+
+    // welcome table with bread, fruit and goblets (where Christian first rests)
+    hall.add(block(5.5, 0.8, 2.4, WOOD, 8, 0.4, 1.5));
+    for (const [fx, fc] of [[-1.4, 0xf25b6a], [-0.4, 0xffe08a], [0.6, 0xff8a4a], [1.4, 0xe8d4f8]] as const) {
+      hall.add(block(0.28, 0.28, 0.28, fc, 8 + fx, 0.88, 1.5));
+    }
+    for (const gx of [-0.8, 0.8]) {
+      hall.add(block(0.18, 0.45, 0.18, 0xcfd6dd, 8 + gx, 1.0, 1.8));
+    }
+
+    // the reading desk with the King's records
+    hall.add(block(4.0, 1.5, 2.0, WOOD, 3, 0.75, -7.6));
+    hall.add(block(3.8, 0.16, 1.6, 0xfdf6e3, 3, 1.55, -7.6));
+    hall.add(block(1.8, 0.55, 0.14, 0xfdf6e3, 3.6, 1.78, -8.15));
+    hall.add(block(1.8, 0.55, 0.14, 0xfdf6e3, 2.4, 1.78, -8.15));
+    hall.add(block(4.0, 0.55, 0.18, WOOD, 3, 0.75, -8.65));
+    // scrolls and ledgers stacked beside the desk
+    for (let i = 0; i < 4; i++) {
+      hall.add(block(0.35, 0.22, 0.5, 0xfdf6e3, 1.2 + i * 0.12, 0.5 + i * 0.24, -7.2));
+    }
+    hall.add(block(0.14, 1.6, 0.14, WOOD, 1.0, 0.8, -7.6));        // reading lamp post
+    const deskLamp = block(0.32, 0.32, 0.32, 0xffe08a, 1.0, 1.55, -7.6);
+    (deskLamp.material as THREE.MeshLambertMaterial).emissive = new THREE.Color(0xffd070);
+    (deskLamp.material as THREE.MeshLambertMaterial).emissiveIntensity = 0.5;
+    hall.add(deskLamp);
+
+    // the treasure table: relics under a soft glow
+    hall.add(block(5.0, 1.4, 2.4, WOOD, 12, 0.7, -7.5));
+    hall.add(block(0.7, 0.65, 0.55, GOLD, 10.8, 1.65, -7.5));     // ark-like chest
+    hall.add(block(0.7, 0.35, 0.45, GOLD, 10.8, 2.15, -7.5));     // chest lid
+    hall.add(block(0.16, 1.0, 0.16, 0x8a6f52, 12.2, 1.75, -7.5)); // rod
+    hall.add(block(0.7, 0.14, 0.7, 0xcfd6dd, 13.2, 1.4, -7.5));   // silver dish
+    hall.add(block(0.5, 0.35, 0.12, 0x8a6f52, 11.5, 1.55, -7.2)); // sling
+    hall.add(block(0.45, 0.2, 0.3, 0xe8e0d0, 13.0, 1.55, -7.9));   // jawbone
     const relicGlow = new THREE.Mesh(
-      new THREE.SphereGeometry(1.4, 14, 12),
+      new THREE.SphereGeometry(1.6, 14, 12),
       new THREE.MeshBasicMaterial({ color: 0xfff3b8, transparent: true, opacity: 0.18, depthWrite: false }),
     );
-    relicGlow.position.set(12, 1.6, -7.5);
+    relicGlow.position.set(12, 1.7, -7.5);
     hall.add(relicGlow);
-    // the stair to the roof, at the far end
-    for (let i = 0; i < 5; i++) {
-      hall.add(block(2.0, 0.3 + i * 0.3, 1.0, 0xdfd4bc, 17.5, (0.3 + i * 0.3) / 2, 4.2 - i * 1.0));
+
+    // side benches along the walls
+    for (const z of [-8.2, 8.2]) {
+      hall.add(block(8, 0.5, 1.2, WOOD, 8, 0.25, z));
+      hall.add(block(8, 0.12, 1.3, WOOD, 8, 0.55, z));             // backrest
     }
+
+    // hearth on the west wall
+    hall.add(block(2.8, 2.2, 0.6, 0xd8d0c4, -3.5, 1.1, -9.3));
+    hall.add(block(1.6, 1.0, 0.4, 0x2a2018, -3.5, 0.7, -9.0));
+    const ember = block(0.8, 0.2, 0.3, 0xff6a20, -3.5, 0.45, -9.0);
+    (ember.material as THREE.MeshLambertMaterial).emissive = new THREE.Color(0xff5010);
+    (ember.material as THREE.MeshLambertMaterial).emissiveIntensity = 0.7;
+    hall.add(ember);
+
+    // empty armor stands (filled during the arming ceremony)
+    for (const ax of [6, 10]) {
+      hall.add(block(0.14, 1.7, 0.14, WOOD, ax, 0.85, -9.0));
+      hall.add(block(0.5, 0.5, 0.4, 0xcfd6dd, ax, 1.5, -9.0));     // helmet form
+      hall.add(block(0.55, 0.7, 0.35, 0xcfd6dd, ax, 0.75, -9.0)); // breastplate form
+    }
+
+    // ascending stair at the east end — treads rise toward the roof door (north)
+    for (let i = 0; i < 6; i++) {
+      hall.add(block(2.2, 0.14, 1.0, 0xdfd4bc, 17.5, 0.07 + i * 0.14, 1.2 + i * 0.55));
+    }
+    hall.add(block(2.6, 2.4, 1.4, WOOD, 17.5, 1.2, 4.8));             // roof door frame
+    hall.add(block(1.8, 1.8, 0.14, 0x4a4440, 17.5, 1.9, 4.85));   // closed door
+
     hall.position.copy(HALL);
     s.add(hall);
     const hallLight = new THREE.PointLight(0xffeecd, 2.8, 55);
@@ -356,45 +516,57 @@ export class PalaceScene {
 
     // ---------- the rooftop (interior area two) ----------
     const roof = new THREE.Group();
-    roof.add(block(16, 0.8, 12, 0xf2ead8, 0, -0.4, 0));
-    for (let i = 0; i < 7; i++) {
-      roof.add(block(0.6, 0.9, 0.6, 0xe8e2d2, -7 + i * 2.4, 0.45, -5.6));
-      roof.add(block(0.6, 0.9, 0.6, 0xe8e2d2, -7 + i * 2.4, 0.45, 5.6));
+    roof.add(block(18, 0.8, 14, 0xf2ead8, 0, -0.4, 0));
+    // low parapet walls around the edge
+    for (let i = 0; i < 8; i++) {
+      roof.add(block(0.65, 0.95, 0.65, 0xe8e2d2, -8 + i * 2.3, 0.48, -6.6));
+      roof.add(block(0.65, 0.95, 0.65, 0xe8e2d2, -8 + i * 2.3, 0.48, 6.6));
     }
-    roof.add(block(16, 0.3, 0.6, 0xe8e2d2, 0, 0.95, -5.6));
-    roof.add(block(16, 0.3, 0.6, 0xe8e2d2, 0, 0.95, 5.6));
+    roof.add(block(18, 0.35, 0.7, 0xe8e2d2, 0, 0.98, -6.6));
+    roof.add(block(18, 0.35, 0.7, 0xe8e2d2, 0, 0.98, 6.6));
+    roof.add(block(0.7, 0.35, 14, 0xe8e2d2, -8.8, 0.98, 0));       // west parapet
+
+    // a small rooftop garden bed
+    roof.add(block(2.4, 0.35, 1.2, 0x5a8a4a, 4, 0.18, -4.5));
+    for (let i = 0; i < 5; i++) {
+      roof.add(block(0.14, 0.28, 0.14, PALETTE.flowerPink, 3.4 + i * 0.35, 0.42, -4.5 + (i % 2) * 0.3));
+    }
+
     // the telescope on a tripod, angled east toward the Celestial City
     const scope = new THREE.Group();
-    // tripod legs
-    scope.add(block(0.1, 1.3, 0.1, PALETTE.woodDark, -0.28, 0.65, -0.28));
-    scope.add(block(0.1, 1.3, 0.1, PALETTE.woodDark, 0.28, 0.65, -0.28));
-    scope.add(block(0.1, 1.3, 0.1, PALETTE.woodDark, 0, 0.65, 0.4));
-    // horizontal mount
-    scope.add(block(0.36, 0.12, 0.36, PALETTE.woodDark, 0, 1.32, 0));
-    // main tube (angled east and up)
+    scope.add(block(0.12, 1.4, 0.12, PALETTE.woodDark, -0.3, 0.7, -0.3));
+    scope.add(block(0.12, 1.4, 0.12, PALETTE.woodDark, 0.3, 0.7, -0.3));
+    scope.add(block(0.12, 1.4, 0.12, PALETTE.woodDark, 0, 0.7, 0.42));
+    scope.add(block(0.38, 0.14, 0.38, PALETTE.woodDark, 0, 1.38, 0));
     const tube = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.22, 2.0, 12), mat(0xb08a3a));
     tube.rotation.z = -Math.PI / 3;
-    tube.position.set(0.5, 1.9, 0);
+    tube.position.set(0.5, 1.95, 0);
     scope.add(tube);
-    // eyepiece end (smaller, inner-facing)
     const eye = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.14, 0.28, 10), mat(0x8a6f52));
     eye.rotation.z = -Math.PI / 3;
-    eye.position.set(-0.14, 1.24, 0);
+    eye.position.set(-0.14, 1.28, 0);
     scope.add(eye);
-    // objective lens end (larger, east-facing)
     const obj = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.2, 0.18, 12), mat(0xcfd6dd));
     obj.rotation.z = -Math.PI / 3;
-    obj.position.set(1.14, 2.55, 0);
+    obj.position.set(1.14, 2.6, 0);
     scope.add(obj);
-    scope.position.set(1, 0, 0); // closer to where Christian enters
+    scope.position.set(2, 0, 0);
     roof.add(scope);
-    // stairway down at west end of roof
-    for (let i = 0; i < 5; i++) {
-      roof.add(block(1.8, 0.22 + i * 0.25, 1.0, 0xdfd4bc, -6.4 + i * 0.9, (0.22 + i * 0.25) / 2, 0));
+
+    // bench for stargazing beside the telescope
+    roof.add(block(2.2, 0.45, 0.8, PALETTE.woodDark, -1, 0.23, 2.5));
+
+    // descending stair at the WEST end — treads drop toward the hatch (walk west to go down)
+    for (let i = 0; i < 6; i++) {
+      roof.add(block(1.8, 0.12, 1.2, 0xdfd4bc, -2.0 - i * 0.9, 0.55 - i * 0.08, 0));
     }
-    // trapdoor opening surround
-    roof.add(block(2.4, 0.2, 1.6, 0xe8e2d2, -7.0, 0.1, 0));
-    roof.add(block(0.2, 0.8, 1.6, 0xdfd4bc, -5.9, 0.4, 0)); // hatch
+    // trapdoor surround and open hatch leaning aside
+    roof.add(block(2.6, 0.16, 1.8, 0xe8e2d2, -7.2, 0.08, 0));
+    const hatch = block(2.0, 0.12, 1.4, WOOD, -6.8, 0.2, 0.6);
+    hatch.rotation.x = -0.55;
+    roof.add(hatch);
+    roof.add(block(0.14, 0.9, 1.6, 0xdfd4bc, -7.5, 0.45, 0));       // ladder rail
+
     roof.position.copy(ROOF);
     s.add(roof);
     // the Celestial City, impossibly far to the east — a shining hint
@@ -594,7 +766,7 @@ export class PalaceScene {
       return;
     }
 
-    if (this.phase === 'stairs' && p.distanceTo(new THREE.Vector3(HALL.x + 17.5, 0.1, 2)) < 2.4) {
+    if (this.phase === 'stairs' && p.distanceTo(new THREE.Vector3(HALL.x + 17.5, 0.1, 3.6)) < 2.6) {
       this.phase = 'roof';
       this.cb.fade?.(() => {
         this.christian.root.position.set(ROOF.x - 2, ROOF.y, 0);
@@ -615,7 +787,7 @@ export class PalaceScene {
       return;
     }
 
-    if (this.phase === 'roofdown' && p.x < ROOF.x - 5.5) {
+    if (this.phase === 'roofdown' && p.x < ROOF.x - 6.2) {
       this.phase = 'armor';
       this.cb.fade?.(() => {
         this.christian.root.position.set(HALL.x + 8, 0.1, -1);

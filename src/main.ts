@@ -555,6 +555,10 @@ function enterValley(revisit: boolean): void {
   mode = 'valley';
   ui.prompt.style.display = 'none';
   ui.talkBtn.style.display = 'none';
+  // restore the second HP bar to Apollyon — Doubting Castle repurposes this same
+  // bar for Hopeful and leaves the label changed, so reset it here
+  const apoName = document.querySelector('#battle-ui .brow.apo .bname') as HTMLElement | null;
+  if (apoName) apoName.textContent = '🐉 Apollyon';
   valleyActors = valley.enter(revisit);
   camTarget.copy(valleyActors.christian.root.position);
 }

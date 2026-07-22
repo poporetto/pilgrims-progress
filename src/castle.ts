@@ -68,6 +68,179 @@ const HWY_Z = 0;
 // the beating lunge visibly clips through the bars (see beatingT below).
 const GIANT_Z = 8.5;
 
+interface MinotaurBuildOpts {
+  scale: number;
+  fur: number;
+  belly: number;
+  horn: number;
+  hornTip: number;
+  eyeColor: number;
+  wide?: boolean;       // broader shoulders (Despair)
+  female?: boolean;     // Diffidence: robes, slimmer horns, braids
+  cudgel?: boolean;
+  emissive?: boolean;   // self-glow so they read in the dim dungeon
+}
+
+// Custom minotaur rig — same BearParts pivots as makeBear so animateBear still
+// works, but without the bear ears / snout / cheeks fighting the bull sculpt.
+function buildMinotaur(opts: MinotaurBuildOpts): BearParts {
+  const root = new THREE.Group();
+  const bodyW = opts.wide ? 1.08 : 0.96;
+  const bodyD = opts.wide ? 0.74 : 0.64;
+
+  const makeLeg = (side: number) => {
+    const pivot = new THREE.Group();
+    pivot.position.set(0.22 * side, 0.55, 0);
+    pivot.add(block(0.32, 0.58, 0.36, opts.fur, 0, -0.29, 0));
+    pivot.add(block(0.36, 0.15, 0.4, 0x2a2218, 0, -0.56, 0.02));
+    root.add(pivot);
+    return pivot;
+  };
+  const legL = makeLeg(-1);
+  const legR = makeLeg(1);
+
+  const body = new THREE.Group();
+  body.position.y = 0.55;
+  root.add(body);
+
+  body.add(block(bodyW, 0.82, bodyD, opts.fur, 0, 0.42, 0));
+  body.add(block(bodyW * 0.72, 0.52, 0.14, opts.belly, 0, 0.4, bodyD * 0.42));
+  body.add(block(0.56, 0.24, 0.5, opts.fur, 0, 0.9, 0));
+
+  if (opts.female) {
+    // layered burgundy robes instead of a bear dress shell
+    const robe = 0x3d2430;
+    body.add(block(0.98, 0.48, 0.7, robe, 0, 0.14, 0));
+    body.add(block(1.02, 0.42, 0.72, robe, 0, 0.5, 0));
+    body.add(block(0.54, 0.14, 0.08, 0x5a3545, 0, 0.7, 0.34));
+  } else {
+    // iron-studded leather harness across Despair's chest
+    body.add(block(0.16, 0.92, 0.06, 0x3a2a18, 0, 0.52, 0.4));
+    body.add(block(0.16, 0.92, 0.06, 0x3a2a18, 0.22, 0.52, 0.36));
+    body.add(block(0.1, 0.1, 0.1, 0x6a5a3a, 0, 0.52, 0.44));
+  }
+
+  const makeArm = (side: number) => {
+    const pivot = new THREE.Group();
+    pivot.position.set(0.56 * side, 0.7, 0);
+    pivot.add(block(0.3, 0.58, 0.32, opts.fur, 0, -0.24, 0));
+    pivot.add(block(0.32, 0.14, 0.34, opts.belly, 0, -0.5, 0));
+    if (!opts.female) {
+      for (const cw of [-0.08, 0.08]) {
+        const claw = block(0.05, 0.14, 0.05, 0xe0d8c8, cw, -0.58, 0.1);
+        claw.rotation.x = 0.35;
+        pivot.add(claw);
+      }
+    }
+    body.add(pivot);
+    return pivot;
+  };
+  const armL = makeArm(-1);
+  const armR = makeArm(1);
+
+  const head = new THREE.Group();
+  head.position.set(0, opts.wide ? 0.92 : 0.98, opts.wide ? 0.08 : 0);
+  body.add(head);
+
+  // wide bull skull — no bear ears
+  head.add(block(0.98, 0.78, 0.82, opts.fur, 0, 0.42, 0));
+  // heavy brow ridge
+  head.add(block(0.82, 0.12, 0.2, 0x2a1e14, 0, 0.72, 0.38));
+  // broad muzzle
+  const muzzle = opts.female ? 0x9a6c5a : 0x8b6848;
+  head.add(block(0.58, 0.32, 0.22, muzzle, 0, 0.22, 0.5));
+  for (const side of [-1, 1]) {
+    head.add(block(0.1, 0.09, 0.05, 0x1a120c, 0.18 * side, 0.24, 0.64));
+  }
+  if (!opts.female) {
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.085, 0.022, 8, 14), mat(0x8a8a92));
+    ring.position.set(0, 0.24, 0.58);
+    head.add(ring);
+  }
+
+  // horns — Despair's sweep wide; Diffidence's curl inward more delicately
+  const hornSpread = opts.female ? 0.44 : 0.52;
+  const hornH = opts.female ? 0.38 : 0.48;
+  for (const side of [-1, 1]) {
+    const horn = new THREE.Group();
+    horn.add(block(0.28, hornH, 0.26, opts.horn, 0, 0.26, 0));
+    const mid = block(0.2, hornH + 0.12, 0.2, opts.horn, 0, 0.68, 0.02);
+    mid.rotation.z = (opts.female ? -0.42 : -0.3) * side;
+    horn.add(mid);
+    const tip = block(0.14, hornH, 0.14, opts.hornTip, 0, 1.02, 0.03);
+    tip.rotation.z = (opts.female ? -0.72 : -0.55) * side;
+    horn.add(tip);
+    horn.position.set(hornSpread * side, 0.68, opts.female ? 0.02 : -0.02);
+    horn.rotation.z = (opts.female ? 0.32 : 0.38) * side;
+    head.add(horn);
+  }
+
+  // eyes — recessed under the brow
+  for (const side of [-1, 1]) {
+    const eye = new THREE.Mesh(
+      new THREE.SphereGeometry(opts.female ? 0.036 : 0.042, 8, 8),
+      new THREE.MeshBasicMaterial({ color: opts.eyeColor }),
+    );
+    eye.position.set(0.23 * side, 0.5, 0.42);
+    head.add(eye);
+  }
+
+  if (opts.female) {
+    // long braids and a copper torc
+    for (const side of [-1, 1]) {
+      for (let i = 0; i < 3; i++) {
+        const braid = block(0.1, 0.26, 0.11, 0x241713, side * 0.4, 0.66 - i * 0.22, -0.32);
+        braid.rotation.z = 0.1 * side;
+        head.add(braid);
+      }
+    }
+    const torc = new THREE.Mesh(new THREE.TorusGeometry(0.4, 0.05, 6, 12), mat(0xb66d3d));
+    torc.rotation.x = Math.PI / 2;
+    torc.position.set(0, 0.02, 0.24);
+    head.add(torc);
+  } else {
+    // dark shaggy neck ruff (one clean ring, not scattered tufts)
+    head.add(block(1.06, 0.22, 0.34, 0x1e150c, 0, 0.08, -0.38));
+    head.add(block(0.28, 0.18, 0.2, 0x1e150c, -0.52, 0.12, -0.34));
+    head.add(block(0.28, 0.18, 0.2, 0x1e150c, 0.52, 0.12, -0.34));
+    // scar across one brow
+    const scar = block(0.05, 0.3, 0.05, 0x7a3838, -0.28, 0.68, 0.44);
+    scar.rotation.z = 0.55;
+    head.add(scar);
+    // iron pauldrons
+    for (const side of [-1, 1]) {
+      body.add(block(0.48, 0.34, 0.48, 0x2f2620, 0.64 * side, 1.02, 0));
+      body.add(block(0.1, 0.1, 0.1, 0x6a5a3a, 0.64 * side, 1.16, 0.18));
+    }
+  }
+
+  if (opts.cudgel) {
+    const cg = new THREE.Group();
+    cg.add(block(0.28, 1.9, 0.28, 0x3a2a18, 0, 0.1, 0));
+    cg.add(block(0.55, 0.55, 0.55, 0x4a3222, 0, 1.05, 0));
+    cg.add(block(0.62, 0.12, 0.62, 0x5a4a38, 0, 1.05, 0));
+    cg.position.set(0.12, -0.68, 0.22);
+    cg.rotation.z = 0.22;
+    armR.add(cg);
+  }
+
+  root.scale.setScalar(opts.scale);
+
+  if (opts.emissive) {
+    root.traverse((obj) => {
+      const mesh = obj as THREE.Mesh;
+      if (!mesh.isMesh) return;
+      if ((mesh.material as THREE.Material).type !== 'MeshLambertMaterial') return;
+      const src = mesh.material as THREE.MeshLambertMaterial;
+      const own = src.clone();
+      own.emissive = new THREE.Color(src.color).multiplyScalar(0.75);
+      mesh.material = own;
+    });
+  }
+
+  return { root, body, head, armL, armR, legL, legR };
+}
+
 export class CastleScene {
   scene = new THREE.Scene();
   phase: Phase = 'enter';
@@ -140,13 +313,15 @@ export class CastleScene {
     this.christian = makeBear({
       species: 'bear', fur: PALETTE.bearBrown,
       outfit: 'shirt', outfitColor: PALETTE.robeWhite,
-      sling: true, plump: true,
+      sling: false, plump: true,
     });
     this.christian.body.add(block(1.18, 0.14, 0.86, PALETTE.robeGold, 0, 0.3, 0));
     const STEEL = 0xcfd6dd;
     const helmet = new THREE.Group();
-    helmet.add(block(1.02, 0.4, 0.86, STEEL, 0, 0.92, 0));
-    helmet.add(block(0.2, 0.24, 0.9, PALETTE.robeGold, 0, 1.16, 0));
+    helmet.add(block(1.02, 0.28, 0.86, STEEL, 0, 0.84, 0));
+    helmet.add(block(0.18, 0.16, 0.9, PALETTE.robeGold, 0, 1.05, 0));
+    helmet.add(block(0.26, 0.24, 0.22, PALETTE.bearBrown, -0.38, 1.08, 0));
+    helmet.add(block(0.26, 0.24, 0.22, PALETTE.bearBrown, 0.38, 1.08, 0));
     this.christian.head.add(helmet);
     this.christian.body.add(block(1.16, 0.62, 0.88, STEEL, 0, 0.42, 0));
     const sword = new THREE.Group();
@@ -160,138 +335,31 @@ export class CastleScene {
       species: 'dog', fur: 0xd9b088, outfit: 'shirt', outfitColor: 0x7fb8a2,
     });
 
-    // Giant Despair — enormous dark buffalo-bear (kept dark but not black, so he
-    // still reads clearly under the dungeon's dim torch-light)
-    this.giant = makeBear({
-      species: 'bear', fur: 0x4a3a26, outfit: 'shirt', outfitColor: 0x4a3826,
+    // Giant Despair — a hulking bull-headed jailer, built as a custom minotaur
+    // rig so the silhouette reads clearly through the dungeon bars.
+    this.giant = buildMinotaur({
       scale: 2.4,
-    });
-    // curved buffalo horns on Despair's head — bigger and thicker than a
-    // first pass, angled base + upward-curving tip, kept clear of the
-    // default bear ears (x ±0.36, y 0.9) by starting lower and sweeping wide
-    const hornC = 0x2e2414;
-    for (const side of [-1, 1]) {
-      const horn = new THREE.Group();
-      const base = block(0.3, 0.74, 0.28, hornC, 0, 0.37, 0);
-      horn.add(base);
-      const mid = block(0.22, 0.5, 0.2, hornC, 0, 0.85, 0.06);
-      horn.add(mid);
-      const tip = block(0.15, 0.42, 0.15, hornC, 0, 1.2, 0.24);
-      tip.rotation.x = -0.7; // curl upward and forward
-      horn.add(tip);
-      horn.position.set(0.42 * side, 0.58, -0.02);
-      horn.rotation.z = 0.32 * side;
-      this.giant.head.add(horn);
-    }
-    // a nose ring — a small bull detail that reads clearly even at a distance
-    const ring = new THREE.Mesh(
-      new THREE.TorusGeometry(0.09, 0.025, 8, 16),
-      mat(0x8a8a92),
-    );
-    ring.position.set(0, 0.22, 0.55);
-    this.giant.head.add(ring);
-    // glowing red eyes — overlaid just in front of the default dark eyes
-    // (bear-species eyes: x ±0.24, y 0.5, z 0.41) for real menace
-    for (const side of [-1, 1]) {
-      const glowEye = new THREE.Mesh(
-        new THREE.SphereGeometry(0.045, 8, 8),
-        new THREE.MeshBasicMaterial({ color: 0xff3020 }),
-      );
-      glowEye.position.set(0.24 * side, 0.5, 0.44);
-      this.giant.head.add(glowEye);
-    }
-    // a shaggy mane across the neck and shoulders, like a bull's hackles —
-    // breaks up the "scaled-up bear" silhouette more than armor alone
-    const maneC = 0x1e150c;
-    for (let i = 0; i < 10; i++) {
-      const side = i % 2 === 0 ? -1 : 1;
-      const mx = side * (0.35 + (i % 5) * 0.06);
-      const mz = -0.25 - (i % 3) * 0.08;
-      const tuft = block(0.16, 0.3 + (i % 3) * 0.08, 0.14, maneC, mx, 0.95 - (i % 3) * 0.08, mz);
-      tuft.rotation.z = 0.15 * side;
-      this.giant.body.add(tuft);
-    }
-    // a heavy, scowling brow over each eye (bear-species eyes sit at x ±0.24, y 0.5, z 0.41)
-    const browC = 0x241a10;
-    const browL = block(0.18, 0.09, 0.1, browC, -0.24, 0.6, 0.42);
-    browL.rotation.z = 0.32;
-    this.giant.head.add(browL);
-    const browR = block(0.18, 0.09, 0.1, browC, 0.24, 0.6, 0.42);
-    browR.rotation.z = -0.32;
-    this.giant.head.add(browR);
-    // a jagged scar through one brow
-    const scar = block(0.06, 0.34, 0.06, 0x7a3838, -0.3, 0.66, 0.45);
-    scar.rotation.z = 0.6;
-    this.giant.head.add(scar);
-    // lower fangs jutting up past the mouth, plus small side tusks (snout
-    // front sits at z 0.46, y 0.26)
-    this.giant.head.add(block(0.07, 0.16, 0.06, 0xf3ecd8, -0.1, 0.18, 0.52));
-    this.giant.head.add(block(0.07, 0.16, 0.06, 0xf3ecd8,  0.1, 0.18, 0.52));
-    for (const side of [-1, 1]) {
-      const tusk = block(0.07, 0.24, 0.07, 0xf3ecd8, 0.26 * side, 0.16, 0.4);
-      tusk.rotation.z = 0.5 * side;
-      tusk.rotation.x = -0.2;
-      this.giant.head.add(tusk);
-    }
-
-    // hulking shoulder armor — broadens the silhouette so he reads as
-    // something heavier and more menacing than a plain scaled-up bear
-    const armorC = 0x2f2620;
-    for (const side of [-1, 1]) {
-      const pauldron = block(0.5, 0.36, 0.5, armorC, 0.62 * side, 1.0, 0);
-      this.giant.body.add(pauldron);
-      const stud = block(0.1, 0.1, 0.1, 0x6a5a3a, 0.62 * side, 1.14, 0.2);
-      this.giant.body.add(stud);
-    }
-    // a chest strap crossing the shirt
-    const strap = block(0.14, 1.0, 0.05, 0x3a2a18, 0, 0.55, 0.42);
-    strap.rotation.z = 0.35;
-    this.giant.body.add(strap);
-
-    // clawed fingers on the free hand (right hand grips the cudgel)
-    for (const cw of [-0.1, 0, 0.1]) {
-      const claw = block(0.05, 0.16, 0.05, 0xe8e0cc, cw, -0.85, 0.12);
-      claw.rotation.x = 0.4;
-      this.giant.armL.add(claw);
-    }
-
-    // cudgel in right arm
-    const cg = new THREE.Group();
-    cg.add(block(0.3, 2.0, 0.3, 0x3a2a18, 0, 0.1, 0));
-    cg.add(block(0.6, 0.6, 0.6, 0x4a3222, 0, 1.0, 0));
-    cg.position.set(0.12, -0.7, 0.25);
-    cg.rotation.z = 0.25;
-    this.giant.armR.add(cg);
-    // give Despair his own (non-shared) materials with a faint warm self-glow,
-    // so he never disappears into a black silhouette in the dim dungeon light —
-    // cloning avoids tinting every other model that happens to share these colours
-    this.giant.root.traverse((obj) => {
-      const mesh = obj as THREE.Mesh;
-      if (!mesh.isMesh) return;
-      // only Lambert materials have `.emissive` — the glowing red eyes use a
-      // basic (unlit) material and must be left alone, or the mismatched
-      // uniforms crash the renderer once this mesh's material is swapped
-      if ((mesh.material as THREE.Material).type !== 'MeshLambertMaterial') return;
-      const src = mesh.material as THREE.MeshLambertMaterial;
-      const own = src.clone();
-      own.emissive = new THREE.Color(src.color).multiplyScalar(0.85);
-      mesh.material = own;
+      fur: 0x3d2e1c,
+      belly: 0x5a4530,
+      horn: 0x4c3b27,
+      hornTip: 0xd6c9a7,
+      eyeColor: 0xff3020,
+      wide: true,
+      cudgel: true,
+      emissive: true,
     });
 
-    // Diffidence — his wife, large dark bear, with matching (smaller) bull horns
-    this.diffidence = makeBear({
-      species: 'bear', fur: 0x2e1a0a, outfit: 'shirt', outfitColor: 0x3c2216,
+    // Diffidence — his wife: leaner, robed, with paler horns and braids.
+    this.diffidence = buildMinotaur({
       scale: 1.6,
+      fur: 0x5c3a32,
+      belly: 0x7a5548,
+      horn: 0xb7a78f,
+      hornTip: 0xe4d7bb,
+      eyeColor: 0xffa040,
+      female: true,
+      emissive: true,
     });
-    // a lighter, ash-grey horn colour — her fur (0x2e1a0a) is nearly black,
-    // so a same-dark horn would be camouflaged against her own head
-    const diffHornC = 0x8a7a68;
-    for (const side of [-1, 1]) {
-      const horn = block(0.16, 0.55, 0.16, diffHornC, 0.34 * side, 0.78, 0.02);
-      horn.rotation.z = 0.35 * side;
-      horn.rotation.x = -0.35;
-      this.diffidence.head.add(horn);
-    }
 
     // lighting placeholders (populated in build())
     this.hemi = new THREE.HemisphereLight(0xdff0ff, 0xc9e8c0, 1.0);
@@ -371,15 +439,17 @@ export class CastleScene {
     this.built = true;
     const s = this.scene;
 
-    s.background = new THREE.Color(0xacd6f5);
-    s.fog = new THREE.Fog(0xacd6f5, 50, 130);
+    // pale-green sky + fog that matches the field, so the ground blends into the
+    // horizon and no blue background shows behind the mountains of rock
+    s.background = new THREE.Color(0xc4d9a4);
+    s.fog = new THREE.Fog(0xc4d9a4, 60, 160);
 
     s.add(this.hemi);
     s.add(this.sun);
 
     // ---- ambient ground ----
     const ground = new THREE.Mesh(
-      new THREE.PlaneGeometry(220, 32),
+      new THREE.PlaneGeometry(260, 180),
       mat(0xb5c98a),
     );
     ground.rotation.x = -Math.PI / 2;
@@ -469,6 +539,7 @@ export class CastleScene {
     // screenshot-verified spot and scale that stays on-screen.
     const CASTLE_X = FORK_X + 12;
     const CASTLE_Z = -7;
+    this.buildDoubtingLandscape(CASTLE_X, CASTLE_Z);
     this.buildDoubtingCastleExterior(CASTLE_X, CASTLE_Z, 0.42);
 
     // ---- Exit light (chapter end beacon) — a plain beam, exactly as in the
@@ -558,14 +629,73 @@ export class CastleScene {
     this.scene.add(g);
   }
 
+  // A moorland backdrop that makes the castle feel like it owns this stretch
+  // of road: crags give it a horizon, dead trees suggest cursed ground, and
+  // ruined walls guide the eye toward the keep without entering the play lane.
+  private buildDoubtingLandscape(castleX: number, castleZ: number): void {
+    const g = new THREE.Group();
+    const CRAG = 0x5a5a58;
+    const CRAG_DK = 0x403f42;
+    const DEAD_WOOD = 0x382b27;
+
+    // Layered rocky ridge behind the castle. Low-poly cones preserve the
+    // chapter's friendly voxel language while bringing real depth to the sky.
+    const ridge = [
+      [-5, 3.5, 4.5], [2, 4.6, 5.2], [8, 3.2, 4.3], [14, 4.2, 5.3],
+      [20, 3.4, 4.5], [27, 5.0, 5.6], [34, 3.0, 4.2],
+    ] as const;
+    for (const [x, h, r] of ridge) {
+      const crag = new THREE.Mesh(new THREE.ConeGeometry(r, h, 6), mat(x % 2 === 0 ? CRAG : CRAG_DK));
+      crag.position.set(castleX + x, h / 2 - 0.2, castleZ - 8.5 - Math.abs(x) * 0.035);
+      crag.rotation.y = (x * 0.17) % Math.PI;
+      g.add(crag);
+      // A smaller broken peak stops the ridge reading as one regular row.
+      if (x % 2 === 0) {
+        const spur = new THREE.Mesh(new THREE.ConeGeometry(r * 0.42, h * 0.58, 5), mat(CRAG_DK));
+        spur.position.set(castleX + x + r * 0.55, h * 0.29, castleZ - 7.7);
+        g.add(spur);
+      }
+    }
+
+    // Ruined boundary walls frame the keep. They are deliberately beyond the
+    // road's z clamp, so they enrich the view without becoming collision props.
+    for (const [x, z, len] of [[-13, -3.2, 5], [-7, -4.2, 3.5], [14, -3.4, 4], [20, -4.5, 3]] as const) {
+      g.add(block(len, 0.9, 0.45, CRAG_DK, castleX + x, 0.45, castleZ + z));
+      for (let c = 0; c < Math.floor(len); c += 1) {
+        if (c % 2 === 0) g.add(block(0.35, 0.48, 0.45, CRAG, castleX + x - len / 2 + 0.35 + c, 1.12, castleZ + z));
+      }
+    }
+
+    // Twisted leafless trees make the approach read as a bleak, neglected
+    // estate. Their asymmetric branches look intentionally gnarled in voxel form.
+    const trees = [[-9, -1.5, 2.7], [3, -2.1, 3.4], [18, -1.8, 2.4], [27, -2.7, 3.1]] as const;
+    for (const [x, z, h] of trees) {
+      const trunk = block(0.24, h, 0.24, DEAD_WOOD, castleX + x, h / 2, castleZ + z);
+      trunk.rotation.z = x % 2 === 0 ? 0.14 : -0.14;
+      g.add(trunk);
+      for (const side of [-1, 1]) {
+        const branch = block(0.16, h * 0.5, 0.16, DEAD_WOOD, castleX + x + side * 0.25, h * 0.76, castleZ + z);
+        branch.rotation.z = -side * 0.75;
+        branch.rotation.x = side * 0.22;
+        g.add(branch);
+      }
+    }
+
+    this.scene.add(g);
+  }
+
   private buildDungeon(): void {
     const d = DUNGEON;
     const STONE = 0x4a4a52;
     const DAMP  = 0x3a3a42;
     const s = this.scene;
 
+    // The exterior ground plane also crosses this far-away interior. Keep the
+    // cell floor 0.03 units above it so the two coplanar surfaces cannot fight
+    // for the same pixels when the camera looks down into the jail.
+    const FLOOR_Y = -0.22; // 0.5-high block → surface at y = 0.03
     // floor + ceiling + walls
-    s.add(block(18, 0.5, 12, DAMP,  d.x, -0.25, d.z));   // floor
+    s.add(block(18, 0.5, 12, DAMP,  d.x, FLOOR_Y, d.z)); // floor
     s.add(block(18, 0.5, 12, STONE, d.x, 6.25,  d.z));   // ceiling
     // back wall omitted so camera can look in from the north
     // NOTE: the south side is bars only (no solid wall) — Giant Despair stands
@@ -580,7 +710,7 @@ export class CastleScene {
     // clear shape in contrast, instead of blending into equally-dark walls.
     const ANTE_WALL = 0x8a6a4a;
     const ANTE_FLOOR = 0x5c4632;
-    s.add(block(18, 0.5, 4, ANTE_FLOOR, d.x, -0.25, d.z + 8));  // floor
+    s.add(block(18, 0.5, 4, ANTE_FLOOR, d.x, FLOOR_Y, d.z + 8)); // floor
     s.add(block(18, 0.5, 4, ANTE_WALL,  d.x, 6.25,  d.z + 8));  // ceiling
     s.add(block(0.5, 7,   4, ANTE_WALL, d.x - 9, 3, d.z + 8));  // west wall
     s.add(block(0.5, 7,   4, ANTE_WALL, d.x + 9, 3, d.z + 8));  // east wall
@@ -875,7 +1005,7 @@ export class CastleScene {
     }
   }
 
-  private static readonly SKY_DAY = new THREE.Color(0xacd6f5);
+  private static readonly SKY_DAY = new THREE.Color(0xc4d9a4);
   private static readonly SKY_NIGHT = new THREE.Color(0x141c30);
 
   // darkens the sky background and fog to match the storm's lighting —
