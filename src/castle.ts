@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { PALETTE } from './palette';
 import { makeBear, animateBear, BearParts, block, mat } from './bear';
+import { makeShiningLight, animateShiningLight, ShiningLight } from './light';
 import { DialogueLine } from './npcs';
 
 // Chapter XIII — Doubting Castle.
@@ -280,7 +281,7 @@ export class CastleScene {
   private exitWalkTo = new THREE.Vector3();
 
   // exit beacon (a plain beam, matching the recent chapters' end light)
-  private lightBeam: THREE.Mesh | null = null;
+  private shining: ShiningLight | null = null;
 
   // animation timers
   private sleepT   = 0;
@@ -293,6 +294,8 @@ export class CastleScene {
 
   // sign group
   private signMesh: THREE.Group | null = null;
+  private warnMark: THREE.Group | null = null;
+  private scribbleT = 0;
   private signPlaced = false;
 
   // scripted walk from the fork onto the meadow (locked control)
@@ -403,7 +406,9 @@ export class CastleScene {
     if (this.doorHinge) this.doorHinge.rotation.y = 0; // door starts closed
     this.doorSwingT = 0;
     this.exitWalkT = -1;
-    if (this.signMesh) this.signMesh.visible = false;
+    this.scribbleT = 0;
+    // the fork signpost stays; only its scribbled warning resets to hidden
+    if (this.warnMark) this.warnMark.visible = false;
     this.giant.root.visible = false;
     this.diffidence.root.visible = false;
 
@@ -523,12 +528,25 @@ export class CastleScene {
       s.add(block(0.18, 0.28, 0.18, flowerColors[i % 3], fx, 0.14, fz));
     }
 
-    // ---- Fork sign (at x = FORK_X - 2) — a single weathered board ----
+    // ---- Fork sign (at x = FORK_X - 2) — a single weathered board. This is the
+    // very post Christian later scribbles his warning onto (see triggerSign);
+    // no second board is ever spawned. ----
     const forkSign = new THREE.Group();
     forkSign.add(block(0.12, 1.4, 0.12, 0x7a5c38, 0, 0.7, 0)); // post
     forkSign.add(block(1.8, 0.45, 0.14, 0xfff8ef, 0, 1.55, 0)); // board
+    // the scribbled warning marks, hidden until Christian carves them
+    const warn = new THREE.Group();
+    warn.add(block(0.9, 0.08, 0.04, 0xb23a2a, 0, 1.62, 0.09));
+    warn.add(block(0.7, 0.08, 0.04, 0xb23a2a, 0, 1.5, 0.09));
+    const x1 = block(0.5, 0.08, 0.04, 0xb23a2a, 0.55, 1.55, 0.1); x1.rotation.z = 0.7;
+    const x2 = block(0.5, 0.08, 0.04, 0xb23a2a, 0.55, 1.55, 0.1); x2.rotation.z = -0.7;
+    warn.add(x1); warn.add(x2);
+    warn.visible = false;
+    forkSign.add(warn);
     forkSign.position.set(FORK_X - 2, 0, 1.4);
     s.add(forkSign);
+    this.signMesh = forkSign;
+    this.warnMark = warn;
 
     // ---- Doubting Castle exterior ----
     // NOTE: the game's camera looks down at a steep, fixed angle (offset
@@ -542,20 +560,10 @@ export class CastleScene {
     this.buildDoubtingLandscape(CASTLE_X, CASTLE_Z);
     this.buildDoubtingCastleExterior(CASTLE_X, CASTLE_Z, 0.42);
 
-    // ---- Exit light (chapter end beacon) — a plain beam, exactly as in the
-    // recent chapters (Shadow, Vanity Fair, Hill Lucre): opacity 0.55, no halo
-    // sphere. Castle previously added an extra glowing ball at the base, which
-    // made this chapter's beacon look different from the one just before it.
-    const beam = new THREE.Mesh(
-      new THREE.CylinderGeometry(1.4, 2.0, 14, 18, 1, true),
-      new THREE.MeshBasicMaterial({
-        color: PALETTE.light, transparent: true, opacity: 0.55,
-        side: THREE.DoubleSide, depthWrite: false, fog: false,
-      }),
-    );
-    beam.position.set(LIGHT_X + 1.5, 7, 0);
-    s.add(beam);
-    this.lightBeam = beam;
+    // ---- Exit light: the shining beacon that ends every chapter ----
+    this.shining = makeShiningLight();
+    this.shining.group.position.set(LIGHT_X + 1.5, 0, 0);
+    s.add(this.shining.group);
 
     // ---- Dungeon interior (at DUNGEON, far east) ----
     this.buildDungeon();
@@ -582,9 +590,11 @@ export class CastleScene {
   // lets it sit close enough to render while still reading as a real castle.
   private buildDoubtingCastleExterior(castleX: number, castleZ: number, scale: number): void {
     const g = new THREE.Group();
-    const STONE    = 0x4a4440;
-    const STONE_DK = 0x39332f;
-    const ROOF     = 0x5a3a34;
+    // dark pastel palette — muted, dusky lavender-grey stone and a soft plum
+    // roof, so Doubting Castle reads as gloomy-yet-storybook rather than harsh
+    const STONE    = 0x6f6a80;
+    const STONE_DK = 0x565270;
+    const ROOF     = 0x7a5a70;
 
     // corner towers — cylindrical, with conical roofs and a crenellated ring
     for (const side of [-1, 1]) {
@@ -802,15 +812,9 @@ export class CastleScene {
     }
   }
 
-  private buildWarningSign(): void {
-    const g = new THREE.Group();
-    g.add(block(0.14, 1.6, 0.14, 0x7a5c38, 0, 0.8, 0));   // post
-    g.add(block(2.4,  0.5, 0.16, 0xfff8ef, 0, 1.75, 0));  // board
-    g.position.set(SIGN_X, 0, 2.0);
-    g.visible = false;
-    this.signMesh = g;
-    this.scene.add(g);
-  }
+  // (No separate warning board is built any more — Christian carves his warning
+  // onto the existing fork signpost; see the fork sign + triggerSign.)
+  private buildWarningSign(): void { /* intentionally empty */ }
 
   // ---------------------------------------------------------------- public API
   moveFactor(): number {
@@ -1172,6 +1176,9 @@ export class CastleScene {
     this.phase = 'exit-door';
     this.doorSwingT = 0;
     this.exitWalkT = -1;
+    // the door is open now — hide the glowing keyhole marker so it doesn't hang
+    // in mid-air once the panel swings away
+    if (this.doorGlow) this.doorGlow.visible = false;
     this.cb.rumbleSound(); // the heavy door creaking open
   }
 
@@ -1414,11 +1421,8 @@ export class CastleScene {
       this.escapeT += dt;
     }
 
-    // ---- exit beacon pulse ----
-    if (this.lightBeam) {
-      const sc = 1 + Math.sin(t * 2.2) * 0.1;
-      this.lightBeam.scale.set(sc, 1, sc);
-    }
+    // ---- exit beacon twinkle ----
+    if (this.shining) animateShiningLight(this.shining, t);
 
     // ---- character animations ----
     const walkPhases: Phase[] = ['enter', 'meadow', 'storm', 'escape', 'highway', 'sign', 'key'];

@@ -12,7 +12,7 @@ import { makeBear, animateBear, BearParts, block, mat } from './bear';
 export type MapSpot =
   | 'city' | 'road' | 'slough' | 'fork' | 'morality' | 'beyond' | 'cross'
   | 'highway' | 'hill' | 'palace' | 'valley' | 'shadow' | 'vanity' | 'lucre'
-  | 'castle' | 'mountain';
+  | 'castle' | 'mountain' | 'beulah';
 
 const CITY = new THREE.Vector3(-14.5, 0, 0);
 const SLOUGH = new THREE.Vector3(-3.5, 0, 0);
@@ -29,6 +29,7 @@ const VANITY = new THREE.Vector3(73.5, 0, 1);
 const LUCRE   = new THREE.Vector3(81.5, 0, -0.5);
 const CASTLE  = new THREE.Vector3(89.5, 0, 1.0);
 const MOUNTAIN = new THREE.Vector3(97.5, 0, -0.5);
+const BEULAH = new THREE.Vector3(105.5, 0, 1.0);
 
 // island centres + how close the road must be to count as "on land"
 const ISLANDS: Array<{ c: THREE.Vector3; r: number }> = [
@@ -47,6 +48,7 @@ const ISLANDS: Array<{ c: THREE.Vector3; r: number }> = [
   { c: LUCRE,   r: 4.0 },
   { c: CASTLE,  r: 4.0 },
   { c: MOUNTAIN, r: 4.2 },
+  { c: BEULAH, r: 4.2 },
 ];
 
 export class WorldMap {
@@ -68,6 +70,7 @@ export class WorldMap {
   lucreDone   = false;
   castleDone  = false;
   mountainDone = false;
+  beulahDone = false;
   justDiverted = false; // set when the barred way shunts Christian onto the byway
   // t-parameters along the main curve nearest each stop, resolved in ctor
   cityT = 0.02;
@@ -82,8 +85,9 @@ export class WorldMap {
   shadowT = 0.92;
   vanityT = 0.96;
   lucreT  = 0.99;
-  castleT = 0.995;
-  mountainT = 1.00;
+  castleT = 0.99;
+  mountainT = 0.995;
+  beulahT = 1.00;
   private mainCurve: THREE.CatmullRomCurve3;
   private branchCurve: THREE.CatmullRomCurve3;
   private branchSpeed = 1; // t-speed scale so ground speed matches the main road
@@ -149,6 +153,9 @@ export class WorldMap {
       // …and up into the bright Delectable Mountains
       new THREE.Vector3(93.4, 0.62, 0.4),
       new THREE.Vector3(MOUNTAIN.x - 0.6, 0.62, MOUNTAIN.z),
+      // …and on at last to Beulah Land, in sight of the Celestial City
+      new THREE.Vector3(101.4, 0.62, 0.2),
+      new THREE.Vector3(BEULAH.x - 0.6, 0.62, BEULAH.z),
     ]);
     this.cityT = this.tForPoint(CITY);
     this.sloughT = this.tForPoint(SLOUGH);
@@ -164,6 +171,7 @@ export class WorldMap {
     this.lucreT  = this.tForPoint(LUCRE);
     this.castleT = this.tForPoint(CASTLE);
     this.mountainT = this.tForPoint(MOUNTAIN);
+    this.beulahT = this.tForPoint(BEULAH);
     // the byway begins exactly where the main road passes the crossroad,
     // so switching roads never makes Christian jump
     const forkPoint = this.mainCurve.getPointAt(this.forkT);
@@ -617,7 +625,7 @@ export class WorldMap {
     // small warning sign post
     castleIsle.add(block(0.1, 0.7, 0.1, 0x7a5c38, -1.4, 0.97, 1.2));
     castleIsle.add(block(0.8, 0.2, 0.08, 0xfff8ef, -1.4, 1.4, 1.2));
-    this.label('Doubting Castle', CASTLE.x, CASTLE.z, 5.2, '#7a4a6a');
+    this.label('Doubting Castle', CASTLE.x, CASTLE.z, 5.2);
 
     // ---------- Delectable Mountains island ----------
     const mtnIsle = this.island(MOUNTAIN.x, MOUNTAIN.z, 4.2, 0x8fd06a);
@@ -633,7 +641,24 @@ export class WorldMap {
     mtnIsle.add(block(1.6, 0.08, 1.0, 0x8fd0ea, -1.6, 0.6, 1.2)); // lake
     // road stripe through
     mtnIsle.add(block(4.0, 0.1, 0.8, 0xeed9b4, 0.0, 0.62, 1.4));
-    this.label('Delectable Mountains', MOUNTAIN.x, MOUNTAIN.z, 5.4, '#3f8a4a');
+    this.label('Delectable Mountains', MOUNTAIN.x, MOUNTAIN.z, 5.4);
+
+    // ---------- Beulah Land island (the finale, in sight of the City) ----------
+    const beuIsle = this.island(BEULAH.x, BEULAH.z, 4.2, 0x9ed67e);
+    // a golden river and the shining Celestial City beyond it
+    beuIsle.add(block(4.2, 0.08, 1.6, 0x86c6e6, 0.4, 0.6, 0.3));       // river
+    beuIsle.add(block(1.6, 0.09, 1.6, 0x2a3f8a, 0.4, 0.62, 0.3));      // deep centre
+    const cityC = 0xffe08a;
+    for (const [cx, ch, cz] of [[-0.4, 2.4, -1.4], [0.4, 3.0, -1.5], [1.2, 2.0, -1.3]] as const) {
+      const tw = block(0.7, ch, 0.7, cityC, cx, 0.6 + ch / 2, cz);
+      const m = tw.material as THREE.MeshLambertMaterial;
+      m.emissive = new THREE.Color(0xffd76a); m.emissiveIntensity = 0.7;
+      beuIsle.add(tw);
+    }
+    // little blossoms in the meadow
+    beuIsle.add(block(0.18, 0.3, 0.18, 0xffb3c6, -1.8, 0.75, 1.2));
+    beuIsle.add(block(0.18, 0.3, 0.18, 0xfff0a0, -1.2, 0.75, 1.6));
+    this.label('Beulah Land', BEULAH.x, BEULAH.z, 5.4);
 
     // ---------- both roads: stones on land, plank bridges over water ----------
     this.buildRoad(this.mainCurve, 80);
@@ -763,7 +788,8 @@ export class WorldMap {
     if (this.progress < this.cityT + 0.03) return 'city';
     if (Math.abs(this.progress - this.sloughT) < 0.03) return 'slough';
     if (Math.abs(this.progress - this.forkT) < 0.025) return 'fork';
-    if (this.progress > this.mountainT - 0.015) return 'mountain';
+    if (this.progress > this.beulahT - 0.015) return 'beulah';
+    if (Math.abs(this.progress - this.mountainT) < 0.015) return 'mountain';
     if (Math.abs(this.progress - this.castleT) < 0.015) return 'castle';
     if (Math.abs(this.progress - this.lucreT) < 0.015) return 'lucre';
     if (Math.abs(this.progress - this.vanityT) < 0.015) return 'vanity';
@@ -792,7 +818,9 @@ export class WorldMap {
         this.moving = true;
         // the long road east stays barred until Morality is settled;
         // the road past the Gate opens only once the Gate chapter is done
-        const maxP = this.castleDone
+        const maxP = this.mountainDone
+          ? this.beulahT + 0.01
+          : this.castleDone
           ? this.mountainT + 0.01
           : this.lucreDone
           ? this.castleT + 0.01
@@ -866,7 +894,9 @@ export class WorldMap {
     animateBear(this.christian, t, this.moving);
 
     this.followers.forEach((f, i) => {
-      const ft = param - 0.045 * (i + 1) * this.facing;
+      // trail close behind Christian (tighter spacing than before, which strung
+      // the companions out too far down the road)
+      const ft = param - 0.022 * (i + 1) * this.facing;
       this.placeOn(curve, f.root, ft);
       const ftan = curve.getTangentAt(THREE.MathUtils.clamp(ft, 0, 1));
       f.root.rotation.y = Math.atan2(ftan.x * this.facing, ftan.z * this.facing);

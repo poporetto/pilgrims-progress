@@ -84,14 +84,16 @@
       box-shadow: 0 6px 0 rgba(91, 74, 63, 0.18);
       display: none; z-index: 30; cursor: pointer;
     }
+    /* speaker name: dark ink on a soft pastel chip for legible contrast
+       (was low-contrast white-on-pink), bold so the name reads clearly */
     #dialogue .name {
-      display: inline-block; background: var(--accent); color: #fff;
-      font-weight: bold; font-size: 14px; border-radius: 999px;
+      display: inline-block; background: #ffe0ea; color: #9a3d57;
+      font-weight: 800; font-size: 14px; border-radius: 999px;
       padding: 3px 14px; margin-bottom: 8px;
     }
     /* Christian's lines get a warm bear-brown bubble */
     #dialogue.christian { border-color: #b98a5f; }
-    #dialogue.christian .name { background: #a5764e; }
+    #dialogue.christian .name { background: #f0dcc4; color: #7a5230; }
     /* narration (interacting with objects, not a speaking character) gets a neutral bubble, no name chip */
     #dialogue.narration { border-color: #cbbfae; }
     #dialogue.narration .name { display: none; }
@@ -282,6 +284,7 @@
     <button data-jump="lucre">XII · Hill Lucre</button>
     <button data-jump="castle">XIII · Doubting Castle</button>
     <button data-jump="mountain">XIV · Delectable Mountains</button>
+    <button data-jump="beulah">XV · Beulah Land</button>
     <div class="label">Or</div>
     <button data-jump="map">World Map</button>
   </div>

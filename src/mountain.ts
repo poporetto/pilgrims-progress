@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { PALETTE } from './palette';
 import { makeBear, animateBear, BearParts, block, mat } from './bear';
+import { makeShiningLight, animateShiningLight, ShiningLight } from './light';
 import { DialogueLine } from './npcs';
 
 // Chapter XIV — The Delectable Mountains.
@@ -72,7 +73,7 @@ export class MountainScene {
   private smoke: THREE.Mesh[] = [];
   private water: THREE.Mesh[] = [];
   private cityGlow: THREE.Group | null = null;
-  private lightBeam: THREE.Mesh | null = null;
+  private shining: ShiningLight | null = null;
   private clouds: THREE.Group[] = [];
   private birds: Array<{
     g: THREE.Group; wingL: THREE.Mesh; wingR: THREE.Mesh;
@@ -382,17 +383,10 @@ export class MountainScene {
     // ---- distant Celestial City on the eastern horizon ----
     this.buildCelestialCity();
 
-    // ---- exit light (plain beam, matching the recent chapters) ----
-    const beam = new THREE.Mesh(
-      new THREE.CylinderGeometry(1.4, 2.0, 14, 18, 1, true),
-      new THREE.MeshBasicMaterial({
-        color: PALETTE.light, transparent: true, opacity: 0.55,
-        side: THREE.DoubleSide, depthWrite: false, fog: false,
-      }),
-    );
-    beam.position.set(LIGHT_X + 1.5, 7, 0);
-    s.add(beam);
-    this.lightBeam = beam;
+    // ---- exit light: the shining beacon that ends every chapter ----
+    this.shining = makeShiningLight();
+    this.shining.group.position.set(LIGHT_X + 1.5, 0, 0);
+    s.add(this.shining.group);
 
     // ---- characters ----
     s.add(this.christian.root);
@@ -742,7 +736,7 @@ export class MountainScene {
   private buildMountCaution(x: number): void {
     const g = new THREE.Group();
     // the round hill, set well back to the north (negative z = away from camera)
-    const MOUND_Z = -9;
+    const MOUND_Z = -10.5;
     const mound = new THREE.Mesh(
       new THREE.SphereGeometry(4.5, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2),
       mat(0x8ab866),
@@ -771,7 +765,7 @@ export class MountainScene {
         m.head.add(block(0.12, 0.12, 0.06, 0xe8e4da, 0.2 * side, 0.5, 0.42));
       }
       m.root.userData.baseX = x - 2 + i * 4;
-      m.root.userData.baseZ = -2.6;
+      m.root.userData.baseZ = -4.8; // further up (north), nearer the tombs
       m.root.userData.wander = Math.random() * Math.PI * 2;
       m.root.position.set(m.root.userData.baseX, 0, m.root.userData.baseZ);
       this.scene.add(m.root);
@@ -784,15 +778,41 @@ export class MountainScene {
   private buildDoorIntoHell(x: number): void {
     const g = new THREE.Group();
     const rock = 0x6a5a4c;
-    // a craggy hillside
-    g.add(block(8, 5, 4, rock, 0, 2.5, -6));
-    g.add(block(6, 3, 3, 0x5a4c40, 0, 4.2, -5.2));
+    const rockDk = 0x50443a;
+    const rockChar = 0x3a3028;
+    const rng = (a: number, b: number) => a + Math.random() * (b - a);
+    // a craggy, layered hillside — several stepped rock masses instead of one slab
+    g.add(block(9, 5.5, 4.2, rock, 0, 2.7, -6));
+    g.add(block(6.5, 3.4, 3.2, rockDk, -0.6, 4.6, -5.4));
+    g.add(block(3.6, 2.4, 2.6, 0x5a4c40, 1.8, 5.2, -5.6));
+    // scattered boulders + scorched, charred rock around the base
+    for (let i = 0; i < 9; i++) {
+      const bx = rng(-4, 4);
+      g.add(block(rng(0.6, 1.4), rng(0.5, 1.2), rng(0.6, 1.1), i % 2 ? rock : rockChar, bx, rng(0.3, 0.8), rng(-2.6, -4)));
+    }
+    // a jagged frame of rock teeth around the mouth
+    for (const [fx, fy, fw, fh] of [[-1.7, 1.6, 0.6, 3.2], [1.7, 1.6, 0.6, 3.2], [0, 3.3, 3.4, 0.7]] as const) {
+      g.add(block(fw, fh, 1.1, rockChar, fx, fy, -3.9));
+    }
+    for (let i = -2; i <= 2; i++) {
+      const th = rng(0.4, 0.9);
+      g.add(block(0.4, th, 0.4, rockChar, i * 0.6, 3.0 + th / 2, -3.7)); // upper teeth
+      g.add(block(0.4, th, 0.4, rockChar, i * 0.6 + 0.3, 0.1 + th / 2, -3.5)); // lower teeth
+    }
     // the mouth: a black opening with a fiery interior
     const mouth = block(2.6, 3.0, 1.0, 0x140805, 0, 1.5, -4.0);
     (mouth.material as THREE.MeshLambertMaterial).emissive = new THREE.Color(0xff4a10);
     (mouth.material as THREE.MeshLambertMaterial).emissiveIntensity = 0.9;
     g.add(mouth);
     this.hellMouth = mouth;
+    // molten cracks glowing on the rock beside the mouth
+    for (const [cx, cy] of [[-1.9, 2.2], [2.0, 1.4], [-1.4, 0.5]] as const) {
+      const crack = block(0.16, rng(0.7, 1.3), 0.06, 0x2a140a, cx, cy, -3.45);
+      const cm = crack.material as THREE.MeshLambertMaterial;
+      cm.emissive = new THREE.Color(0xff5a1e); cm.emissiveIntensity = 1.1;
+      crack.rotation.z = rng(-0.5, 0.5);
+      g.add(crack);
+    }
     g.position.set(x, 0, 0);
     this.scene.add(g);
     this.reserveZone(x, -5, 7);
@@ -803,15 +823,26 @@ export class MountainScene {
     this.hellGlow = glow;
     this.scene.add(glow);
 
-    // rising smoke puffs
-    for (let i = 0; i < 8; i++) {
-      const puff = block(0.7, 0.7, 0.7, 0x4a4038, x + (Math.random() - 0.5) * 2, 3 + i * 0.6, -4);
+    // rising smoke puffs (varied sizes/greys for a thicker, roiling column)
+    for (let i = 0; i < 12; i++) {
+      const sz = rng(0.5, 1.1);
+      const puff = block(sz, sz, sz, i % 3 ? 0x4a4038 : 0x342c26, x + rng(-1, 1), 3 + i * 0.5, -4);
       (puff.material as THREE.MeshLambertMaterial).transparent = true;
-      (puff.material as THREE.MeshLambertMaterial).opacity = 0.5;
-      puff.userData.baseX = x + (Math.random() - 0.5) * 2;
-      puff.userData.speed = 0.6 + Math.random() * 0.6;
+      (puff.material as THREE.MeshLambertMaterial).opacity = rng(0.4, 0.6);
+      puff.userData.baseX = x + rng(-1, 1);
+      puff.userData.speed = 0.5 + Math.random() * 0.7;
       this.scene.add(puff);
       this.smoke.push(puff);
+    }
+    // glowing embers drifting up from the mouth
+    for (let i = 0; i < 10; i++) {
+      const ember = block(0.12, 0.12, 0.12, 0xff7a2a, x + rng(-1, 1), rng(1.5, 5), -3.8);
+      const em = ember.material as THREE.MeshLambertMaterial;
+      em.emissive = new THREE.Color(0xff8a2a); em.emissiveIntensity = 1.3;
+      ember.userData.baseX = x + rng(-1.2, 1.2);
+      ember.userData.speed = 1.0 + Math.random() * 1.2;
+      this.scene.add(ember);
+      this.smoke.push(ember);
     }
   }
 
@@ -828,22 +859,40 @@ export class MountainScene {
     snow.position.set(0.5, 7.4, -9.5);
     g.add(snow);
 
-    // the telescope: a tripod + an angled brass tube on a small rise, standing
-    // clear of the peak and pointing up toward the eastern horizon
+    // the telescope: a tripod of turned legs, a mounting yoke, and a banded
+    // brass tube with a proper eyepiece, pointing up toward the eastern horizon
     const scope = new THREE.Group();
-    scope.add(block(1.6, 0.4, 1.6, 0x8a9e76, 0, 0.2, 0)); // little rise it stands on
+    const BRASS = 0xcaa24a;
+    const BRASS_DK = 0x9a7a34;
+    const WOOD = 0x5a4636;
+    // a stone plinth it stands on
+    scope.add(block(1.7, 0.35, 1.7, 0x9aa886, 0, 0.18, 0));
+    scope.add(block(1.3, 0.18, 1.3, 0x8a9876, 0, 0.42, 0));
+    // three splayed tripod legs with feet
     for (const a of [0, 2.1, 4.2]) {
-      const leg = block(0.12, 1.7, 0.12, 0x5a4636, Math.cos(a) * 0.45, 1.0, Math.sin(a) * 0.45);
-      leg.rotation.z = Math.cos(a) * 0.22;
-      leg.rotation.x = Math.sin(a) * 0.22;
+      const lx = Math.cos(a) * 0.5, lz = Math.sin(a) * 0.5;
+      const leg = block(0.13, 1.8, 0.13, WOOD, lx, 1.1, lz);
+      leg.rotation.z = Math.cos(a) * 0.24;
+      leg.rotation.x = Math.sin(a) * 0.24;
       scope.add(leg);
+      scope.add(block(0.2, 0.12, 0.2, 0x40342a, lx * 1.7, 0.12, lz * 1.7)); // foot
     }
-    const tube = block(0.34, 1.9, 0.34, 0xcaa24a, 0, 2.1, 0);
-    tube.rotation.z = -Math.PI / 2.4; // tilt up toward the east
-    scope.add(tube);
-    const lens = block(0.4, 0.24, 0.4, 0x9fe0f0, 0.85, 2.7, 0);
-    lens.rotation.z = -Math.PI / 2.4;
-    scope.add(lens);
+    // the yoke/mount atop the tripod
+    scope.add(block(0.4, 0.4, 0.4, BRASS_DK, 0, 1.95, 0));
+    // the brass tube (as its own group so it tilts cleanly), with rings + eyepiece
+    const barrel = new THREE.Group();
+    barrel.add(block(0.36, 1.9, 0.36, BRASS, 0, 0, 0));          // main tube
+    barrel.add(block(0.44, 0.14, 0.44, BRASS_DK, 0, 0.55, 0));   // ring
+    barrel.add(block(0.44, 0.14, 0.44, BRASS_DK, 0, -0.05, 0));  // ring
+    barrel.add(block(0.3, 0.5, 0.3, BRASS_DK, 0, -1.15, 0));     // eyepiece
+    barrel.add(block(0.46, 0.2, 0.46, BRASS, 0, 1.0, 0));        // objective housing
+    const lens = block(0.42, 0.12, 0.42, 0x9fe0f0, 0, 1.14, 0);  // glass
+    (lens.material as THREE.MeshLambertMaterial).emissive = new THREE.Color(0x9fe0f0);
+    (lens.material as THREE.MeshLambertMaterial).emissiveIntensity = 0.35;
+    barrel.add(lens);
+    barrel.position.set(0.1, 2.3, 0);
+    barrel.rotation.z = -Math.PI / 2.4; // tilt up toward the east
+    scope.add(barrel);
     // just off the north edge of the path, well in front of the peak's base
     scope.position.set(-1.5, 0, -1.6);
     g.add(scope);
@@ -1100,11 +1149,8 @@ export class MountainScene {
       animateBear(m, t, true);
     }
 
-    // exit beacon pulse
-    if (this.lightBeam) {
-      const sc = 1 + Math.sin(t * 2.2) * 0.1;
-      this.lightBeam.scale.set(sc, 1, sc);
-    }
+    // exit beacon twinkle
+    if (this.shining) animateShiningLight(this.shining, t);
 
     // gentle glow pulse on the distant Celestial City
     if (this.cityGlow) {
@@ -1149,8 +1195,11 @@ export class MountainScene {
     const walking = (this.phase === 'enter' || this.phase === 'walk' || this.phase === 'depart') && moving;
     animateBear(this.christian, t, walking);
     animateBear(this.hopeful, t, walking);
+    // the shepherds only walk while actually accompanying the pilgrims (the
+    // 'walk' phase). Once they've stayed behind at the parting warning ('depart'),
+    // they stand still instead of marching in place whenever Christian moves.
     for (const sp of this.shepherds) {
-      animateBear(sp, t, walking && (this.phase === 'walk' || this.phase === 'depart'));
+      animateBear(sp, t, moving && this.phase === 'walk');
     }
   }
 }

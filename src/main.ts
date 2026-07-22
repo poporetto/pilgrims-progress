@@ -18,6 +18,7 @@ import { VanityScene } from './vanity';
 import { LucreScene } from './lucre';
 import { CastleScene } from './castle';
 import { MountainScene } from './mountain';
+import { BeulahScene } from './beulah';
 
 // ---------------------------------------------------------------- setup
 
@@ -93,6 +94,7 @@ const quest: QuestState = {
   lucreDone: false,
   castleDone: false,
   mountainDone: false,
+  beulahDone: false,
 };
 
 const music = new Music();
@@ -100,7 +102,7 @@ const worldMap = new WorldMap(window.innerWidth / window.innerHeight);
 let mode:
   | 'village' | 'map' | 'slough' | 'morality' | 'wicket' | 'cross'
   | 'highway' | 'hill' | 'palace' | 'valley' | 'shadow' | 'vanity' | 'lucre' | 'castle'
-  | 'mountain' = 'village';
+  | 'mountain' | 'beulah' = 'village';
 
 // ---------------------------------------------------------------- UI refs
 
@@ -203,8 +205,10 @@ function goToMap(): void {
   mode = 'map';
   music.setStyle('map');
   ui.promptKey.style.display = 'none';
-  setObjective(quest.mountainDone
-    ? '🗺 The Delectable Mountains are behind you — the Celestial City draws near!'
+  setObjective(quest.beulahDone
+    ? '🗺 The journey is complete — Christian has crossed into the Celestial City ✨'
+    : quest.mountainDone
+    ? '🗺 The Delectable Mountains are behind you — beyond lies Beulah Land, and the River'
     : quest.castleDone
     ? '🗺 Doubting Castle is behind you — bright mountains rise ahead: a place of rest'
     : quest.lucreDone
@@ -734,6 +738,24 @@ function endKeyDrag(e: PointerEvent): void {
 keyOrb.addEventListener('pointerup', endKeyDrag);
 keyOrb.addEventListener('pointercancel', endKeyDrag);
 
+// ---------- Beulah Land: pop the balloons of doubt by clicking/tapping ----------
+// a pointerdown on the 3D canvas casts a ray from the camera through the pointer
+// and asks the scene to pop whichever balloon body it hits. Gated hard to the
+// 'doubt' phase (beulah.canPop()), so it never interferes with anything else.
+const popRaycaster = new THREE.Raycaster();
+const popPointer = new THREE.Vector2();
+function tryPopAt(clientX: number, clientY: number): void {
+  if (mode !== 'beulah' || !beulah.canPop()) return;
+  const rect = renderer.domElement.getBoundingClientRect();
+  popPointer.x = ((clientX - rect.left) / rect.width) * 2 - 1;
+  popPointer.y = -((clientY - rect.top) / rect.height) * 2 + 1;
+  popRaycaster.setFromCamera(popPointer, camera);
+  beulah.tryPop(popRaycaster);
+}
+// 'click' fires for mouse, touch-tap, and automated clicks alike — the right
+// event for a discrete "pop". Gated hard to the doubt phase inside tryPopAt.
+renderer.domElement.addEventListener('click', (e: MouseEvent) => tryPopAt(e.clientX, e.clientY));
+
 // ---------- Chapter XII: the Plain of Ease & the Hill Lucre ----------
 const lucre = new LucreScene({
   playScript,
@@ -910,6 +932,61 @@ function enterMountain(revisit: boolean): void {
   ui.talkBtn.style.display = 'none';
   mountainActors = mountain.enter(revisit);
   camTarget.copy(mountainActors.christian.root.position);
+}
+
+// ---------- Chapter XV: Beulah Land (the finale) ----------
+const beulah = new BeulahScene({
+  playScript,
+  setObjective,
+  onExit: () => goToMap(),
+  blipSound: () => music.blip(),
+  rumbleSound: () => music.rumble(),
+  setMusic: (style) => music.setStyle(style),
+  onComplete: () => {
+    quest.beulahDone = true;
+    showEnding(
+      '🏙 The Celestial City',
+      'Chapter XV — Beulah Land · The Journey\'s End',
+      'In the golden country of Beulah, in sight of the shining City, Christian and '
+      + 'Hopeful came at last to the deep River of death, where no bridge is and every '
+      + 'pilgrim must cross. Christian sank, and old fears and sins rose about him like '
+      + 'dark clouds — until Hopeful, feeling the bottom, held him up: "Be of good cheer; '
+      + 'the King is with us." The doubts were put away, the far shore reached, and two '
+      + 'Shining Ones came down to meet them. Pain, sorrow, temptation, and death were '
+      + 'left behind in the water. And so the pilgrims passed through the Gate, into the '
+      + 'light of the King\'s kingdom — home, at the last. ✨  The End.',
+      () => {
+        // mark the whole road complete, and return to the finished world map
+        worldMap.sloughDone = true;
+        worldMap.moralityDone = true;
+        worldMap.wicketDone = true;
+        worldMap.crossDone = true;
+        worldMap.highwayDone = true;
+        worldMap.hillDone = true;
+        worldMap.palaceDone = true;
+        worldMap.valleyDone = true;
+        worldMap.shadowDone = true;
+        worldMap.vanityDone = true;
+        worldMap.lucreDone = true;
+        worldMap.castleDone = true;
+        worldMap.mountainDone = true;
+        worldMap.beulahDone = true;
+        worldMap.start(mapParty());
+        worldMap.road = 'main';
+        worldMap.progress = worldMap.beulahT;
+        goToMap();
+      },
+    );
+  },
+});
+let beulahActors: { christian: import('./bear').BearParts; hopeful: import('./bear').BearParts } | null = null;
+
+function enterBeulah(revisit: boolean): void {
+  mode = 'beulah';
+  ui.prompt.style.display = 'none';
+  ui.talkBtn.style.display = 'none';
+  beulahActors = beulah.enter(revisit);
+  camTarget.copy(beulahActors.christian.root.position);
 }
 
 function enterVanity(revisit: boolean): void {
@@ -1094,6 +1171,7 @@ window.addEventListener('keydown', (e) => {
     }
     else if (mode === 'valley') valley.tryAttack();
     else if (mode === 'lucre') lucre.tryTouchPillar();
+    else if (mode === 'beulah') { if (beulah.nearAngel()) beulah.talkAngel(); }
   }
 });
 
@@ -1113,6 +1191,7 @@ function tryEnterFromMap(): void {
   else if (spot === 'lucre') enterLucre(quest.lucreDone);
   else if (spot === 'castle') enterCastle(quest.castleDone);
   else if (spot === 'mountain') enterMountain(quest.mountainDone);
+  else if (spot === 'beulah') enterBeulah(quest.beulahDone);
 }
 window.addEventListener('keyup', (e) => keys.delete(e.code));
 // don't leave movement keys stuck when the tab loses focus mid-keypress
@@ -1176,7 +1255,7 @@ ui.debugPanel.addEventListener('click', (e) => {
   // flags agree with wherever we're jumping to — otherwise a later visit to
   // the map can snap Christian's progress back to an earlier chapter
   // each jump implies every earlier chapter is behind us
-  const ORDER = ['village', 'slough', 'morality', 'wicket-approach', 'cross', 'highway', 'hill', 'palace', 'valley', 'shadow', 'vanity', 'lucre', 'castle', 'mountain'];
+  const ORDER = ['village', 'slough', 'morality', 'wicket-approach', 'cross', 'highway', 'hill', 'palace', 'valley', 'shadow', 'vanity', 'lucre', 'castle', 'mountain', 'beulah'];
   const rank = ORDER.indexOf(
     jump === 'wicket-highway' || jump === 'interpreter' ? 'wicket-approach' : jump === 'map' ? 'village' : jump,
   );
@@ -1192,6 +1271,7 @@ ui.debugPanel.addEventListener('click', (e) => {
   if (rank >= 11) { worldMap.vanityDone = true; quest.vanityDone = true; }
   if (rank >= 12) { worldMap.lucreDone = true; quest.lucreDone = true; }
   if (rank >= 13) { worldMap.castleDone = true; quest.castleDone = true; }
+  if (rank >= 14) { worldMap.mountainDone = true; quest.mountainDone = true; }
   if (jump === 'village') enterVillage();
   else if (jump === 'slough') enterSlough(false);
   else if (jump === 'morality') enterMorality(false);
@@ -1208,6 +1288,7 @@ ui.debugPanel.addEventListener('click', (e) => {
   else if (jump === 'lucre') enterLucre(false);
   else if (jump === 'castle') enterCastle(false);
   else if (jump === 'mountain') enterMountain(false);
+  else if (jump === 'beulah') enterBeulah(false);
   else if (jump === 'map') { worldMap.start(mapParty()); worldMap.road = 'main'; goToMap(); }
 });
 
@@ -1273,6 +1354,7 @@ ui.talkBtn.addEventListener('click', () => {
   }
   else if (mode === 'valley') valley.tryAttack();
   else if (mode === 'lucre') lucre.tryTouchPillar();
+  else if (mode === 'beulah') { if (beulah.nearAngel()) beulah.talkAngel(); }
 });
 
 // ---------------------------------------------------------------- interaction
@@ -1719,6 +1801,7 @@ function tick(): void {
     if (spot === 'lucre' && !quest.lucreDone) { enterLucre(false); return; }
     if (spot === 'castle' && !quest.castleDone) { enterCastle(false); return; }
     if (spot === 'mountain' && !quest.mountainDone) { enterMountain(false); return; }
+    if (spot === 'beulah' && !quest.beulahDone) { enterBeulah(false); return; }
 
     ui.prompt.style.display = spot === 'road' ? 'none' : 'block';
     ui.promptKey.style.display = 'none';
@@ -1781,6 +1864,10 @@ function tick(): void {
       ui.promptWho.textContent = quest.mountainDone
         ? '⛰ Rest again in the Delectable Mountains'
         : '⛰ Climb into the bright Delectable Mountains';
+    } else if (spot === 'beulah') {
+      ui.promptWho.textContent = quest.beulahDone
+        ? '✨ Return to Beulah Land'
+        : '✨ Enter Beulah Land — the River and the Celestial City';
     }
     if (spot !== 'road' && spot !== 'fork') {
       ui.promptKey.style.display = isTouch ? 'none' : 'inline-block';
@@ -2332,6 +2419,52 @@ function tick(): void {
     return;
   }
 
+  if (mode === 'beulah' && beulahActors) {
+    // ---- Beulah Land mode (outdoor, standard camera) ----
+    const bc = beulahActors.christian;
+    let mx = 0;
+    let mz = 0;
+    if (keys.has('KeyW') || keys.has('ArrowUp')) mz -= 1;
+    if (keys.has('KeyS') || keys.has('ArrowDown')) mz += 1;
+    if (keys.has('KeyA') || keys.has('ArrowLeft')) mx -= 1;
+    if (keys.has('KeyD') || keys.has('ArrowRight')) mx += 1;
+    mx += joy.x;
+    mz += joy.y;
+    const len = Math.hypot(mx, mz);
+    const factor = beulah.moveFactor();
+    const moving = len > 0.15 && !dialogueOpen && !endingOpen && factor > 0;
+    if (moving) {
+      mx /= Math.max(len, 1);
+      mz /= Math.max(len, 1);
+      bc.root.position.x += mx * SPEED * factor * dt;
+      bc.root.position.z += mz * SPEED * factor * dt;
+      bc.root.rotation.y = lerpAngle(bc.root.rotation.y, Math.atan2(mx, mz), 12 * dt);
+    }
+    beulah.afterMove();
+    beulah.update(dt, t, moving);
+
+    // prompt while the doubts can be popped, or near a Shining One
+    if (beulah.canPop() && !dialogueOpen && !endingOpen) {
+      ui.prompt.style.display = 'block';
+      ui.promptKey.style.display = 'none';
+      ui.promptWho.textContent = isTouch ? '👆 Tap the balloons of doubt to pop them' : '👆 Click the balloons of doubt to pop them';
+    } else if (beulah.nearAngel() && !dialogueOpen && !endingOpen) {
+      ui.prompt.style.display = 'block';
+      ui.promptKey.style.display = isTouch ? 'none' : 'inline-block';
+      ui.promptWho.textContent = 'Speak with the Shining One';
+      if (isTouch) { ui.talkBtn.textContent = 'Talk'; ui.talkBtn.style.display = 'block'; }
+    } else if (mode === 'beulah') {
+      ui.prompt.style.display = 'none';
+      if (isTouch && !dialogueOpen) ui.talkBtn.style.display = 'none';
+    }
+
+    camTarget.lerp(bc.root.position, Math.min(4 * dt, 1));
+    camera.position.copy(camTarget).add(camOffset);
+    camera.lookAt(camTarget.x, camTarget.y + 1.4, camTarget.z);
+    renderer.render(beulah.scene, camera);
+    return;
+  }
+
   // ---- village mode ----
   if (started) {
     updatePlayer(dt, t);
@@ -2388,7 +2521,7 @@ tick();
   wicket, enterWicket, cross, enterCross, highway, enterHighway, hill, enterHill,
   palace, enterPalace, valley, enterValley, shadow, enterShadow,
   vanity, enterVanity, lucre, enterLucre, playScript, goToMap,
-  castle, enterCastle, mountain, enterMountain, renderer, camera, camOffset, DUNGEON_CAM_OFFSET,
+  castle, enterCastle, mountain, enterMountain, beulah, enterBeulah, renderer, camera, camOffset, DUNGEON_CAM_OFFSET,
   get mode() { return mode; },
   get castleActors() { return castleActors; },
   get keys() { return keys; },

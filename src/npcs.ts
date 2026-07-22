@@ -41,6 +41,7 @@ export interface QuestState {
   lucreDone: boolean;
   castleDone: boolean;
   mountainDone: boolean;
+  beulahDone: boolean;
 }
 
 interface NPCDef {
