@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- Pastel storybook medallion -->
+  <circle cx="32" cy="32" r="31" fill="#fff7dc"/>
+  <circle cx="32" cy="32" r="27" fill="#a9d0e5"/>
+  <circle cx="32" cy="32" r="23" fill="#f9edc6"/>
+  <circle cx="32" cy="32" r="20" fill="#c7e0ed"/>
+
+  <!-- Christian's voxel ears -->
+  <rect x="15" y="16" width="11" height="11" rx="2" fill="#76502f"/>
+  <rect x="38" y="16" width="11" height="11" rx="2" fill="#76502f"/>
+  <rect x="18" y="19" width="6" height="6" fill="#b88758"/>
+  <rect x="40" y="19" width="6" height="6" fill="#b88758"/>
+
+  <!-- Block-built bear head -->
+  <rect x="16" y="21" width="32" height="27" rx="4" fill="#865b36"/>
+  <rect x="19" y="24" width="26" height="20" fill="#936943"/>
+  <rect x="19" y="38" width="26" height="8" fill="#76502f"/>
+
+  <!-- Eyes and highlights -->
+  <rect x="22" y="30" width="6" height="7" fill="#2e2925"/>
+  <rect x="36" y="30" width="6" height="7" fill="#2e2925"/>
+  <rect x="23" y="30" width="2" height="2" fill="#fff9e7"/>
+  <rect x="37" y="30" width="2" height="2" fill="#fff9e7"/>
+
+  <!-- Cream voxel muzzle -->
+  <rect x="24" y="37" width="16" height="10" rx="2" fill="#ead9b9"/>
+  <rect x="28" y="36" width="8" height="5" fill="#f4e8cf"/>
+  <rect x="29" y="39" width="6" height="5" fill="#292522"/>
+  <rect x="31" y="44" width="2" height="2" fill="#6f4a35"/>
+</svg>
