@@ -545,7 +545,7 @@ export class CastleScene {
       const bx = rng(FORK_X, SLEEP_X + 8);
       const bz = MEADOW_Z + (Math.random() < 0.5 ? -1 : 1) * rng(2.6, 3.6);
       s.add(block(rng(1.0, 1.7), rng(0.7, 1.1), rng(1.0, 1.7), 0x66ab52, bx, 0.45, bz));
-      s.add(block(rng(0.6, 1.0), rng(0.4, 0.7), rng(0.6, 1.0), 0x74bd5e, bx + jitr(0.4), 0.9, bz + jitr(0.4)));
+      s.add(block(rng(0.6, 1.0), rng(0.4, 0.7), rng(0.6, 1.0), 0x74bd5e, bx + rng(-0.4, 0.4), 0.9, bz + rng(-0.4, 0.4)));
     }
     // blossom trees along the meadow's far edge
     for (const tx of [FORK_X + 4, FORK_X + 12, SLEEP_X, SLEEP_X + 7]) {
