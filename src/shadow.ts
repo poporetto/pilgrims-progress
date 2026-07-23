@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { PALETTE } from './palette';
 import { makeBear, animateBear, BearParts, block, mat } from './bear';
+import { makeShiningLight, animateShiningLight, ShiningLight } from './light';
 import { DialogueLine } from './npcs';
 
 // Chapter X — the Valley of the Shadow of Death.
@@ -68,7 +69,7 @@ export class ShadowScene {
   private noiseTimer = 3;
   private storyFigures: BearParts[] = [];
   private splashes: Array<{ mesh: THREE.Mesh; m: THREE.MeshBasicMaterial; life: number; vx: number; vz: number }> = [];
-  private lightBeam: THREE.Mesh | null = null;
+  private shining: ShiningLight | null = null;
   private meetingDialogueStarted = false;
   private revisit = false;
   private built = false;
@@ -225,17 +226,10 @@ export class ShadowScene {
       this.splashes.push({ mesh, m, life: 1, vx: 0, vz: 0 });
     }
 
-    // the light at the valley's end (only convincing once dawn has come)
-    const beam = new THREE.Mesh(
-      new THREE.CylinderGeometry(1.4, 2.0, 14, 18, 1, true),
-      new THREE.MeshBasicMaterial({
-        color: PALETTE.light, transparent: true, opacity: 0.55,
-        side: THREE.DoubleSide, depthWrite: false, fog: false,
-      }),
-    );
-    beam.position.set(LIGHT_X + 1.5, 7, 0);
-    s.add(beam);
-    this.lightBeam = beam;
+    // the shining light at the valley's end (the standard beacon)
+    this.shining = makeShiningLight();
+    this.shining.group.position.set(LIGHT_X + 1.5, 0, 0);
+    s.add(this.shining.group);
 
     s.add(this.lamp);
     s.add(this.christian.root);
@@ -593,10 +587,10 @@ export class ShadowScene {
       if (d.life >= 1) d.mesh.visible = false;
     }
 
-    if (this.lightBeam) {
-      const sc = 1 + Math.sin(t * 2.2) * 0.1;
-      this.lightBeam.scale.set(sc, 1, sc);
-      (this.lightBeam.material as THREE.MeshBasicMaterial).opacity = 0.2 + this.dawnP * 0.4;
+    // the shining light appears at the valley's end as dawn comes
+    if (this.shining) {
+      this.shining.group.visible = this.dawnP > 0.05;
+      animateShiningLight(this.shining, t);
     }
   }
 }

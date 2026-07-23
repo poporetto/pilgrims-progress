@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { PALETTE } from './palette';
 import { makeBear, animateBear, BearParts, block, mat } from './bear';
+import { setupSunShadow } from './light';
 import { DialogueLine } from './npcs';
 
 // Chapter III — Mr. Worldly Wiseman and Mount Sinai.
@@ -77,7 +78,7 @@ export class MoralityScene {
     s.add(new THREE.HemisphereLight(0xe0ecef, 0xafc4a4, 0.85));
     const sun = new THREE.DirectionalLight(0xf5ecd8, 1.15);
     sun.position.set(-24, 38, 20);
-    sun.castShadow = true;
+    setupSunShadow(sun);
     sun.shadow.mapSize.set(2048, 2048);
     sun.shadow.camera.left = -45;
     sun.shadow.camera.right = 45;

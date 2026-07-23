@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { PALETTE } from './palette';
 import { makeBear, animateBear, BearParts, block, mat } from './bear';
-import { makeShiningLight, animateShiningLight, ShiningLight } from './light';
+import { makeShiningLight, animateShiningLight, ShiningLight, setupSunShadow } from './light';
 import { DialogueLine } from './npcs';
 
 // Chapter XIII — Doubting Castle.
@@ -368,7 +368,7 @@ export class CastleScene {
     this.hemi = new THREE.HemisphereLight(0xdff0ff, 0xc9e8c0, 1.0);
     this.sun  = new THREE.DirectionalLight(0xfff0d8, 1.6);
     this.sun.position.set(-30, 45, 25);
-    this.sun.castShadow = true;
+    setupSunShadow(this.sun);
   }
 
   // ---------------------------------------------------------------- enter
@@ -483,32 +483,25 @@ export class CastleScene {
     for (let i = 0; i < 60; i++) {
       const rx = rng(WEST_EDGE + 1, LIGHT_X - 1);
       const rz = (Math.random() < 0.5 ? -1 : 1) * rng(2.0, 3.6);
-      const rw = rng(0.4, 1.2);
-      const rh = rng(0.25, 0.8);
-      const rd = rng(0.3, 1.0);
-      const rock = block(rw, rh, rd, rockColors[i % 3], rx, rh / 2, rz);
-      s.add(rock);
+      s.add(this.makeRock(rng(0.5, 1.3), rng(0.3, 0.9), rng(0.4, 1.1), rockColors[i % 3], rx, rz));
     }
     // a continuous rock wall right at the lane's edge, so the movement clamp
     // reads as running into rocks rather than an unexplained stop. The row is
-    // placed so each rock's near face sits essentially on the clamp line
-    // (LANE_HALF_WIDTH): centre = LANE_HALF_WIDTH + half-depth. Stepped tightly
-    // and slightly overlapping so there are no walk-through gaps in the wall.
-    const BOUNDARY_HALF_DEPTH = 0.35;
-    const BOUNDARY_Z = LANE_HALF_WIDTH + BOUNDARY_HALF_DEPTH; // near face ≈ lane edge
+    // placed so each rock's near face sits just outside the clamp line
+    // (LANE_HALF_WIDTH), so Christian and Hopeful bump the wall but never clip
+    // into it. Stepped tightly so there are no walk-through gaps.
+    const BOUNDARY_Z = LANE_HALF_WIDTH + 0.55; // rounded rocks bulge, so extra standoff
     for (let bx = WEST_EDGE; bx <= LIGHT_X; bx += rng(0.8, 1.1)) {
       for (const bz of [-BOUNDARY_Z, BOUNDARY_Z]) {
-        const bw = rng(0.9, 1.4);
-        const bh = rng(0.55, 1.1);
-        const bd = BOUNDARY_HALF_DEPTH * 2;
-        s.add(block(bw, bh, bd, rockColors[Math.floor(rng(0, 3))], bx + rng(-0.2, 0.2), bh / 2, bz));
+        s.add(this.makeRock(rng(0.9, 1.5), rng(0.6, 1.2), rng(0.7, 1.0), rockColors[Math.floor(rng(0, 3))], bx + rng(-0.2, 0.2), bz));
       }
     }
-    // a few rocks actually on the path (the difficult parts), scattered the full length
-    const pathRockXs = [-28, -24, -19, -14, -9, -5, 4, 9, 15, 21, 27, 33, 40, 47, 54, 61, 67];
+    // a few bigger boulders set back on the shoulders (never in the walkable
+    // lane, so the pilgrims can't clip through them) for a rough, broken look
+    const pathRockXs = [-28, -22, -15, -8, 2, 10, 18, 27, 36, 45, 54, 63];
     for (const px of pathRockXs) {
-      const pz = (Math.random() < 0.5 ? -0.6 : 0.6);
-      s.add(block(rng(0.5, 0.9), rng(0.3, 0.55), rng(0.4, 0.7), 0x7a6e62, px, 0.25, pz));
+      const pz = (Math.random() < 0.5 ? -1 : 1) * rng(BOUNDARY_Z + 0.6, BOUNDARY_Z + 1.8);
+      s.add(this.makeRock(rng(0.7, 1.2), rng(0.4, 0.8), rng(0.6, 1.0), 0x7a6e62, px, pz));
     }
 
     // ---- Bypath Meadow (z ≈ MEADOW_Z, x: FORK_X to SLEEP_X+8) ----
@@ -520,13 +513,61 @@ export class CastleScene {
     meadow.position.set((FORK_X + SLEEP_X) / 2 + 2, 0.005, MEADOW_Z);
     s.add(meadow);
 
-    // decorative flowers on meadow
-    const flowerColors = [0xf4c2d4, 0xfff0a0, 0xe8d4f8];
-    for (let i = 0; i < 30; i++) {
-      const fx = rng(FORK_X + 1, SLEEP_X + 7);
-      const fz = rng(MEADOW_Z - 2.8, MEADOW_Z + 2.8);
-      s.add(block(0.18, 0.28, 0.18, flowerColors[i % 3], fx, 0.14, fz));
+    // a second, lusher grass patch layered over the base so the meadow reads
+    // richer and greener than the plain plane
+    const meadow2 = new THREE.Mesh(new THREE.PlaneGeometry(SLEEP_X - FORK_X + 8, 5.4), mat(0x74bd5e));
+    meadow2.rotation.x = -Math.PI / 2;
+    meadow2.position.set((FORK_X + SLEEP_X) / 2 + 2, 0.012, MEADOW_Z);
+    s.add(meadow2);
+
+    // ---- meadow dressing: flowers, tall grass, bushes, blossom trees ----
+    const flowerColors = [0xf4c2d4, 0xfff0a0, 0xe8d4f8, 0xff9ec4, 0xaecbff, 0xffb865, 0xffffff];
+    // clustered flowers, some tall (stem + bloom)
+    for (let i = 0; i < 80; i++) {
+      const fx = rng(FORK_X - 1, SLEEP_X + 9);
+      const fz = rng(MEADOW_Z - 3.4, MEADOW_Z + 3.4);
+      const col = flowerColors[Math.floor(Math.random() * flowerColors.length)];
+      if (Math.random() < 0.4) {
+        s.add(block(0.05, 0.34, 0.05, 0x5aa04a, fx, 0.17, fz));   // stem
+        s.add(block(0.24, 0.2, 0.24, col, fx, 0.42, fz));          // bloom
+      } else {
+        s.add(block(0.2, 0.26, 0.2, col, fx, 0.13, fz));
+      }
     }
+    // tufts of tall grass
+    for (let i = 0; i < 60; i++) {
+      const gx = rng(FORK_X - 1, SLEEP_X + 9);
+      const gz = rng(MEADOW_Z - 3.6, MEADOW_Z + 3.6);
+      s.add(block(0.1, rng(0.3, 0.6), 0.1, Math.random() < 0.5 ? 0x67b552 : 0x7cc766, gx, 0.25, gz));
+    }
+    // little round bushes
+    for (let i = 0; i < 10; i++) {
+      const bx = rng(FORK_X, SLEEP_X + 8);
+      const bz = MEADOW_Z + (Math.random() < 0.5 ? -1 : 1) * rng(2.6, 3.6);
+      s.add(block(rng(1.0, 1.7), rng(0.7, 1.1), rng(1.0, 1.7), 0x66ab52, bx, 0.45, bz));
+      s.add(block(rng(0.6, 1.0), rng(0.4, 0.7), rng(0.6, 1.0), 0x74bd5e, bx + jitr(0.4), 0.9, bz + jitr(0.4)));
+    }
+    // blossom trees along the meadow's far edge
+    for (const tx of [FORK_X + 4, FORK_X + 12, SLEEP_X, SLEEP_X + 7]) {
+      const tz = MEADOW_Z + rng(2.8, 4.2);
+      const tree = new THREE.Group();
+      tree.add(block(0.5, 2.0, 0.5, 0xb08a68, 0, 1.0, 0));
+      tree.add(block(2.2, 1.5, 2.2, 0x74c060, 0, 2.5, 0));
+      tree.add(block(1.4, 1.1, 1.4, 0x86cc6c, 0, 3.4, 0));
+      // pink blossoms
+      for (let b = 0; b < 6; b++) {
+        const a = (b / 6) * Math.PI * 2;
+        tree.add(block(0.24, 0.24, 0.24, 0xf9cdd8, Math.cos(a) * 0.95, 2.6 + Math.sin(a * 2) * 0.4, Math.sin(a) * 0.95));
+      }
+      tree.position.set(tx, 0, tz);
+      s.add(tree);
+    }
+    // a little pond at the meadow's edge, catching the eye
+    const pond = new THREE.Mesh(new THREE.CircleGeometry(1, 18), mat(0x8fd0ea));
+    pond.rotation.x = -Math.PI / 2;
+    pond.scale.set(2.6, 1.8, 1);
+    pond.position.set(SLEEP_X - 4, 0.02, MEADOW_Z + 3.0);
+    s.add(pond);
 
     // ---- Fork sign (at x = FORK_X - 2) — a single weathered board. This is the
     // very post Christian later scribbles his warning onto (see triggerSign);
@@ -815,6 +856,22 @@ export class CastleScene {
   // (No separate warning board is built any more — Christian carves his warning
   // onto the existing fork signpost; see the fork sign + triggerSign.)
   private buildWarningSign(): void { /* intentionally empty */ }
+
+  // a chunky BLOCKY (voxel-style) boulder: a base cube with a couple of smaller
+  // cubes stacked and offset on top, sitting on the ground at (x, z) with an
+  // approximate w×h×d footprint
+  private makeRock(w: number, h: number, d: number, color: number, x: number, z: number): THREE.Object3D {
+    const g = new THREE.Group();
+    const jit = (s: number) => (Math.random() - 0.5) * s;
+    g.add(block(w, h * 0.7, d, color, 0, h * 0.35, 0));                       // base slab
+    g.add(block(w * 0.72, h * 0.5, d * 0.72, color, jit(0.3) * w, h * 0.72, jit(0.3) * d)); // upper block
+    if (Math.random() < 0.65) {
+      g.add(block(w * 0.44, h * 0.42, d * 0.44, color, jit(0.5) * w, h * 0.98, jit(0.5) * d)); // cap
+    }
+    g.position.set(x, 0, z);
+    g.rotation.y = Math.random() * Math.PI * 0.5; // quarter-turn variety, staying axis-aligned-ish
+    return g;
+  }
 
   // ---------------------------------------------------------------- public API
   moveFactor(): number {
@@ -1236,13 +1293,17 @@ export class CastleScene {
     if (this.signPlaced) return;
     this.signPlaced = true;
     this.phase = 'sign';
-    this.cb.setObjective('⚠️ Warning sign placed! Now continue east along the highway');
-    if (this.signMesh) this.signMesh.visible = true;
+    this.cb.setObjective('✍ Christian scratches a warning onto the old signpost');
+    // he scribbles on the EXISTING fork signpost — no new board appears
+    this.scribbleT = 2.4;
+    this.christian.root.rotation.y = 0; // turn to face the post, just north of the road
     this.cb.playScript([
-      { speaker: '',  text: 'Christian carves a warning into a wooden board and plants it firmly at the meadow entrance.' },
+      { speaker: '',  text: 'Christian takes his knife to the old signpost at the meadow\'s mouth and scratches a warning deep into the weathered board.' },
       { speaker: 'Christian', text: 'BEWARE: Bypath Meadow leads to Doubting Castle. Keep to the King\'s Highway.' },
       { speaker: 'Hopeful',   text: 'Whoever reads this — may they be wiser than we were.' },
     ], () => {
+      if (this.warnMark) this.warnMark.visible = true;
+      this.scribbleT = 0;
       this.cb.setObjective('🌟 Walk east to the light — the road goes on!');
     });
   }
@@ -1433,6 +1494,15 @@ export class CastleScene {
     animateBear(chr, t, isWalking);
     if (this.phase !== 'sleep') {
       animateBear(hop, t, isWalking);
+    }
+
+    // ---- scribbling the warning onto the signpost (overrides the arm pose) ----
+    if (this.scribbleT > 0) {
+      this.scribbleT = Math.max(0, this.scribbleT - dt);
+      // quick back-and-forth scratching motion of the right arm
+      chr.armR.rotation.x = -1.4 + Math.sin(t * 22) * 0.5;
+      chr.armR.rotation.z = Math.sin(t * 18) * 0.25;
+      if (this.scribbleT === 0) { chr.armR.rotation.set(0, 0, 0); }
     }
 
     // ---- rocky highway bump: a bumpy jolt underfoot as they cross the rough ground ----

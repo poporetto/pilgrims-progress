@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { PALETTE } from './palette';
 import { makeBear, animateBear, BearParts, block, mat } from './bear';
+import { makeShiningLight, animateShiningLight, ShiningLight, setupSunShadow } from './light';
 import { DialogueLine } from './npcs';
 
 // Chapter IX — the Valley of Humiliation, and Apollyon.
@@ -81,7 +82,7 @@ export class ValleyScene {
   private sparkles: Array<{ mesh: THREE.Mesh; m: THREE.MeshBasicMaterial; life: number; vx: number; vy: number; vz: number }> = [];
   private healBeam: THREE.Mesh | null = null;
   private healProps: THREE.Group | null = null;
-  private lightBeam: THREE.Mesh | null = null;
+  private shining: ShiningLight | null = null;
   private fleeT = 0;
   private revisit = false;
   private built = false;
@@ -234,10 +235,12 @@ export class ValleyScene {
     s.background = new THREE.Color(0xc4917a); // grim, low sunset
     s.fog = new THREE.Fog(0xc4917a, 34, 95);
 
-    s.add(new THREE.HemisphereLight(0xd8b49a, 0x6a5a52, 0.8));
-    const sun = new THREE.DirectionalLight(0xff9a5c, 1.0);
-    sun.position.set(-28, 18, 16);
-    sun.castShadow = true;
+    s.add(new THREE.HemisphereLight(0xe4c4aa, 0x7a6a5e, 1.05));
+    const sun = new THREE.DirectionalLight(0xffb070, 1.35);
+    // light from the EAST (+x) so shadows fall to the left; brighter so Christian
+    // reads clearly against the grim valley
+    sun.position.set(50, 34, 18);
+    setupSunShadow(sun);
     sun.shadow.mapSize.set(2048, 2048);
     sun.shadow.camera.left = -55;
     sun.shadow.camera.right = 55;
@@ -351,17 +354,10 @@ export class ValleyScene {
     s.add(props);
     this.healProps = props;
 
-    // the shining light at the valley's end
-    const beam = new THREE.Mesh(
-      new THREE.CylinderGeometry(1.4, 2.0, 14, 18, 1, true),
-      new THREE.MeshBasicMaterial({
-        color: PALETTE.light, transparent: true, opacity: 0.55,
-        side: THREE.DoubleSide, depthWrite: false, fog: false,
-      }),
-    );
-    beam.position.set(LIGHT_X + 1.5, 7, 0);
-    s.add(beam);
-    this.lightBeam = beam;
+    // the shining light at the valley's end (the standard beacon)
+    this.shining = makeShiningLight();
+    this.shining.group.position.set(LIGHT_X + 1.5, 0, 0);
+    s.add(this.shining.group);
 
     s.add(this.christian.root);
   }
@@ -769,10 +765,7 @@ export class ValleyScene {
       const target = this.phase === 'healing' ? 0.5 : 0;
       m.opacity += (target - m.opacity) * Math.min(dt * 2, 1);
     }
-    if (this.lightBeam) {
-      const sc = 1 + Math.sin(t * 2.2) * 0.1;
-      this.lightBeam.scale.set(sc, 1, sc);
-    }
+    if (this.shining) animateShiningLight(this.shining, t);
     // the spirit sword blazes with a living pulse
     if (this.spiritSword) {
       const pulse = Math.abs(Math.sin(t * 4));

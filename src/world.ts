@@ -628,8 +628,10 @@ export function buildWorld(scene: THREE.Scene): World {
   }
 
   const update = (t: number) => {
-    // swing the wicket gate doors open/closed
-    const doorTarget = gate.open ? 1.85 : 0;
+    // swing the wicket gate doors open/closed. Capped just under 90° (π/2) so
+    // each panel stops perpendicular to the wall instead of swinging PAST it and
+    // clipping back into the flanking wall (the old 1.85 rad ≈ 106° over-rotated).
+    const doorTarget = gate.open ? 1.5 : 0;
     doorL.rotation.y += (-doorTarget - doorL.rotation.y) * 0.04;
     doorR.rotation.y += (doorTarget - doorR.rotation.y) * 0.04;
 

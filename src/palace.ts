@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { PALETTE } from './palette';
 import { makeBear, animateBear, BearParts, block, mat } from './bear';
+import { makeShiningLight, animateShiningLight, ShiningLight, setupSunShadow } from './light';
 import { DialogueLine } from './npcs';
 
 // Chapter VIII — Palace Beautiful.
@@ -76,8 +77,7 @@ export class PalaceScene {
   private bitten = false; // first-bite hint shown
   private sparkles: Array<{ mesh: THREE.Mesh; m: THREE.MeshBasicMaterial; life: number; vx: number; vy: number; vz: number }> = [];
   private cityGlow: THREE.Mesh | null = null;
-  private lightBeam: THREE.Mesh | null = null;
-  private lightHalo: THREE.Mesh | null = null;
+  private shining: ShiningLight | null = null;
   private revisit = false;
   private built = false;
 
@@ -221,7 +221,7 @@ export class PalaceScene {
     s.add(new THREE.HemisphereLight(0xb8b4d8, 0x8a8a9a, 0.75));
     const sun = new THREE.DirectionalLight(0xd8c4f0, 0.9);
     sun.position.set(-30, 30, 20);
-    sun.castShadow = true;
+    setupSunShadow(sun);
     sun.shadow.mapSize.set(2048, 2048);
     sun.shadow.camera.left = -55;
     sun.shadow.camera.right = 55;
@@ -282,8 +282,10 @@ export class PalaceScene {
       palace.add(block(0.7, 0.65, 0.7, TRIM, 1.5 + c * 1.6, 12.1, -4.9));
     }
 
-    // corner towers with rosy caps and narrow windows
-    for (const [tx, tz] of [[1.5, -6], [1.5, 6], [14.5, -6], [14.5, 6]] as const) {
+    // corner towers with rosy caps and narrow windows. The two SOUTH towers are
+    // pulled back to local z 4 (was 6) so they sit flush with the south wall
+    // instead of jutting out onto the road between the lions.
+    for (const [tx, tz] of [[1.5, -6], [1.5, 4], [14.5, -6], [14.5, 4]] as const) {
       palace.add(block(3.0, 11, 3.0, WHITE, tx, 5.5, tz));
       palace.add(block(3.4, 0.55, 3.4, TRIM, tx, 11.2, tz));
       palace.add(block(2.4, 2.0, 2.4, PALETTE.roofPink, tx, 12.4, tz));
@@ -300,11 +302,14 @@ export class PalaceScene {
       }
     }
 
-    // side wings flanking the central block
+    // side wings flanking the central block to the EAST and WEST (not north/
+    // south — the old south wing sat squarely on the road and Christian walked
+    // straight through it). They sit north of the road, clear of the path.
     for (const side of [-1, 1]) {
-      palace.add(block(5, 5.5, 4, WHITE, 2.5, 2.75, side * 8.5));
-      palace.add(block(5.4, 0.45, 4.4, TRIM, 2.5, 5.7, side * 8.5));
-      palace.add(block(4.2, 1.4, 3.2, PALETTE.roofMint, 2.5, 6.6, side * 8.5));
+      const wx = 8 + side * 10;
+      palace.add(block(4, 5.5, 7, WHITE, wx, 2.75, -1));
+      palace.add(block(4.4, 0.45, 7.4, TRIM, wx, 5.7, -1));
+      palace.add(block(3.2, 1.4, 5.5, PALETTE.roofMint, wx, 6.6, -1));
     }
 
     // grand arched gate on the EAST face
@@ -357,18 +362,43 @@ export class PalaceScene {
       palace.add(block(0.14, 0.5, 0.14, STONE, 10 + side * 0.9, 1.1, -2.8 + side * 0.5));
     }
 
+    // ---------- the GREAT SOUTH DOOR, facing the road (this is the way in) ----------
+    // The palace's south wall (local z ≈ +5.5) is the face the pilgrim walks up
+    // to. Give it a real, obvious arched doorway with steps, so Christian has a
+    // door to enter by — rather than a blank wall he has to walk through.
+    // broad steps rising from the road up to the threshold
+    for (let i = 0; i < 4; i++) {
+      palace.add(block(6.0 - i * 0.5, 0.22, 0.9, STONE, 8, 0.11 + i * 0.22, 7.6 - i * 0.5));
+    }
+    // the deep, dark doorway opening (recessed into the wall)
+    palace.add(block(3.2, 4.9, 1.4, 0x241f1b, 8, 2.45, 5.2));
+    // a bright arch surround + pilasters framing it, standing proud of the wall
+    palace.add(block(4.6, 0.55, 0.7, GOLD, 8, 5.15, 5.75));          // lintel / keystone band
+    palace.add(block(0.7, 5.6, 0.7, TRIM, 8 - 2.15, 2.9, 5.7));      // pilaster (west of door)
+    palace.add(block(0.7, 5.6, 0.7, TRIM, 8 + 2.15, 2.9, 5.7));      // pilaster (east of door)
+    palace.add(block(4.8, 0.4, 0.4, GOLD, 8, 5.7, 5.75));            // gold band over the arch
+    // a lantern each side of the door
+    for (const dz of [-1, 1]) {
+      const lamp = block(0.34, 0.34, 0.34, PALETTE.light, 8 + dz * 2.6, 3.4, 5.9);
+      (lamp.material as THREE.MeshLambertMaterial).emissive = new THREE.Color(0xffe0a0);
+      (lamp.material as THREE.MeshLambertMaterial).emissiveIntensity = 0.7;
+      palace.add(lamp);
+    }
+
     palace.position.set(0, 0, -7.5);
     s.add(palace);
     const palaceLight = new THREE.PointLight(0xffe9c0, 2.0, 34);
     palaceLight.position.set(8, 7, -2);
     s.add(palaceLight);
-    const gateGlow = new THREE.PointLight(0xfff0c8, 1.4, 14);
-    gateGlow.position.set(15.5, 3.5, -7.5);
+    // warm light spilling out of the open south door onto the steps
+    const gateGlow = new THREE.PointLight(0xfff0c8, 2.2, 16);
+    gateGlow.position.set(8, 2.6, -2.4); // world coords (palace door is at world x 8, z ≈ -2)
     s.add(gateGlow);
 
-    // Watchful stands by the east gate, visible to approaching Christian
-    this.watchful.root.position.set(13.5, 0, -4.5);
-    this.watchful.root.rotation.y = -Math.PI / 2;
+    // Watchful the porter stands right at the door, in full view of the
+    // approaching pilgrim, facing back down the road toward the lions
+    this.watchful.root.position.set(10.4, 0, -1.7);
+    this.watchful.root.rotation.y = -Math.PI / 2.4;
     s.add(this.watchful.root);
 
     // road east of the palace, to the light
@@ -386,17 +416,13 @@ export class PalaceScene {
     const WOOD = PALETTE.woodDark;
     const CREAM = 0xe8ddc9;
 
-    // floor, walls, ceiling
+    // floor + walls — NO closed ceiling (the camera looks down into the hall
+    // dollhouse-style; a ceiling/roof beams would hide the whole interior)
     hall.add(block(26, 0.6, 20, CREAM, 8, -0.3, 0));
-    hall.add(block(26, 0.4, 20, 0xdfd4bc, 8, 6.8, 0));              // ceiling
     hall.add(block(26, 7, 0.8, WALL, 8, 3.5, -10));
     hall.add(block(26, 7, 0.8, WALL, 8, 3.5, 10));
     hall.add(block(0.8, 7, 20, WALL, -5, 3.5, 0));
     hall.add(block(0.8, 7, 20, WALL, 21, 3.5, 0));
-    // timber ceiling beams
-    for (let bx = 0; bx < 5; bx++) {
-      hall.add(block(24, 0.22, 0.5, WOOD, 8, 6.5, -8 + bx * 4));
-    }
 
     // paired columns down the nave
     for (let i = 0; i < 5; i++) {
@@ -611,24 +637,10 @@ export class PalaceScene {
       this.sparkles.push({ mesh, m, life: 1, vx: 0, vy: 0, vz: 0 });
     }
 
-    // ---------- the shining light past the east gate ----------
-    const beam = new THREE.Mesh(
-      new THREE.CylinderGeometry(1.4, 2.0, 14, 18, 1, true),
-      new THREE.MeshBasicMaterial({
-        color: PALETTE.light, transparent: true, opacity: 0.6,
-        side: THREE.DoubleSide, depthWrite: false, fog: false,
-      }),
-    );
-    beam.position.set(LIGHT_X + 1.5, 7, 0);
-    s.add(beam);
-    this.lightBeam = beam;
-    const halo = new THREE.Mesh(
-      new THREE.SphereGeometry(2.4, 18, 14),
-      new THREE.MeshBasicMaterial({ color: 0xfff9dd, transparent: true, opacity: 0.45, depthWrite: false, fog: false }),
-    );
-    halo.position.set(LIGHT_X + 1.5, 1.6, 0);
-    s.add(halo);
-    this.lightHalo = halo;
+    // ---------- the shining light past the east gate (the standard beacon) ----------
+    this.shining = makeShiningLight();
+    this.shining.group.position.set(LIGHT_X + 1.5, 0, 0);
+    s.add(this.shining.group);
 
     s.add(this.christian.root);
   }
@@ -1031,13 +1043,6 @@ export class PalaceScene {
       (this.cityGlow.material as THREE.MeshBasicMaterial).opacity =
         0.22 + 0.14 * Math.abs(Math.sin(t * 1.3));
     }
-    if (this.lightBeam) {
-      const sc = 1 + Math.sin(t * 2.2) * 0.1;
-      this.lightBeam.scale.set(sc, 1, sc);
-    }
-    if (this.lightHalo) {
-      (this.lightHalo.material as THREE.MeshBasicMaterial).opacity =
-        0.35 + 0.2 * Math.abs(Math.sin(t * 1.7));
-    }
+    if (this.shining) animateShiningLight(this.shining, t);
   }
 }

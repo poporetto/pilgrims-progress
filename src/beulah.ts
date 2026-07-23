@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { PALETTE } from './palette';
 import { makeBear, animateBear, BearParts, block, mat } from './bear';
-import { makeShiningLight, animateShiningLight, ShiningLight } from './light';
+import { makeShiningLight, animateShiningLight, ShiningLight, setupSunShadow } from './light';
 import { DialogueLine } from './npcs';
 
 // Chapter XV — Beulah Land (the finale).
@@ -139,7 +139,7 @@ export class BeulahScene {
     this.hemi = new THREE.HemisphereLight(0xffe6c0, 0xd8c090, 1.15);
     this.sun = new THREE.DirectionalLight(0xffd489, 1.5);
     this.sun.position.set(60, 26, 18); // low, from the city in the east
-    this.sun.castShadow = true;
+    setupSunShadow(this.sun);
   }
 
   // ---------------------------------------------------------------- enter

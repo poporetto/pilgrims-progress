@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { PALETTE } from './palette';
 import { makeBear, animateBear, BearParts, block, mat } from './bear';
+import { makeShiningLight, animateShiningLight, ShiningLight, setupSunShadow } from './light';
 import { DialogueLine } from './npcs';
 
 // Chapter V — the Cross and the empty tomb.
@@ -56,8 +57,7 @@ export class CrossScene {
   private rollFrom = new THREE.Vector3();
   private descendT = 0;
   private angelBob = [0, 0, 0];
-  private lightBeam: THREE.Mesh | null = null;
-  private lightHalo: THREE.Mesh | null = null;
+  private shining: ShiningLight | null = null;
   private crossGlow: THREE.Mesh | null = null;
   private sparkles: Array<{ mesh: THREE.Mesh; m: THREE.MeshBasicMaterial; life: number; vx: number; vy: number; vz: number }> = [];
   private notes: Array<{ mesh: THREE.Mesh; m: THREE.MeshBasicMaterial; life: number }> = [];
@@ -169,7 +169,7 @@ export class CrossScene {
     s.add(new THREE.HemisphereLight(0xf0f8ff, 0xc4e2b8, 1.05));
     const sun = new THREE.DirectionalLight(PALETTE.sun, 1.5);
     sun.position.set(-24, 40, 22);
-    sun.castShadow = true;
+    setupSunShadow(sun);
     sun.shadow.mapSize.set(2048, 2048);
     sun.shadow.camera.left = -50;
     sun.shadow.camera.right = 50;
@@ -278,24 +278,10 @@ export class CrossScene {
       s.add(tree);
     }
 
-    // ---------- the shining light at the road's end ----------
-    const beam = new THREE.Mesh(
-      new THREE.CylinderGeometry(1.4, 2.0, 14, 18, 1, true),
-      new THREE.MeshBasicMaterial({
-        color: PALETTE.light, transparent: true, opacity: 0.5,
-        side: THREE.DoubleSide, depthWrite: false,
-      }),
-    );
-    beam.position.set(LIGHT_X + 1.5, 7, 0);
-    s.add(beam);
-    this.lightBeam = beam;
-    const halo = new THREE.Mesh(
-      new THREE.SphereGeometry(2.4, 18, 14),
-      new THREE.MeshBasicMaterial({ color: 0xfff9dd, transparent: true, opacity: 0.4, depthWrite: false }),
-    );
-    halo.position.set(LIGHT_X + 1.5, 1.6, 0);
-    s.add(halo);
-    this.lightHalo = halo;
+    // ---------- the shining light at the road's end (the standard beacon) ----------
+    this.shining = makeShiningLight();
+    this.shining.group.position.set(LIGHT_X + 1.5, 0, 0);
+    s.add(this.shining.group);
 
     // ---------- the three Shining Ones ----------
     for (let i = 0; i < 3; i++) {
@@ -562,14 +548,7 @@ export class CrossScene {
       (this.crossGlow.material as THREE.MeshBasicMaterial).opacity =
         0.16 + 0.12 * Math.abs(Math.sin(t * 1.2));
     }
-    if (this.lightBeam) {
-      const sc = 1 + Math.sin(t * 2.2) * 0.1;
-      this.lightBeam.scale.set(sc, 1, sc);
-    }
-    if (this.lightHalo) {
-      (this.lightHalo.material as THREE.MeshBasicMaterial).opacity =
-        0.3 + 0.2 * Math.abs(Math.sin(t * 1.7));
-    }
+    if (this.shining) animateShiningLight(this.shining, t);
 
     // ---------- sparkles ----------
     for (const sp of this.sparkles) {

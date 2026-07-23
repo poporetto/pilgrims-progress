@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { PALETTE } from './palette';
 import { makeBear, animateBear, BearParts, block, mat } from './bear';
+import { makeShiningLight, animateShiningLight, ShiningLight, setupSunShadow } from './light';
 import { DialogueLine } from './npcs';
 
 // Chapter XII — the Plain of Ease and the Hill Lucre.
@@ -76,7 +77,7 @@ export class LucreScene {
   private mist: THREE.Mesh[] = [];
   private sparkles: Array<{ mesh: THREE.Mesh; m: THREE.MeshBasicMaterial; life: number; vx: number; vy: number; vz: number }> = [];
   private smoke: Array<{ mesh: THREE.Mesh; m: THREE.MeshBasicMaterial; life: number }> = [];
-  private lightBeam: THREE.Mesh | null = null;
+  private shining: ShiningLight | null = null;
   private revisit = false;
   private built = false;
 
@@ -152,8 +153,9 @@ export class LucreScene {
 
     s.add(new THREE.HemisphereLight(0xf4faff, 0xcfe8c0, 1.15));
     const sun = new THREE.DirectionalLight(PALETTE.sun, 1.5);
-    sun.position.set(-24, 40, 22);
-    sun.castShadow = true;
+    // light from the EAST (+x) so shadows fall to the left across the plain
+    sun.position.set(52, 40, 20);
+    setupSunShadow(sun);
     sun.shadow.mapSize.set(2048, 2048);
     sun.shadow.camera.left = -55;
     sun.shadow.camera.right = 60;
@@ -239,16 +241,8 @@ export class LucreScene {
     ] as const) {
       hill.add(block(hw, hh, 4 + Math.random() * 2, silvers[Math.floor(Math.random() * 3)], hx, hy, hz));
     }
-    // veins of silver glinting in the rock
-    for (let i = 0; i < 6; i++) {
-      const vein = new THREE.Mesh(
-        new THREE.BoxGeometry(0.5, 0.16, 0.1),
-        new THREE.MeshBasicMaterial({ color: 0xe8eef4 }),
-      );
-      vein.position.set(-2.5 + Math.random() * 5, 1 + Math.random() * 4, 2 + Math.random() * 0.4);
-      vein.rotation.z = Math.random();
-      hill.add(vein);
-    }
+    // (the scattered white "silver vein" flecks on the hill face were removed —
+    // they read as random floating boxes rather than veins in the rock)
     // the mine mouth, glowing an unwholesome silver-green
     hill.add(block(2.2, 2.4, 0.6, 0x2e2a30, 0, 1.1, 2.2));
     const glow = new THREE.Mesh(
@@ -363,26 +357,19 @@ export class LucreScene {
       s.add(mesh);
       this.sparkles.push({ mesh, m, life: 1, vx: 0, vy: 0, vz: 0 });
     }
-    for (let i = 0; i < 10; i++) {
+    for (let i = 0; i < 22; i++) {
       const m = new THREE.MeshBasicMaterial({ color: 0x8a8f98, transparent: true, opacity: 0 });
-      const mesh = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.34, 0.34), m);
+      const mesh = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.5, 0.5), m);
       mesh.visible = false;
       mesh.castShadow = false;
       s.add(mesh);
       this.smoke.push({ mesh, m, life: 1 });
     }
 
-    // the light at the road's end
-    const beam = new THREE.Mesh(
-      new THREE.CylinderGeometry(1.4, 2.0, 14, 18, 1, true),
-      new THREE.MeshBasicMaterial({
-        color: PALETTE.light, transparent: true, opacity: 0.55,
-        side: THREE.DoubleSide, depthWrite: false, fog: false,
-      }),
-    );
-    beam.position.set(LIGHT_X + 1.5, 7, 0);
-    s.add(beam);
-    this.lightBeam = beam;
+    // the shining light at the road's end — the beacon that ends every chapter
+    this.shining = makeShiningLight();
+    this.shining.group.position.set(LIGHT_X + 1.5, 0, 0);
+    s.add(this.shining.group);
 
     s.add(this.hopeful.root);
     s.add(this.christian.root);
@@ -452,6 +439,26 @@ export class LucreScene {
     });
   }
 
+  // push Christian out of any solid obstacle (NPCs, carriage, the silver hill /
+  // mine mound), so he can't walk through them
+  private collideObstacles(p: THREE.Vector3): void {
+    const obs: Array<[number, number, number]> = [];
+    if (this.demas.root.visible) obs.push([this.demas.root.position.x, this.demas.root.position.z, 1.1]);
+    if (this.byends.root.visible) obs.push([this.byends.root.position.x, this.byends.root.position.z, 1.1]);
+    for (const f of this.friends) if (f.root.visible) obs.push([f.root.position.x, f.root.position.z, 1.1]);
+    // the silver hill / mine mound is large — keeps the player on the road side
+    obs.push([DEMAS_X, -7.5, 5.2]);
+    for (const [ox, oz, r] of obs) {
+      const dx = p.x - ox;
+      const dz = p.z - oz;
+      const d = Math.hypot(dx, dz);
+      if (d < r && d > 1e-4) {
+        p.x = ox + (dx / d) * r;
+        p.z = oz + (dz / d) * r;
+      }
+    }
+  }
+
   afterMove(dt: number): void {
     const p = this.christian.root.position;
     const inMine = p.x > 80;
@@ -473,6 +480,9 @@ export class LucreScene {
     p.z = THREE.MathUtils.clamp(p.z, -11, 11);
     p.x = THREE.MathUtils.clamp(p.x, WEST_EDGE - 1, LIGHT_X + 2);
     p.y = 0;
+    // solid obstacles: NPCs, and the glittering silver hill / mine — Christian
+    // is pushed out of them so he can't walk through people or the mine
+    this.collideObstacles(p);
     // the pillar blocks the middle of the narrowed road until it is touched
     if (!this.pillarTouched && p.x > PILLAR_X - 2.2) {
       p.x = PILLAR_X - 2.2;
@@ -692,36 +702,55 @@ export class LucreScene {
     if (this.phase === 'doom' && this.doomT >= 0) {
       this.doomT += dt;
       const party = [this.byends, ...this.friends];
+      // the mine-mouth door, in world space (hill at (DEMAS_X,0,-7.5); mouth at
+      // hill-local z +2.2, facing the road)
+      const DOOR_X = DEMAS_X;
+      const DOOR_FRONT_Z = -4.6; // just outside the door
       if (this.doomT < 4.0) {
-        // they run eagerly across the plain to the mine mouth
-        for (const who of party) {
-          if (!who.root.visible) continue;
-          const tx = DEMAS_X;
-          const tz = -6.5;
+        // they run eagerly across the plain and line up at the mine DOOR
+        party.forEach((who, i) => {
+          if (!who.root.visible) return;
+          const tx = DOOR_X + (i - 1.5) * 0.5; // a little queue at the mouth
+          const tz = DOOR_FRONT_Z;
           const dx = tx - who.root.position.x;
           const dz = tz - who.root.position.z;
           const d = Math.hypot(dx, dz);
-          if (d > 0.4) {
+          if (d > 0.35) {
             who.root.position.x += (dx / d) * dt * 4.5;
             who.root.position.z += (dz / d) * dt * 4.5;
             who.root.rotation.y = Math.atan2(dx, dz);
+          } else {
+            who.root.rotation.y = Math.PI; // turn to face into the doorway (−z)
           }
-          animateBear(who, t * 1.4, d > 0.4);
+          animateBear(who, t * 1.4, d > 0.35);
+        });
+      } else if (this.doomT < 6.4) {
+        // one by one they step THROUGH the door into the dark, and the hill
+        // swallows them — walking in (−z, into the hill) as they sink
+        party.forEach((who, i) => {
+          if (!who.root.visible) return;
+          if (this.doomT > 4.0 + i * 0.4) {
+            who.root.position.z -= dt * 1.6;  // into the doorway
+            who.root.position.y -= dt * 1.1;  // and down into the earth
+            who.root.rotation.y = Math.PI;
+            animateBear(who, t, true);
+            if (who.root.position.z < -6.4) who.root.visible = false;
+          }
+        });
+        // a cloud of silver-green smoke breathes OUT of the mine mouth
+        for (const sm of this.smoke) {
+          if (sm.life >= 1 && Math.random() < dt * 26) {
+            sm.life = 0;
+            sm.m.color.set(0x9ad9a8);
+            sm.mesh.position.set(DOOR_X + (Math.random() - 0.5) * 2.6, 0.7 + Math.random() * 1.4, -5.0);
+            sm.mesh.visible = true;
+            break;
+          }
         }
-      } else if (this.doomT < 6.2) {
-        // and the ground takes them, down and down
-        for (const who of party) {
-          if (!who.root.visible) continue;
-          who.root.position.y -= dt * 1.4;
-          who.root.rotation.z += dt * 0.5;
-          animateBear(who, t, false);
-        }
-        const sm = this.smoke.find((q) => q.life >= 1);
-        if (sm && Math.random() < dt * 10) {
-          sm.life = 0;
-          sm.m.color.set(0x9ad9a8);
-          sm.mesh.position.set(DEMAS_X + (Math.random() - 0.5) * 2.4, 0.6, -5.6);
-          sm.mesh.visible = true;
+        // the door glow flares as it breathes the cloud out
+        if (this.mineGlow) {
+          const m = this.mineGlow.material as THREE.MeshBasicMaterial;
+          m.opacity = 0.8 + Math.sin(t * 9) * 0.2;
         }
       } else {
         for (const who of party) who.root.visible = false;
@@ -793,9 +822,6 @@ export class LucreScene {
       // forever beckoning
       this.demas.armR.rotation.x = -0.8 + Math.sin(t * 2.4) * 0.4;
     }
-    if (this.lightBeam) {
-      const sc = 1 + Math.sin(t * 2.2) * 0.1;
-      this.lightBeam.scale.set(sc, 1, sc);
-    }
+    if (this.shining) animateShiningLight(this.shining, t);
   }
 }

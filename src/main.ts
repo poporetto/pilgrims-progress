@@ -45,7 +45,8 @@ const camera = new THREE.PerspectiveCamera(
 // soft pastel lighting
 scene.add(new THREE.HemisphereLight(0xdff0ff, 0xc9e8c0, 0.9));
 const sun = new THREE.DirectionalLight(PALETTE.sun, 1.6);
-sun.position.set(-30, 45, 25);
+// light from the EAST (+x) so shadows fall to the left across the town
+sun.position.set(55, 45, 22);
 sun.castShadow = true;
 sun.shadow.mapSize.set(2048, 2048);
 sun.shadow.camera.left = -60;

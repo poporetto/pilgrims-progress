@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { PALETTE } from './palette';
 import { makeBear, animateBear, BearParts, block, mat } from './bear';
+import { makeShiningLight, animateShiningLight, ShiningLight, setupSunShadow } from './light';
 import { DialogueLine } from './npcs';
 
 // Chapter VI — the King's Highway at evening.
@@ -55,8 +56,7 @@ export class HighwayScene {
   private fireflies: Array<{ mesh: THREE.Mesh; m: THREE.MeshBasicMaterial; ph: number }> = [];
   private zzz: Array<{ mesh: THREE.Mesh; m: THREE.MeshBasicMaterial; life: number }> = [];
   private zzzTimer = 0;
-  private lightBeam: THREE.Mesh | null = null;
-  private lightHalo: THREE.Mesh | null = null;
+  private shining: ShiningLight | null = null;
   private revisit = false;
   private built = false;
 
@@ -102,12 +102,22 @@ export class HighwayScene {
       who.body.add(block(0.06, 0.1, 0.07, 0x2e2a28, 0, 0.7, 0.38)); // tie knot
       who.body.add(block(0.5, 0.34, 0.1, coat, 0, 0.12, -0.32));    // coat tails
     };
-    // a long, expressive tail arcing up behind the coat
-    // (sized a touch wider than the cat's built-in tail so no faces are coplanar)
+    // a long, expressive tail arcing smoothly up behind the coat — a soft
+    // swept tube rather than the old hard right-angled blocks
     const longTail = (who: BearParts, fur: number, tip?: number) => {
-      who.body.add(block(0.18, 0.18, 0.62, fur, 0.2, 0.28, -0.62));
-      who.body.add(block(0.18, 0.6, 0.18, fur, 0.2, 0.62, -0.95));
-      who.body.add(block(0.22, 0.24, 0.22, tip ?? fur, 0.2, 1.02, -0.95));
+      const curve = new THREE.CatmullRomCurve3([
+        new THREE.Vector3(0.2, 0.24, -0.58),
+        new THREE.Vector3(0.2, 0.42, -0.92),
+        new THREE.Vector3(0.2, 0.78, -1.02),
+        new THREE.Vector3(0.2, 1.12, -0.86),
+      ]);
+      const tube = new THREE.Mesh(new THREE.TubeGeometry(curve, 24, 0.13, 8, false), mat(fur));
+      who.body.add(tube);
+      // a soft rounded tip
+      const tp = curve.getPointAt(1);
+      const tipMesh = new THREE.Mesh(new THREE.SphereGeometry(0.15, 10, 8), mat(tip ?? fur));
+      tipMesh.position.copy(tp);
+      who.body.add(tipMesh);
     };
     // Formalist: a black-and-white cat in a charcoal suit
     this.formalist = makeBear({
@@ -137,7 +147,7 @@ export class HighwayScene {
     s.add(this.hemi);
     const sun = new THREE.DirectionalLight(0xffc27a, 1.3);
     sun.position.set(-30, 22, 18); // low in the west
-    sun.castShadow = true;
+    setupSunShadow(sun);
     sun.shadow.mapSize.set(2048, 2048);
     sun.shadow.camera.left = -50;
     sun.shadow.camera.right = 50;
@@ -259,24 +269,10 @@ export class HighwayScene {
       this.zzz.push({ mesh, m, life: 1 });
     }
 
-    // ---------- the shining light at the road's end ----------
-    const beam = new THREE.Mesh(
-      new THREE.CylinderGeometry(1.4, 2.0, 14, 18, 1, true),
-      new THREE.MeshBasicMaterial({
-        color: PALETTE.light, transparent: true, opacity: 0.5,
-        side: THREE.DoubleSide, depthWrite: false, fog: false,
-      }),
-    );
-    beam.position.set(LIGHT_X + 1.5, 7, 0);
-    s.add(beam);
-    this.lightBeam = beam;
-    const halo = new THREE.Mesh(
-      new THREE.SphereGeometry(2.4, 18, 14),
-      new THREE.MeshBasicMaterial({ color: 0xfff9dd, transparent: true, opacity: 0.4, depthWrite: false, fog: false }),
-    );
-    halo.position.set(LIGHT_X + 1.5, 1.6, 0);
-    s.add(halo);
-    this.lightHalo = halo;
+    // ---------- the shining light at the road's end (the standard beacon) ----------
+    this.shining = makeShiningLight();
+    this.shining.group.position.set(LIGHT_X + 1.5, 0, 0);
+    s.add(this.shining.group);
 
     s.add(this.christian.root);
   }
@@ -501,15 +497,7 @@ export class HighwayScene {
       f.mesh.position.x += Math.cos(t * 0.6 + f.ph) * dt * 0.3;
     }
 
-    // the light at the end burns brighter as the sky darkens
-    if (this.lightBeam) {
-      const sc = 1 + Math.sin(t * 2.2) * 0.1;
-      this.lightBeam.scale.set(sc, 1, sc);
-      (this.lightBeam.material as THREE.MeshBasicMaterial).opacity = 0.4 + this.nightP * 0.35;
-    }
-    if (this.lightHalo) {
-      (this.lightHalo.material as THREE.MeshBasicMaterial).opacity =
-        0.3 + 0.2 * Math.abs(Math.sin(t * 1.7)) + this.nightP * 0.2;
-    }
+    // the shining light twinkles at the road's end
+    if (this.shining) animateShiningLight(this.shining, t);
   }
 }

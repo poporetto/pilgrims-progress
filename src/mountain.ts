@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { PALETTE } from './palette';
 import { makeBear, animateBear, BearParts, block, mat } from './bear';
-import { makeShiningLight, animateShiningLight, ShiningLight } from './light';
+import { makeShiningLight, animateShiningLight, ShiningLight, setupSunShadow } from './light';
 import { DialogueLine } from './npcs';
 
 // Chapter XIV — The Delectable Mountains.
@@ -141,7 +141,7 @@ export class MountainScene {
     this.hemi = new THREE.HemisphereLight(0xeaf6ff, 0xbfe6a8, 1.15);
     this.sun = new THREE.DirectionalLight(0xfff6e0, 1.7);
     this.sun.position.set(-24, 48, 26);
-    this.sun.castShadow = true;
+    setupSunShadow(this.sun);
   }
 
   // ---------------------------------------------------------------- enter

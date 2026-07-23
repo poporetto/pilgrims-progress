@@ -61,3 +61,19 @@ export function animateShiningLight(l: ShiningLight, t: number): void {
   const s = 1 + Math.sin(t * 2.2) * 0.12;
   l.starGlow.scale.setScalar(s);
 }
+
+// Configure a chapter's sun so its shadows actually render across the whole
+// play area. By default a DirectionalLight's shadow camera is a tiny ±5 box
+// around the origin, so characters only cast shadows near the centre of the
+// map — which is why several chapters showed no shadow at all. This widens the
+// orthographic frustum to cover the long east–west road and bumps the map size.
+export function setupSunShadow(sun: THREE.DirectionalLight, half = 90): void {
+  sun.castShadow = true;
+  sun.shadow.mapSize.set(2048, 2048);
+  const c = sun.shadow.camera;
+  c.left = -half; c.right = half; c.top = half; c.bottom = -half;
+  c.near = 1; c.far = 400;
+  c.updateProjectionMatrix();
+  sun.shadow.bias = -0.0004;
+  sun.shadow.normalBias = 0.02;
+}

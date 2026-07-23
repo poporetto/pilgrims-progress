@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { PALETTE } from './palette';
 import { makeBear, animateBear, BearParts, block, mat } from './bear';
+import { makeShiningLight, animateShiningLight, ShiningLight, setupSunShadow } from './light';
 import { DialogueLine } from './npcs';
 
 // Chapter VII — the Hill of Difficulty.
@@ -67,8 +68,7 @@ export class HillScene {
   private zzz: Array<{ mesh: THREE.Mesh; m: THREE.MeshBasicMaterial; life: number }> = [];
   private zzzTimer = 0;
   private dust: Array<{ mesh: THREE.Mesh; m: THREE.MeshBasicMaterial; life: number; vx: number; vz: number }> = [];
-  private lightBeam: THREE.Mesh | null = null;
-  private lightHalo: THREE.Mesh | null = null;
+  private shining: ShiningLight | null = null;
   private revisit = false;
   private built = false;
 
@@ -149,8 +149,9 @@ export class HillScene {
     this.hemi = new THREE.HemisphereLight(0xf0f8ff, 0xc4e2b8, 1.05);
     s.add(this.hemi);
     const sun = new THREE.DirectionalLight(PALETTE.sun, 1.5);
-    sun.position.set(-24, 40, 22);
-    sun.castShadow = true;
+    // light from the EAST (+x) so shadows fall to the left across the hill
+    sun.position.set(52, 40, 20);
+    setupSunShadow(sun);
     sun.shadow.mapSize.set(2048, 2048);
     sun.shadow.camera.left = -50;
     sun.shadow.camera.right = 55;
@@ -319,24 +320,10 @@ export class HillScene {
       this.dust.push({ mesh, m, life: 1, vx: 0, vz: 0 });
     }
 
-    // ---------- the shining light at the ridge's end ----------
-    const beam = new THREE.Mesh(
-      new THREE.CylinderGeometry(1.4, 2.0, 14, 18, 1, true),
-      new THREE.MeshBasicMaterial({
-        color: PALETTE.light, transparent: true, opacity: 0.5,
-        side: THREE.DoubleSide, depthWrite: false, fog: false,
-      }),
-    );
-    beam.position.set(LIGHT_X + 1.5, HILL_H + 7, 0);
-    s.add(beam);
-    this.lightBeam = beam;
-    const halo = new THREE.Mesh(
-      new THREE.SphereGeometry(2.4, 18, 14),
-      new THREE.MeshBasicMaterial({ color: 0xfff9dd, transparent: true, opacity: 0.4, depthWrite: false, fog: false }),
-    );
-    halo.position.set(LIGHT_X + 1.5, HILL_H + 1.6, 0);
-    s.add(halo);
-    this.lightHalo = halo;
+    // ---------- the shining light at the ridge's end (the standard beacon) ----------
+    this.shining = makeShiningLight();
+    this.shining.group.position.set(LIGHT_X + 1.5, HILL_H, 0);
+    s.add(this.shining.group);
 
     s.add(this.christian.root);
   }
@@ -646,13 +633,6 @@ export class HillScene {
       }
     }
 
-    if (this.lightBeam) {
-      const sc = 1 + Math.sin(t * 2.2) * 0.1;
-      this.lightBeam.scale.set(sc, 1, sc);
-    }
-    if (this.lightHalo) {
-      (this.lightHalo.material as THREE.MeshBasicMaterial).opacity =
-        0.3 + 0.2 * Math.abs(Math.sin(t * 1.7));
-    }
+    if (this.shining) animateShiningLight(this.shining, t);
   }
 }

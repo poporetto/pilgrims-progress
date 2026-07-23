@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { PALETTE } from './palette';
 import { makeBear, animateBear, BearParts, block, mat } from './bear';
+import { makeShiningLight, animateShiningLight, ShiningLight, setupSunShadow } from './light';
 import { DialogueLine } from './npcs';
 
 // Chapter XI — Vanity Fair.
@@ -83,7 +84,7 @@ export class VanityScene {
   private smokeTimer = 0;
   private sparkles: Array<{ mesh: THREE.Mesh; m: THREE.MeshBasicMaterial; life: number; vx: number; vy: number; vz: number }> = [];
   private banners: THREE.Mesh[] = [];
-  private lightBeam: THREE.Mesh | null = null;
+  private shining: ShiningLight | null = null;
   private revisit = false;
   private built = false;
 
@@ -157,7 +158,7 @@ export class VanityScene {
     }
   }
 
-  // a fair-dweller: pigs, foxes, cats, dogs, mice — never bears or sheep
+  // a fair-dweller: pigs, foxes, cats, dogs, mice, frogs, rabbits — never bears or sheep
   private makeCitizen(kind: number): BearParts {
     const brights = [0xe06a7a, 0xf2a83a, 0x7fb8d9, 0xa06ac9, 0x6ac98a, 0xe0c93a];
     const oc = brights[Math.floor(Math.random() * brights.length)];
@@ -176,7 +177,11 @@ export class VanityScene {
         outfit: 'shirt', outfitColor: oc, scale: 0.95,
       });
     }
-    return makeBear({ species: 'mouse', outfit: 'shirt', outfitColor: oc, scale: 0.85 });
+    if (kind === 4) return makeBear({ species: 'mouse', outfit: 'shirt', outfitColor: oc, scale: 0.85 });
+    if (kind === 5) return makeBear({ species: 'frog', outfit: 'shirt', outfitColor: oc, scale: 0.92 });
+    if (kind === 6) return makeBear({ species: 'rabbit', fur: [0xf0e8dc, 0xcaa878, 0x8a7a66][Math.floor(Math.random() * 3)], outfit: 'dress', outfitColor: oc, scale: 0.95 });
+    // an extra cat variant, for still more faces in the crowd
+    return makeBear({ species: 'cat', fur: [0xd6cfc2, 0x4a4642, 0xe0b088][Math.floor(Math.random() * 3)], outfit: 'shirt', outfitColor: oc, scale: 0.95 });
   }
 
   // ------------------------------------------------------------ build
@@ -191,7 +196,7 @@ export class VanityScene {
     s.add(new THREE.HemisphereLight(0xf0f8ff, 0xc9d8b8, 1.1));
     const sun = new THREE.DirectionalLight(PALETTE.sun, 1.4);
     sun.position.set(-24, 40, 22);
-    sun.castShadow = true;
+    setupSunShadow(sun);
     sun.shadow.mapSize.set(2048, 2048);
     sun.shadow.camera.left = -60;
     sun.shadow.camera.right = 70;
@@ -259,7 +264,7 @@ export class VanityScene {
         stall.add(block(0.14, 2.2, 0.14, PALETTE.woodDark, -1.3, 1.1, 0.55));
         stall.add(block(0.14, 2.2, 0.14, PALETTE.woodDark, 1.3, 1.1, 0.55));
         stall.add(block(3.3, 0.16, 1.9, c, 0, 2.3, 0));                       // canopy
-        stall.add(block(3.3, 0.16, 0.5, 0xfaf6ec, 0, 2.3, side * 0.9));       // stripe
+        stall.add(block(3.3, 0.16, 0.5, 0xfaf6ec, 0, 2.42, side * 0.9));      // stripe (raised above canopy — was coplanar, causing flicker)
         // heaped wares
         for (let gI = 0; gI < 3; gI++) {
           stall.add(block(0.4 + Math.random() * 0.3, 0.35, 0.4, goods[(stallIdx + gI) % goods.length],
@@ -318,7 +323,7 @@ export class VanityScene {
 
     // ---------- the citizens of the fair ----------
     for (let i = 0; i < 14; i++) {
-      const parts = this.makeCitizen(i % 5);
+      const parts = this.makeCitizen(Math.floor(Math.random() * 8));
       const home = new THREE.Vector3(
         CITY_X0 + 3 + Math.random() * (CITY_X1 - CITY_X0 - 6),
         0, (Math.random() - 0.5) * 8,
@@ -353,12 +358,12 @@ export class VanityScene {
     // the judge's towering bench
     court.add(block(6, 2.6, 2.2, PALETTE.woodDark, 0, 1.3, -6.4));
     court.add(block(6.6, 0.4, 2.6, 0x5e4a38, 0, 2.8, -6.4));
-    // the dock where Faithful stands
-    court.add(block(2.2, 1.0, 2.2, PALETTE.wood, 5, 0.5, -1));
-    court.add(block(2.5, 0.2, 2.5, 0x8a6f52, 5, 1.05, -1));
-    // gallery benches
-    for (let b = 0; b < 3; b++) {
-      court.add(block(9, 0.5, 1.0, PALETTE.wood, -3, 0.25, 2.5 + b * 2.2));
+    // the dock where Faithful stands — on the LEFT of the room, beside the stake
+    court.add(block(2.2, 1.0, 2.2, PALETTE.wood, -5, 0.5, -1));
+    court.add(block(2.5, 0.2, 2.5, 0x8a6f52, -5, 1.05, -1));
+    // gallery benches on the right, where the crowd sits
+    for (let b = 0; b < 4; b++) {
+      court.add(block(9, 0.5, 1.0, PALETTE.wood, 4, 0.25, 2.0 + b * 2.0));
     }
     // the stake and its woodpile, dreadfully ready in the corner
     const stake = new THREE.Group();
@@ -373,6 +378,12 @@ export class VanityScene {
     this.stake = stake;
     court.position.copy(COURT);
     s.add(court);
+    // green ground under and around the courtroom, so the blue sky no longer
+    // shows below it (the main fair ground doesn't reach this far east)
+    const courtGround = new THREE.Mesh(new THREE.BoxGeometry(80, 1, 80), mat(0x93bb85));
+    courtGround.position.set(COURT.x, -0.65, COURT.z);
+    courtGround.receiveShadow = true;
+    s.add(courtGround);
     const courtLight = new THREE.PointLight(0xffe9c0, 1.6, 40);
     courtLight.position.set(COURT.x, 5.5, 0);
     s.add(courtLight);
@@ -410,13 +421,28 @@ export class VanityScene {
       so.root.rotation.y = Math.PI;
       s.add(so.root);
     });
-    // a small angry gallery
-    for (let i = 0; i < 5; i++) {
-      const cz = this.makeCitizen(i % 5);
-      cz.root.position.set(COURT.x - 6 + (i % 3) * 3, 0.5, COURT.z + 2.5 + Math.floor(i / 3) * 2.2);
+    // a larger angry gallery, seated in rows on the right side of the room
+    for (let i = 0; i < 12; i++) {
+      const cz = this.makeCitizen(Math.floor(Math.random() * 8));
+      cz.root.position.set(
+        COURT.x + 1.2 + (i % 4) * 2.3,
+        0.75, // seated up on the benches
+        COURT.z + 2.2 + Math.floor(i / 4) * 2.0,
+      );
       cz.root.rotation.y = Math.PI;
       this.scene.add(cz.root);
       this.wanderers.push({ // parked wanderers: home === target keeps them still
+        parts: cz, home: cz.root.position.clone(), target: cz.root.position.clone(),
+        wait: 9999, moving: false,
+      });
+    }
+    // a few more standing at the back and along the right wall
+    for (let i = 0; i < 5; i++) {
+      const cz = this.makeCitizen(Math.floor(Math.random() * 8));
+      cz.root.position.set(COURT.x + 3 + (i % 2) * 3, 0, COURT.z - 1 + Math.floor(i / 2) * 1.6);
+      cz.root.rotation.y = Math.PI + (Math.random() - 0.5) * 0.5;
+      this.scene.add(cz.root);
+      this.wanderers.push({
         parts: cz, home: cz.root.position.clone(), target: cz.root.position.clone(),
         wait: 9999, moving: false,
       });
@@ -440,17 +466,10 @@ export class VanityScene {
       this.sparkles.push({ mesh, m, life: 1, vx: 0, vy: 0, vz: 0 });
     }
 
-    // the light past the fair
-    const beam = new THREE.Mesh(
-      new THREE.CylinderGeometry(1.4, 2.0, 14, 18, 1, true),
-      new THREE.MeshBasicMaterial({
-        color: PALETTE.light, transparent: true, opacity: 0.55,
-        side: THREE.DoubleSide, depthWrite: false, fog: false,
-      }),
-    );
-    beam.position.set(LIGHT_X + 1.5, 7, 0);
-    s.add(beam);
-    this.lightBeam = beam;
+    // the shining light past the fair — the beacon that ends every chapter
+    this.shining = makeShiningLight();
+    this.shining.group.position.set(LIGHT_X + 1.5, 0, 0);
+    s.add(this.shining.group);
 
     s.add(this.christian.root);
   }
@@ -575,10 +594,11 @@ export class VanityScene {
         { speaker: '', text: 'Blows, fists, torn cloaks. The two pilgrims are beaten, bound, and dragged before the judgment seat of Vanity Fair.' },
       ], () => {
         this.cb.fade?.(() => {
-          this.christian.root.position.set(COURT.x - 3, 0, COURT.z + 4);
+          // Christian watches from the right of the room; Faithful stands in the
+          // dock on the LEFT (world −x), where he is later burned at the stake
+          this.christian.root.position.set(COURT.x + 4, 0, COURT.z + 4);
           this.christian.root.rotation.y = 0;
-          this.faithful.root.position.set(COURT.x + 5, 1.15, COURT.z - 1);
-          this.faithful.root.rotation.y = 0; // facing the bench... no — faces the room
+          this.faithful.root.position.set(COURT.x - 5, 1.15, COURT.z - 1);
           this.faithful.root.rotation.y = Math.PI;
           this.cb.setMusic?.('sinai');
         });
@@ -918,10 +938,7 @@ export class VanityScene {
       if (sp.life >= 1) sp.mesh.visible = false;
     }
 
-    if (this.lightBeam) {
-      const sc = 1 + Math.sin(t * 2.2) * 0.1;
-      this.lightBeam.scale.set(sc, 1, sc);
-    }
+    if (this.shining) animateShiningLight(this.shining, t);
     animateBear(this.judge, t * 0.8, false);
     if (this.phase !== 'shoving' && this.phase !== 'burning') {
       for (let i = 0; i < this.soldiers.length; i++) {
