@@ -438,7 +438,7 @@ export class HillScene {
       this.cb.playScript([
         { speaker: '', text: 'At the foot of the hill the road divides in three: a steep path straight up, marked with the King\'s golden sign — and two easy paths curving round the bottom, one to the left, one to the right.' },
         { speaker: 'Formalist', text: 'Straight UP? In this coat? Gentlemen take the level road. The left way — "Danger", is it? — merely a name. It must wind round and meet you on the far side.' },
-        { speaker: 'Hypocrisy', text: 'And I shall take the right. "Destruction" — such an unfair reputation for so smooth a path. See you at the top, friend. The sensible way is always around.' },
+        { speaker: 'Hypocrisy', text: 'And I will take the right path. "Destruction" seems like an unfair name for such a smooth road. See you at the top, friend. The sensible way must go around.' },
         { speaker: 'Christian', text: 'Friends, wait! The King marked the STEEP way. The easy paths go exactly where their names say — nowhere else!' },
         { speaker: '', text: 'But they are already walking. Formalist turns into the way called Danger, and Hypocrisy into the way called Destruction — and neither of them is ever seen again.' },
         { speaker: 'Christian', text: '…So I climb alone. "The hill, though high, I covet to ascend; the difficulty will not me offend."' },
@@ -476,7 +476,7 @@ export class HillScene {
         { speaker: 'Christian', text: 'The top! Made it at last — and before full dark, too. Now, a look at my scroll to put some heart in me for the road ahead…' },
         { speaker: 'Christian', text: '…It\'s not here. Not in my paw — not in the sling — *pats himself all over* — it\'s GONE.' },
         { speaker: 'Christian', text: '*to himself* Fool. FOOL, Christian. You slept when you should only have rested — and the King\'s own scroll slid from your paw while you snored in His arbor.' },
-        { speaker: 'Christian', text: 'That scroll is my assurance — my welcome at the Celestial City\'s gate. I cannot go one step forward without it. Back down, then… every hard-won step of it.' },
+        { speaker: 'Christian', text: 'That scroll is proof that I belong at the Celestial City. I cannot take another step without it. I have to go back down… every difficult step.' },
       ], () => {
         this.phase = 'retrace';
         this.scrollProp!.visible = true;
@@ -619,7 +619,7 @@ export class HillScene {
         this.cb.playScript([
           { speaker: '', text: 'Two travellers come pelting down the hill as though wolves were at their heels.' },
           { speaker: 'Christian', text: 'Whoa — friends! You\'re running the wrong way! What happened?' },
-          { speaker: 'Timorous', text: 'T-t-turn back! We were bound for Zion, same as you — but the farther we went, the MORE danger we saw!' },
+          { speaker: 'Timorous', text: 'T-t-turn back! We were heading to Zion too, but the farther we walked, the MORE danger we found!' },
           { speaker: 'Mistrust', text: 'Just ahead, in the very path, lie two LIONS! Asleep or awake we did not stay to find out — but whoever goes on will be torn to pieces!' },
           { speaker: 'Timorous', text: 'Turn back, turn back while you still have legs to carry you!' },
         ], () => {
@@ -647,7 +647,7 @@ export class HillScene {
         this.cb.playScript([
           { speaker: 'Christian', text: 'Lions… *swallows* Two of them. Right in the path. Perhaps I too should turn ba—' },
           { speaker: 'Christian', text: 'No. NO. Behind me lies the City of Destruction — to go back is certain death. Ahead there may be lions… but beyond the lions is LIFE.' },
-          { speaker: 'Christian', text: 'If I return, I perish. If I press on, I may yet reach the Celestial City. Then forward — fear or no fear!' },
+          { speaker: 'Christian', text: 'If I turn back, I will be lost. If I keep going, I may still reach the Celestial City. So forward I go — even when I feel afraid!' },
         ], () => {
           this.cb.setObjective('✨ Press on along the ridge, to the light at the road\'s end');
         });

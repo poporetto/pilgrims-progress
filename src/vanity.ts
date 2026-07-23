@@ -549,14 +549,14 @@ export class VanityScene {
       this.phase = 'talkative';
       this.cb.playScript([
         { speaker: '', text: 'A monkey with truly magnificent ears falls into step beside them, talking before anyone has said a word.' },
-        { speaker: 'Talkative', text: 'Pilgrims! Marvellous! I LOVE to talk of pilgrimage. Grace! Redemption! The vanity of earthly things! Name any holy subject, friends, and I shall discourse upon it for HOURS.' },
+        { speaker: 'Talkative', text: 'Pilgrims! Wonderful! I LOVE talking about pilgrimage. Grace! Rescue! The emptiness of worldly things! Choose any holy subject, friends, and I can talk about it for HOURS.' },
         { speaker: 'Faithful', text: '*whispering* Christian — what a find! He knows Scripture better than half the preachers back home!' },
-        { speaker: 'Christian', text: '*whispering back* I know this fellow, Faithful. He is Talkative, of Prating Row. He talks like an angel — and lives however he pleases. Ask him something his TONGUE cannot answer.' },
+        { speaker: 'Christian', text: '*whispering back* I know him, Faithful. He is Talkative from Prating Row. He speaks beautifully about faith, but his choices tell a different story. Ask him a question that words alone cannot answer.' },
         { speaker: 'Faithful', text: 'Hm. Friend Talkative — a question, then. Not what grace IS. How has it changed YOUR life?' },
         { speaker: 'Talkative', text: 'Changed my—? Ha! Well — the doctrine of change is a NOBLE subject! Augustine says— that is, broadly speaking, the schools hold that—' },
         { speaker: 'Faithful', text: 'And how does your faith fight your own sin? Just yours. Not sin in general.' },
-        { speaker: 'Talkative', text: '…You ask this to INSULT me. I came for stimulating conversation, not an INSPECTION! You are not fit company for a gentleman scholar. Good DAY, sirs!' },
-        { speaker: 'Christian', text: 'And there it is — religion in the mouth, and none in the paws. Poor fellow. Better he had said three words from the heart.' },
+        { speaker: 'Talkative', text: '…You only asked that to INSULT me. I came for an interesting conversation, not an INSPECTION! I refuse to travel with people who question me like this. GOODBYE!' },
+        { speaker: 'Christian', text: 'There it is — faith in his words, but not in his actions. I wish he had spoken only three honest words from his heart.' },
       ], () => {
         this.phase = 'tantrum';
         this.tantrumT = 0;
@@ -619,7 +619,7 @@ export class VanityScene {
       { speaker: 'Judge Hate-Good', text: 'The prisoner FAITHFUL stands charged: that he disturbed our trade, despised our religion of getting and spending, and spoke against the customs of this ancient fair. How does the wool-ball plead?' },
       { speaker: 'Faithful', text: 'I set myself only against what sets itself against the King of kings. If serving Him disturbs the fair, my lord, the quarrel is not mine to settle.' },
       { speaker: 'Judge Hate-Good', text: 'The KING, he says! Beelzebub is patron of this fair, little sheep, and has been these thousand years! Renounce this King of yours, buy something nice, and the court may yet be merciful.' },
-      { speaker: 'Faithful', text: 'I will not. He bought me at a price I cannot repay; I will not sell Him for anything on your stalls. Do what you have leave to do.' },
+      { speaker: 'Faithful', text: 'I will not. He rescued me at a price I could never repay, and I will not trade Him for anything in your market. Do what you have been allowed to do.' },
       { speaker: 'Judge Hate-Good', text: 'Then hear the sentence this honest court was always going to pass: GUILTY. Death by fire — and let every stall stay open to watch!' },
       { speaker: 'Christian', text: 'FAITHFUL! No—! *the pikes cross in front of him* Let me stand with him! FAITHFUL!' },
       { speaker: 'Faithful', text: 'Peace, Christian. *smiling, actually smiling* Don\'t you remember? Whom the fair kills — the King carries HOME. I\'ll simply be there before you.' },

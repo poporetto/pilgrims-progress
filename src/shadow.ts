@@ -419,7 +419,7 @@ export class ShadowScene {
         if (!this.sinkWarned) {
           this.sinkWarned = true;
           this.cb.playScript([
-            { speaker: 'Christian', text: '*hauling himself out, dripping* The mire — it had my knees, then my belt, all in a moment! One narrow path, Christian. ONE. Walk it.' },
+            { speaker: 'Christian', text: '*pulling himself out, dripping* That mud reached my knees, then my belt, all at once! There is only one narrow path, Christian. Stay on it.' },
           ]);
         }
       }
@@ -437,7 +437,7 @@ export class ShadowScene {
     if (this.phase === 'enter' && p.x > -26) {
       this.phase = 'dark';
       this.cb.playScript([
-        { speaker: '', text: 'The dark closes like water over his head. A path one stride wide; on the left a ditch with no bottom, on the right a mire with no mercy — and his little light reaches barely past his own paws.' },
+        { speaker: '', text: 'The darkness closes around him like deep water. The path is only one step wide, with a bottomless ditch on the left and deep mud on the right. His little light barely reaches beyond his paws.' },
         { speaker: 'Christian', text: '"Yea, though I walk through the valley of the shadow of death…" Keep saying it, Christian. Keep walking.' },
       ], () => {
         this.cb.setObjective('🌑 One stride wide — ditch on the left, mire on the right. Walk the line.');
@@ -482,7 +482,7 @@ export class ShadowScene {
   private runPsalm(): void {
     this.cb.playScript([
       { speaker: '', text: 'Then — a voice. Not behind, not beside: AHEAD, somewhere on the same path, steady as a heartbeat in the dark.' },
-      { speaker: '???', text: '"…though I walk through the valley of the shadow of death, I will fear no evil — for THOU art with me…"' },
+      { speaker: '???', text: '"…even though I walk through the darkest valley, I will not be afraid, because YOU are with me…"' },
       { speaker: 'Christian', text: 'Another pilgrim! Here, in this same night, on this same path — and unafraid enough to pray out loud!' },
       { speaker: 'Christian', text: 'Then God is here too — and I am not alone in the dark after all. Walk on, friend ahead. I\'m coming.' },
     ], () => {
@@ -547,7 +547,7 @@ export class ShadowScene {
       this.facePilgrimsTowardEachOther();
       this.cb.playScript([
         { speaker: 'Faithful', text: 'Then at the foot of the hill, an old man: ADAM THE FIRST, of the town of Deceit. Offered me his whole estate and his three daughters for wages — the Lust of the Flesh, the Lust of the Eyes, and the Pride of Life.' },
-        { speaker: 'Faithful', text: 'I\'ll be honest — I half wanted it. And the moment I half-turned, one came behind me swift as wind: MOSES. He knocked me flat, and beat me, and would have made an end of me.' },
+        { speaker: 'Faithful', text: 'I\'ll be honest — part of me wanted to follow her. The moment I began to turn, Moses rushed up behind me like the wind. He knocked me down and showed me how badly I had broken the law.' },
         { speaker: 'Christian', text: 'Moses?! But why?' },
         { speaker: 'Faithful', text: 'Because that is all the Law can do, friend — it shows no mercy, because it HAS none to show. I\'d be lying there still, if One had not come by with holes in His paws and bidden him stop.' },
       ], () => this.cb.setObjective('🚪 The third alcove — sour Discontent'));
@@ -569,7 +569,7 @@ export class ShadowScene {
         { speaker: 'Faithful', text: 'And last — the worst of the lot, though he has the friendliest face. SHAME. He never threatens, Christian. He only… smirks.' },
         { speaker: 'Faithful', text: '"Religion is unmanly," says he. "The clever people laugh at it. A tender conscience will embarrass you at every party in town."' },
         { speaker: 'Christian', text: 'That one has whispered at my ear too. He\'s harder to outrun than any lion.' },
-        { speaker: 'Faithful', text: 'Aye — because he waits INSIDE. I fell to him a hundred times before I saw it plain: the world\'s laughter is over in a breath. The King\'s "well done" is forever. Choose whose approval you\'ll live on, and Shame starves.' },
+        { speaker: 'Faithful', text: 'Yes — because Shame attacks us from INSIDE. I believed him many times before I understood: the world\'s laughter ends quickly, but the King\'s "well done" lasts forever. Decide whose approval matters most, and Shame loses his power.' },
         { speaker: '', text: 'The rooms of memory fade like morning mist — and the two pilgrims stand again on the valley road, in the broad light of day.' },
       ], () => {
         this.cb.fade?.(() => {

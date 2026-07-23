@@ -655,11 +655,11 @@ export class ValleyScene {
   private runConfrontation(): void {
     this.cb.playScript([
       { speaker: '', text: 'The peace shatters. Over the valley floor comes a monster the height of three houses — scaled like a fish, winged like a dragon, footed like a bear, and out of his lion\'s mouth roll fire and smoke.' },
-      { speaker: 'Apollyon', text: 'WHENCE come you, little pilgrim? And WHITHER are you bound?' },
+      { speaker: 'Apollyon', text: 'Where did you come from, little pilgrim? And where do you think you are going?' },
       { speaker: 'Christian', text: 'I come from the City of Destruction, which is the place of all evil — and I am going to the City of Zion.' },
       { speaker: 'Apollyon', text: 'Then you are MINE. I am the prince of that city — all who are born there are my subjects. Yet I am not angry. Turn back, serve me again, and what my country yields I will give you: riches. Honour. EASE.' },
       { speaker: 'Christian', text: 'I have entered the service of another King. His wages, His servants, His country — I cannot go back on it.' },
-      { speaker: 'Apollyon', text: '*a smile full of teeth* Serve HIM? YOU? You nearly drowned in the Slough. You took Worldly Wiseman\'s byway. You SLEPT on the hill and lost His scroll. You trembled at two chained lions. Shall I go on?' },
+      { speaker: 'Apollyon', text: '*a smile full of teeth* Serve HIM? YOU? You nearly drowned in the Slough. You followed Worldly Wiseman\'s wrong road. You fell ASLEEP on the hill and lost His scroll. You shook with fear at two chained lions. Want me to keep going?' },
       { speaker: 'Christian', text: '…All this is true. And you have left out more that you do not know. But the Prince I serve is merciful, and ready to forgive.' },
       { speaker: 'Christian', text: 'I got these failings in YOUR country, Apollyon — they are the reason I left it. My Prince has pardoned every one.' },
       { speaker: 'Apollyon', text: 'Then hear me plainly, worm: I am an ENEMY to this Prince. I hate His person, His laws, and His people. Here I SWEAR IT — you go no further. HERE YOU DIE.' },
@@ -715,7 +715,7 @@ export class ValleyScene {
     this.cb.playScript([
       { speaker: 'Apollyon', text: '*towering over him* NOW I have you. Prepare yourself to die — for all your fine Prince, HERE will I spill your soul!' },
       { speaker: '', text: 'Christian\'s paw, groping in the dust… closes on the hilt of his sword.' },
-      { speaker: 'Christian', text: '"REJOICE NOT AGAINST ME, O MINE ENEMY — WHEN I FALL… I SHALL ARISE!"' },
+      { speaker: 'Christian', text: '"DO NOT CELEBRATE OVER ME, MY ENEMY. THOUGH I FALL… I WILL RISE AGAIN!"' },
     ], () => {
       // revived — and the sword is the Sword of the Spirit now
       this.knockT = 0;

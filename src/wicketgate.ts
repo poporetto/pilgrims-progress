@@ -765,7 +765,7 @@ export class WicketGateScene {
       this.houseColliders.push({ x, z: 1.2, r: 0.45 });
       this.npcTalks.push({
         parts: knight, talked: false, radius: 1.3,
-        lines: [{ speaker: '', text: '(the armored man, resolute) Set down your name, friend, and take up your sword. This road is not for the faint of heart.' }],
+        lines: [{ speaker: '', text: '(the armoured man, standing bravely) Write down your name, friend, and take up your sword. This road needs courage.' }],
       });
     }
 
@@ -1262,9 +1262,9 @@ export class WicketGateScene {
         this.christian.root.rotation.y = Math.PI / 2;
         this.cb.playScript([
           { speaker: '', text: 'The gate is shut. Above it, an old inscription reads: "Knock, and it will be opened to you."' },
-          { speaker: 'Christian', text: '*knock… knock…* May I enter here? Will he within open even to a broken sinner like me?' },
+          { speaker: 'Christian', text: '*knock… knock…* May I come in? Will the keeper open the gate for someone as lost and burdened as me?' },
           { speaker: '???', text: '(a deep, warm voice, like far-off thunder that means no harm) Who knocks?' },
-          { speaker: 'Christian', text: 'A poor burdened sinner, come from the City of Destruction. I am bound for the Celestial City — they told me the way lies through this Gate.' },
+          { speaker: 'Christian', text: 'I am a burdened traveller from the City of Destruction. I am going to the Celestial City, and they told me the road begins through this Gate.' },
           { speaker: 'Goodwill', text: 'Then I gladly open it. We turn no one away who knocks — no one.' },
         ], () => {
           // the doors swing wide; a great lion stands within
@@ -1595,7 +1595,7 @@ export class WicketGateScene {
           { speaker: 'Goodwill', text: 'And yet you are HERE — muddy, singed, and standing at my Gate. That is the whole of what matters. This door was hung for the bruised and the muddy, or it was hung for no one.' },
           { speaker: 'Christian', text: 'Then… may I ask one thing more? This burden on my back. I have carried it so long. Can it be taken off here?' },
           { speaker: 'Goodwill', text: 'Not here, dear pilgrim. Be patient a little longer. Ahead lies the place of deliverance — there it will loosen of itself, and fall from your back, and roll away where no one will ever find it.' },
-          { speaker: 'Goodwill', text: 'Look east. That is the King\'s Highway — straight and narrow, built by the King and His Son. Keep to it; turn neither left nor right, and you cannot lose your way.' },
+          { speaker: 'Goodwill', text: 'Look east. That is the King\'s Highway — straight and narrow, built by the King and His Son. Stay on it without wandering away, and you will not lose your way.' },
           { speaker: 'Christian', text: 'Straight and narrow. I will keep to it, Goodwill — I promise. My heart feels lighter already… though my back, I confess, does not.' },
           { speaker: 'Goodwill', text: '*a low, warm laugh, like summer thunder* It will, Christian. Sooner than you think. Now go — and grace go with you.' },
         ], () => {

@@ -330,10 +330,10 @@ export class HighwayScene {
       this.cb.playScript([
         { speaker: '', text: 'A little way off the road, three figures lie fast asleep in the grass — and about their ankles, iron chains.' },
         { speaker: 'Christian', text: 'Hey! Friends! Wake up! You are like sailors asleep at the top of a mast — the deep sea is right under you!' },
-        { speaker: 'Christian', text: 'There are chains on your legs! If you sleep on here, the prowler of this road will take you. Get up — I\'ll help you out of your irons!' },
+        { speaker: 'Christian', text: 'There are chains on your legs! If you keep sleeping here, the danger on this road will catch you. Get up — I\'ll help you out of those chains!' },
         { speaker: 'Simple', text: '*one eye opens* Mmh? …I see no danger. *tail thumps twice, then stops*' },
         { speaker: 'Sloth', text: 'Yes… danger… terrible… just a little more sleep first…' },
-        { speaker: 'Presumption', text: 'Every tub must stand on its own bottom, dear. I shall be perfectly fine. Do mind your own knitting.' },
+        { speaker: 'Presumption', text: 'I can take care of myself, thank you. I will be perfectly fine. Please leave me alone.' },
         { speaker: '', text: 'And with that, all three roll over and sleep on.' },
         { speaker: 'Christian', text: 'Asleep, in chains, and not one of them troubled by it… I cannot wake anyone who is determined to sleep. God keep them — I must go on.' },
       ], () => {
@@ -368,7 +368,7 @@ export class HighwayScene {
     this.cb.playScript([
       { speaker: '', text: 'Two travellers come scrambling over the wall and drop onto the road, dusting themselves off as though nothing could be more ordinary.' },
       { speaker: 'Christian', text: 'Whoa—! Where did you two come from? And why over the WALL?' },
-      { speaker: 'Formalist', text: 'From the land of Vain-Glory, just beyond. We\'re bound for Mount Zion — same road as you, by the look of that seal on your brow.' },
+      { speaker: 'Formalist', text: 'We come from the land of Vain-Glory, just over there. We are heading to Mount Zion too — I can tell by the seal on your forehead.' },
       { speaker: 'Christian', text: 'But why didn\'t you come in through the Gate, back at the head of the way? The King has commanded that everyone enter there.' },
       { speaker: 'Hypocrisy', text: 'The Gate! *laughs* All the world knows the Gate is MILES out of the way. Our people have taken this shortcut for a thousand years.' },
       { speaker: 'Formalist', text: 'More than a thousand! A custom that old is as good as law — any fair judge would tell you so.' },

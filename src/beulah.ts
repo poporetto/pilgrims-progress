@@ -541,7 +541,7 @@ export class BeulahScene {
     const lines: DialogueLine[] = [
       { speaker: 'Shining One', text: 'Fear nothing now, pilgrim. The King Himself has sent for you.' },
       { speaker: 'Shining One', text: 'The way was hard, but every step of it is remembered — and every step is rewarded.' },
-      { speaker: 'Shining One', text: 'Only a little further, and you shall see Him face to face. Go up, with joy.' },
+      { speaker: 'Shining One', text: 'Only a little farther, and you will see Him face to face. Go forward with joy.' },
     ];
     this.cb.playScript([lines[this.angelLine % lines.length]]);
     this.angelLine++;
@@ -596,7 +596,7 @@ export class BeulahScene {
       { speaker: '',           text: 'Here Beulah Land ends. Before them lies a deep River, and beyond it the golden cliffs of the Celestial City — but there is no bridge.' },
       { speaker: 'Christian',  text: 'Is there no other way to the Gate?' },
       { speaker: '',           text: 'There is no way but through the River. It is the river of death; every pilgrim must pass it.' },
-      { speaker: 'Hopeful',    text: 'They told us its depth is not the same for all: "You shall find it deeper or shallower, according as you believe in the King."' },
+      { speaker: 'Hopeful',    text: 'They told us the river does not feel equally deep to everyone. The more we trust the King, the more courage we will have to cross.' },
       { speaker: 'Christian',  text: 'Then — together. Come, Hopeful. Into the water.' },
     ], () => this.beginWade());
   }
@@ -623,7 +623,7 @@ export class BeulahScene {
     this.cb.setObjective('😰 Christian is sinking — fear closes over him');
     this.cb.playScript([
       { speaker: '',          text: 'The water rises to his chest, and higher. Suddenly Christian begins to sink, and a great fear takes hold of him.' },
-      { speaker: 'Christian', text: '*gasping* The sorrows of death have compassed me about! I shall not reach the other side...' },
+      { speaker: 'Christian', text: '*gasping* Fear is closing in all around me! I do not think I can reach the other side…' },
       { speaker: 'Christian', text: 'I cannot feel Him. All I can see are my sins — the Slough, the byway, the scroll I lost, the giant\'s dungeon...' },
     ], () => this.hopefulEncourages());
   }

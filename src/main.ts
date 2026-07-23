@@ -1850,7 +1850,7 @@ const chaseArrived = { obstinate: false, pliable: false };
 
 const CHASE_LINES: DialogueLine[] = [
   { speaker: 'Obstinate', text: 'CHRISTIAN! Stop right there, you great woolly fool! Come back at once!' },
-  { speaker: 'Christian', text: 'I cannot, neighbours. This city will not stand — I go to seek a country that cannot crumble. You have seen the light yonder; come with me!' },
+  { speaker: 'Christian', text: 'I cannot stay, neighbours. This city will not last. I am searching for a country that can never crumble. You have seen the light ahead — come with me!' },
   { speaker: 'Obstinate', text: 'What?! Leave our friends, our comforts, our whole city — for a dream out of that book of yours?' },
   { speaker: 'Christian', text: 'What I seek is worth more than all we would leave behind. Come and see for yourselves!' },
   { speaker: 'Obstinate', text: 'Pah! I\'ll not be dragged on any fool\'s errand. Pliable — take his other arm. We are hauling him home.' },

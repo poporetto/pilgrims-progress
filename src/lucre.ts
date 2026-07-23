@@ -497,7 +497,7 @@ export class LucreScene {
       this.cb.playScript([
         { speaker: '', text: 'They overtake a traveller in spotless, flamboyant gear — and, catching the sun at every step, a pair of gleaming SILVER SLIPPERS.' },
         { speaker: 'By-ends', text: 'Well met, gentlemen! By-ends of Fair-speech, at your service — a pilgrim, like yourselves! Though I confess I differ from the stricter sort in two small points.' },
-        { speaker: 'By-ends', text: 'First: I never strive against wind and tide. Second: I am most zealous for religion when it walks in silver slippers — in the SUNSHINE, with applause. Surely we can travel together on those terms?' },
+        { speaker: 'By-ends', text: 'First, I never struggle against popular opinion. Second, I am most enthusiastic about faith when it brings comfort, praise, and SUNSHINE. Surely we can travel together if you agree?' },
         { speaker: 'Hopeful', text: '*whispers* He wants the crown without the cross, doesn\'t he.' },
       ], () => {
         this.cb.showChoice(
@@ -506,8 +506,8 @@ export class LucreScene {
           () => {
             // either way, plain terms — and either way, the huff
             this.cb.playScript([
-              { speaker: 'By-ends', text: '*recoiling as though splashed* Rags? IRONS? Going against the TIDE? You speak like fanatics! I shall NOT abandon my old principles — they are harmless, and PROFITABLE.' },
-              { speaker: 'By-ends', text: 'Good day to you both. I shall wait for more agreeable company — and look! Here comes some now, in a very comfortable carriage. Gentlemen of my own school days!' },
+              { speaker: 'By-ends', text: '*jumping back in surprise* Rags? CHAINS? Standing against the crowd? You sound far too serious! I will NOT abandon my old ideas. They are comfortable, and PROFITABLE.' },
+              { speaker: 'By-ends', text: 'Goodbye, both of you. I will wait for company that agrees with me. Look! Here come some old school friends in a very comfortable carriage!' },
               { speaker: '', text: 'And off he flounces through the silver mist, where three prosperous gentlemen — Mr. Hold-the-world, Mr. Money-love and Mr. Save-all — welcome him like a lost brother.' },
             ], () => {
               this.phase = 'huff';

@@ -310,7 +310,7 @@ export class MoralityScene {
     if (this.phase === 'walk' && p.x > WW_X - 3) {
       this.phase = 'diverted'; // parked during the script
       this.cb.playScript([
-        { speaker: 'Worldly Wiseman', text: 'Hello there! Good day, good day! Christian of the City of Destruction, unless I miss my guess — the bear with the famous burden!' },
+        { speaker: 'Worldly Wiseman', text: 'Hello there! You must be Christian from the City of Destruction — the bear with the famous burden!' },
         { speaker: 'Christian', text: 'Famous or not, sir, it is heavy. I\'m headed for the Wicket Gate — they say I can be rid of it there.' },
         { speaker: 'Worldly Wiseman', text: 'The Wicket Gate! Dear me. Mud, mountains, lions and worse lie on THAT road. You\'ve already had a taste of the Slough, haven\'t you?' },
         { speaker: 'Christian', text: '…I\'m still drying out, if I\'m honest.' },
@@ -399,7 +399,7 @@ export class MoralityScene {
           { speaker: 'Evangelist', text: 'Christian. What are you doing HERE?' },
           { speaker: 'Christian', text: 'E-Evangelist! A… a gentleman told me about a quicker way. A Mr. Legality, in the village of Morality, who could lift my burden without the mud and the mountains…' },
           { speaker: 'Evangelist', text: 'Listen carefully, dear bear. That gentleman is Mr. WORLDLY WISEMAN, and he loves only the wisdom of this world. He turns every pilgrim he can away from the true road.' },
-          { speaker: 'Evangelist', text: 'Mr. Legality cannot loosen a single strap of your burden — no creature has ever been set free at his door. And Civility, for all his polish, is a smiling fraud like his father.' },
+          { speaker: 'Evangelist', text: 'Mr. Legality cannot loosen even one strap of your burden. No one has ever been set free at his door. Civility may seem polite, but his promise is just as false as his father\'s.' },
           { speaker: 'Evangelist', text: 'And THIS mountain is the reason. It is Sinai — the Law itself. It thunders, it flashes, it shows your burden for what it is… but it cannot LIFT it. Trust in your own good deeds, and it will hang over you for the rest of your life.' },
           { speaker: 'Christian', text: 'Then I\'ve been a fool twice over — once into the mud, and once onto this path. Is there any hope left for me?' },
           { speaker: 'Evangelist', text: 'There is. The way you left is exactly where you left it. Go back to the true road, Christian — on to the Wicket Gate — and don\'t leave it again.' },

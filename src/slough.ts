@@ -406,7 +406,7 @@ export class SloughScene {
             { speaker: 'Pliable', text: 'FORWARD?! Into MORE of it?! Not for every crown in every city! Out of my way!' },
           ]
         : [
-            { speaker: 'Christian', text: 'Wh—whoa! The ground… it is swallowing me! This must be the mire the villagers whispered of…' },
+            { speaker: 'Christian', text: 'Wh—whoa! The ground is swallowing me! This must be the deep mud the villagers warned me about…' },
           ];
       this.cb.playScript(lines, () => {
         if (this.pliable) {
@@ -472,7 +472,7 @@ export class SloughScene {
       this.christian.root.rotation.y = Math.PI / 2;
       this.cb.splashSound();
       this.cb.playScript([
-        { speaker: 'Christian', text: '*GLUB—!* The mire closes over his ears. Sputtering mud, he claws his way back to the western bank.' },
+        { speaker: 'Christian', text: '*GLUB—!* The mud reaches his ears. Coughing and splashing, he scrambles back to the western bank.' },
         { speaker: 'Christian', text: 'It pulls hardest when I stand still… Keep moving, and catch your breath on the solid Steps!' },
       ]);
     }
@@ -497,7 +497,7 @@ export class SloughScene {
         this.christian.armR.rotation.x = 0;
         this.cb.playScript([
           { speaker: 'Christian', text: '*pant* … The bank is right there — but I cannot climb it. This burden on my back drags me down and down…' },
-          { speaker: 'Christian', text: 'Is this how the journey ends? Stuck in the mire, within sight of the way out…?' },
+          { speaker: 'Christian', text: 'Is this how the journey ends? Stuck in deep mud when I can see the way out…?' },
         ], () => {
           this.phase = 'rescue';
           this.rescueT = 0;
@@ -524,9 +524,9 @@ export class SloughScene {
           this.cb.playScript([
             { speaker: 'Pliable', text: '*scrambles out, dripping* Blegh! Pfah! Mud in my ears, mud in my whiskers, mud in places a gentle-rabbit shan\'t MENTION!' },
             { speaker: 'Pliable', text: 'If this bog is the FIRST step of your glorious journey, Christian, you may keep all the rest of it!' },
-            { speaker: 'Christian', text: 'Pliable, wait! The crowns, the city — it is all still true! One mire does not un-make it!' },
+            { speaker: 'Christian', text: 'Pliable, wait! The crowns and the city are still real! One muddy place does not change the truth!' },
             { speaker: 'Pliable', text: 'Then you may have my share of the crowns AND my share of the mud. I am going HOME. Farewell — and good luck to your poor back!' },
-            { speaker: 'Christian', text: '…And there he goes, hopping for home. *sigh* Then I cross alone. There must be solid footing somewhere beneath this mire…' },
+            { speaker: 'Christian', text: '…And there he goes, hopping home. *sigh* Then I will cross alone. There must be solid ground somewhere under this mud…' },
           ], () => {
             this.pliableStage = 'flee';
             this.phase = 'crossing';
@@ -587,7 +587,7 @@ export class SloughScene {
       } else {
         this.phase = 'epilogue';
         this.cb.playScript([
-          { speaker: '???', text: 'Ho there, friend in the mire! What do you there?' },
+          { speaker: '???', text: 'Hello there! Friend in the mud, how did you get stuck?' },
           { speaker: 'Christian', text: 'I fell in as I fled the City of Destruction — and this burden sinks me. I cannot reach the bank!' },
           { speaker: 'Help', text: 'I am called Help. But tell me — why did you not look for the Steps? Good solid stones lie through the very midst of this slough.' },
           { speaker: 'Christian', text: 'Fear chased me in so fast, I never thought to look down…' },
@@ -605,9 +605,9 @@ export class SloughScene {
           this.cb.playScript([
             { speaker: 'Christian', text: '*gasp* … Solid ground. Thank you, Help. I had nearly given up hope.' },
             { speaker: 'Help', text: 'This is the Slough of Despond, friend. When a pilgrim first wakes to how lost he is, all his fears and doubts and discouragements come running — and they settle here, in this low place.' },
-            { speaker: 'Help', text: 'The King\'s labourers have worked this patch these sixteen hundred years, yet it swallows every cartload of good ground. It cannot be mended — only crossed, by the Steps.' },
+            { speaker: 'Help', text: 'The King\'s workers have tried to repair this place for sixteen hundred years, but it swallows every load of good soil. It cannot be fixed — only crossed by using the Steps.' },
             { speaker: 'Christian', text: 'And Pliable… he struggled out on the side nearest home.' },
-            { speaker: 'Help', text: 'Aye. Many turn back at the first mire. But you came through, burden and all. Go on, Christian — the true Gate is not far now.' },
+            { speaker: 'Help', text: 'Yes. Many travellers turn back at the first patch of mud. But you made it through, burden and all. Keep going, Christian — the true Gate is not far now.' },
           ], () => {
             this.phase = 'freeroam';
             if (this.lightBeam) this.lightBeam.visible = true;

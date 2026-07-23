@@ -150,7 +150,7 @@ const DEFS: NPCDef[] = [
       s.chaseDone
         ? [
             { speaker: 'Obstinate', text: 'Oh. So you\'ve come crawling back, have you? …No? Just VISITING? Hmph.' },
-            { speaker: 'Obstinate', text: 'Moonbeams and fairy-gold. Mark my words, Christian — no good ever came of leaving a perfectly fine city.' },
+            { speaker: 'Obstinate', text: 'It sounds like a made-up dream. Listen to me, Christian — no good ever came from leaving a perfectly good city.' },
           ]
         : [
             { speaker: 'Obstinate', text: 'Hmph. Still going on about the city falling down, Christian?' },
@@ -182,7 +182,7 @@ const DEFS: NPCDef[] = [
             ? [
                 { speaker: 'Pliable', text: 'A shining light?! And a Wicket Gate?! Ooooh, tell me EVERYTHING.' },
                 { speaker: 'Christian', text: 'Evangelist says beyond the gate lies the way to the Celestial City — where no city ever crumbles.' },
-                { speaker: 'Pliable', text: 'Golden streets… crowns… no crumbling… It sounds marvellous. And far. And possibly muddy. Oh, I can\'t decide!' },
+                { speaker: 'Pliable', text: 'Golden streets… crowns… nothing falling apart… It sounds wonderful. And far away. And possibly muddy. Oh, I can\'t decide!' },
               ]
             : [
                 { speaker: 'Pliable', text: 'Oh, hello Christian! Don\'t mind old Obstinate — he grumbles at clouds, too.' },
@@ -278,7 +278,7 @@ const DEFS: NPCDef[] = [
             { speaker: 'Clover', text: 'Here — a daisy for your buttonhole. Flowers make every road shorter.' },
           ]
         : [
-            { speaker: 'Clover', text: 'Good day, Christian! My daisies came up lovely this spring, haven\'t they?' },
+            { speaker: 'Clover', text: 'Hello, Christian! My daisies grew beautifully this spring, didn\'t they?' },
             { speaker: 'Christian', text: 'They\'re lovely, Clover. I only wish I could enjoy them without this weight on my back.' },
             { speaker: 'Clover', text: 'Though… the soil\'s been trembling lately. The flowers feel it too, I think.' },
           ],
@@ -343,14 +343,14 @@ const DEFS: NPCDef[] = [
       s.talkedToEvangelist
         ? [
             { speaker: 'Evangelist', text: 'Do you see the shining light, Christian? Keep it ever before your eyes.' },
-            { speaker: 'Evangelist', text: 'Walk straight toward it, and you shall find the Wicket Gate. Knock, and it will be opened.' },
+            { speaker: 'Evangelist', text: 'Walk straight toward it and you will find the Wicket Gate. Knock, and the gate will open.' },
           ]
         : [
             { speaker: 'Evangelist', text: 'Peace to you, burdened friend. I am called Evangelist. Why do you sigh so?' },
             { speaker: 'Christian', text: 'This burden on my back grows heavier each day… and I fear our city will not stand. But I do not know where to go!' },
             { speaker: 'Evangelist', text: 'Then hear me. Beyond the fields lies a Wicket Gate, the beginning of the true way.' },
             { speaker: 'Christian', text: 'A gate? I look and look, but I cannot see any gate…' },
-            { speaker: 'Evangelist', text: 'Do you see, far off, yonder shining light?' },
+            { speaker: 'Evangelist', text: 'Can you see that shining light far away?' },
             { speaker: 'Christian', text: '…I… yes! I think I see it!' },
             { speaker: 'Evangelist', text: 'Keep that light in your eye and go straight toward it. There you will find the Gate. Now run, Christian — run and do not look back!' },
           ],

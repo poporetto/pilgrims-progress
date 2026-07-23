@@ -763,7 +763,7 @@ export class PalaceScene {
         { speaker: '', text: 'Two enormous lions rise from the shadows beside the road, and their roar rolls down the valley like thunder.' },
         { speaker: 'Christian', text: 'L-LIONS! Loose on the road! It\'s the end of me — I should never have— perhaps I can still run back—' },
         { speaker: 'Watchful', text: '*calling from the gate* HOLD, pilgrim! Do not fear the lions — they are CHAINED!' },
-        { speaker: 'Watchful', text: 'They are set there to test faith where it is, and to find out those that have none. Keep to the MIDDLE of the path, and no harm shall come to you!' },
+        { speaker: 'Watchful', text: 'They are there to test whether travellers truly trust the King. Stay in the MIDDLE of the path, and they cannot harm you!' },
         { speaker: 'Christian', text: 'The middle of the path… right between them?! …Very well. The porter has no reason to lie. Middle of the path, Christian. MIDDLE of the path.' },
       ], () => {
         this.phase = 'gauntlet';
@@ -798,9 +798,9 @@ export class PalaceScene {
     if (this.phase === 'records' && p.distanceTo(new THREE.Vector3(HALL.x + 1.4, 0.1, -6.35)) < 2.2) {
       this.phase = 'treasures';
       this.cb.playScript([
-        { speaker: 'Prudence', text: 'These are the records of the King\'s house — the deeds of His servants of old.' },
-        { speaker: 'Prudence', text: 'Here: pilgrims who subdued kingdoms, stopped the mouths of lions, and out of weakness were made strong. Not one of them was braver than you, Christian — they only trusted the same King.' },
-        { speaker: 'Christian', text: 'Stopped the mouths of lions… *smiles* I begin to see why the road came past those two.' },
+        { speaker: 'Prudence', text: 'These are the records of the King\'s house — stories of His faithful servants from long ago.' },
+        { speaker: 'Prudence', text: 'Look here: pilgrims who overcame kingdoms, survived lions, and found strength when they felt weak. They were not braver than you, Christian. They simply trusted the same King.' },
+        { speaker: 'Christian', text: 'Survived lions… *smiles* I think I understand why my road passed those two.' },
       ], () => {
         this.cb.setObjective('✨ Now to the treasure table, where the relics are kept');
       });
@@ -830,7 +830,7 @@ export class PalaceScene {
           { speaker: 'Charity', text: 'One more thing before you sleep, Christian. Come — look through the glass, away east, past the valleys and the river.' },
           { speaker: '', text: 'Far, far off — beyond more country than the eye should be able to cross — something shines: gates like pearl, and streets that glimmer like gold seen through morning mist.' },
           { speaker: 'Christian', text: '…Is that…?' },
-          { speaker: 'Charity', text: 'The Celestial City. The end of your road, pilgrim. Every step you have taken — mire, mountain and lion — has been one step nearer THAT.' },
+          { speaker: 'Charity', text: 'The Celestial City — the end of your journey. Every step through deep mud, over mountains, and past lions has carried you closer to THAT.' },
           { speaker: 'Christian', text: 'Then it\'s real. It\'s REAL, and I have seen it with my own eyes… Oh, let morning come quickly — I have such a long way still to walk!' },
         ], () => {
           this.phase = 'roofdown';
@@ -908,13 +908,13 @@ export class PalaceScene {
   private runTestimony(): void {
     this.cb.playScript([
       { speaker: '', text: 'Within, the hall is warm with lamplight. Four women of the house — Discretion, Prudence, Piety and Charity — welcome Christian to the table.' },
-      { speaker: 'Discretion', text: 'Welcome, pilgrim of the King. Rest your paws and tell us everything — how does a bear of the City of Destruction come to be so far along the way?' },
+      { speaker: 'Discretion', text: 'Welcome, traveller of the King. Rest your paws and tell us your story. How did a bear from the City of Destruction travel so far?' },
       { speaker: 'Christian', text: 'It began with a book, and a burden I could not put down. I fled my city when Evangelist showed me the far light — and fell straight into the Slough of Despond, where Help pulled me out.' },
       { speaker: 'Christian', text: 'A smooth-talking gentleman nearly turned me aside to Morality — Evangelist set me right. Goodwill drew me through the Wicket Gate, and the Interpreter showed me his six sights.' },
       { speaker: 'Christian', text: 'And then… the Cross. My burden loosed itself from my shoulders there and rolled into the empty tomb, and I never saw it again. Not for anything I did — it simply… fell away.' },
       { speaker: 'Piety', text: '*eyes shining* Grace, freely given. There is no sweeter story in all the King\'s country, and we never tire of it.' },
       { speaker: 'Christian', text: 'Since then: three sleepers who would not wake, two travellers over the wall, the Hill Difficulty — where I slept when I should have watched, and nearly lost my scroll for good.' },
-      { speaker: 'Charity', text: 'And still you are here — which tells us more about your King than about your legs, dear pilgrim. You shall stay some days with us, and go on strengthened.' },
+      { speaker: 'Charity', text: 'And you are still here. That tells us more about your faithful King than about your tired legs. Stay with us for a few days, then continue with new strength.' },
       { speaker: '', text: 'And so he does. For several days Christian rests at Palace Beautiful, and is comforted, and eats at their table, and sleeps in a chamber called Peace whose window opens toward the sunrise.' },
     ], () => {
       this.phase = 'records';
@@ -947,15 +947,15 @@ export class PalaceScene {
     const step = this.armorStep;
     const pieces: Array<{ line: DialogueLine[]; give: () => void }> = [
       {
-        line: [{ speaker: 'Discretion', text: 'The helmet of salvation — let no blow to the mind unseat what the King has settled.' }],
+        line: [{ speaker: 'Discretion', text: 'The helmet of salvation. It will remind you that the King has rescued you, even when frightening thoughts attack.' }],
         give: () => { this.armorPieces.helmet.visible = true; },
       },
       {
-        line: [{ speaker: 'Prudence', text: 'The breastplate of righteousness — not your own, pilgrim; His. Wear it over your heart.' }],
+        line: [{ speaker: 'Prudence', text: 'The breastplate of righteousness. Its goodness comes from the King, not from you. Wear it over your heart.' }],
         give: () => { this.armorPieces.breastplate.visible = true; },
       },
       {
-        line: [{ speaker: 'Piety', text: 'The shield of faith — above all, take this. It quenches every fiery dart of the wicked one.' }],
+        line: [{ speaker: 'Piety', text: 'The shield of faith. Hold it up when the enemy sends burning lies at you, and trust the King\'s promises.' }],
         give: () => { this.armorPieces.shield.visible = true; },
       },
       {
@@ -985,7 +985,7 @@ export class PalaceScene {
     this.cb.playScript([
       { speaker: '', text: 'Christian stands arrayed head to paw in the whole armor of God, the morning light bright on the steel.' },
       { speaker: 'Christian', text: 'I hardly know myself. …Thank you. All of you. For the table, and the tales, and the glimpse from the roof — and for this.' },
-      { speaker: 'Discretion', text: 'Then come — we will walk you to the east gate ourselves. The road runs downhill from here, into the Valley of Humiliation, and you shall not begin it unblessed.' },
+      { speaker: 'Discretion', text: 'Then come with us. We will walk you to the east gate. The road leads downhill into the Valley of Humiliation, and we want to bless you before you begin.' },
     ], () => {
       this.cb.fade?.(() => {
         this.christian.root.position.set(EAST_GATE_X + 1.5, 0, 0);
