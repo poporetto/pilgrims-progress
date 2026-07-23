@@ -3,6 +3,7 @@ import { PALETTE } from './palette';
 import { makeBear, animateBear, BearParts, block, mat } from './bear';
 import { makeShiningLight, animateShiningLight, ShiningLight, setupSunShadow } from './light';
 import { DialogueLine } from './npcs';
+import { addHighwayPaving } from './road';
 
 // Chapter VI — the King's Highway at evening.
 // Burden-free, Christian walks on east. Beside the road he finds three
@@ -171,16 +172,7 @@ export class HighwayScene {
     }
 
     // the Highway itself: scattered stepping stones, west → east
-    for (let i = 0; i <= 26; i++) {
-      const px = -34 + i * 3.0;
-      const pz = (Math.random() - 0.5) * 0.9;
-      const stone = block(
-        0.9 + Math.random() * 0.6, 0.14, 1.7 + Math.random() * 0.7,
-        PALETTE.path, px, 0.07, pz,
-      );
-      stone.castShadow = false;
-      s.add(stone);
-    }
+    addHighwayPaving(s, -34, 44, { width: 3.2 });
 
     // trees flanking the way
     for (const [tx, tz, blossom] of [

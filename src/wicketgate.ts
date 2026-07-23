@@ -3,6 +3,7 @@ import { PALETTE } from './palette';
 import { makeBear, animateBear, BearParts, block, mat } from './bear';
 import { setupSunShadow } from './light';
 import { DialogueLine } from './npcs';
+import { addHighwayPaving } from './road';
 
 // Chapter IV — The Wicket Gate & the House of the Interpreter.
 // A long, straight road; Christian mutters his doubts as he walks it. At the
@@ -261,12 +262,7 @@ export class WicketGateScene {
     }
 
     // ---------- the long straight road, west → the gate → the highway ----------
-    for (let i = 0; i < 30; i++) {
-      const px = -62 + i * 2.5;
-      const path = block(2.5, 0.12, 3.2, PALETTE.path, px, 0.06, 0);
-      path.castShadow = false;
-      s.add(path);
-    }
+    addHighwayPaving(s, -62, 11, { width: 3.2 });
     // lamps pacing out the lonely miles
     for (const lx of [-52, -36, -20, -4] as const) {
       const lamp = new THREE.Group();

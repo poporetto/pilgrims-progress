@@ -278,18 +278,34 @@ export function makeBear(opts: CharacterOptions = {}): BearParts {
     head.add(block(0.44, 0.32, 0.2, PALETTE.snout, 0, 0.26, 0.47));
     head.add(block(0.16, 0.12, 0.08, PALETTE.nose, 0, 0.35, 0.58));
   } else if (species === 'owl') {
-    // pointed ear tufts
-    const tuftL = block(0.14, 0.3, 0.1, fur, -0.28, 1.02, -0.04);
-    tuftL.rotation.z = 0.2;
-    head.add(tuftL);
-    const tuftR = block(0.14, 0.3, 0.1, fur, 0.28, 1.02, -0.04);
-    tuftR.rotation.z = -0.2;
-    head.add(tuftR);
-    // big round facial disks framing the eyes
-    head.add(block(0.36, 0.36, 0.08, belly, -0.24, 0.5, 0.42));
-    head.add(block(0.36, 0.36, 0.08, belly, 0.24, 0.5, 0.42));
-    // small hooked beak
-    head.add(block(0.16, 0.16, 0.16, 0xe8a23a, 0, 0.32, 0.5));
+    // Strong stepped brow and pointed ear tufts make the silhouette distinctly
+    // owl-like even at the small scale used for Interpreter and Watchful.
+    for (const side of [-1, 1]) {
+      const tuft = block(0.18, 0.38, 0.16, fur, 0.34 * side, 1.02, -0.01);
+      tuft.rotation.z = -0.25 * side;
+      head.add(tuft);
+      const brow = block(0.42, 0.13, 0.12, fur, 0.22 * side, 0.72, 0.47);
+      brow.rotation.z = -0.18 * side;
+      head.add(brow);
+      // Cream facial disks sit behind the detailed eye layers below.
+      head.add(block(0.44, 0.46, 0.1, belly, 0.23 * side, 0.49, 0.45));
+    }
+    // Two-piece golden hooked beak.
+    const beakTop = block(0.2, 0.2, 0.18, 0xe8a23a, 0, 0.34, 0.58);
+    beakTop.rotation.x = 0.2;
+    head.add(beakTop);
+    const beakTip = block(0.12, 0.16, 0.14, 0xc98428, 0, 0.22, 0.63);
+    beakTip.rotation.x = -0.28;
+    head.add(beakTip);
+    // Layered breast plumage and short wing feathers.
+    body.add(block(0.68, 0.22, 0.1, belly, 0, 0.66, bodyD / 2 + 0.08));
+    body.add(block(0.54, 0.2, 0.11, belly, 0, 0.43, bodyD / 2 + 0.09));
+    body.add(block(0.4, 0.18, 0.12, belly, 0, 0.22, bodyD / 2 + 0.1));
+    for (const side of [-1, 1]) {
+      const wing = side < 0 ? armL : armR;
+      wing.add(block(0.34, 0.18, 0.39, fur, 0, -0.13, 0));
+      wing.add(block(0.28, 0.16, 0.41, belly, 0, -0.32, 0.02));
+    }
   } else if (species === 'sheep') {
     // a fluffy wool cap over the crown (kept clear of the head's faces)
     head.add(block(1.04, 0.34, 0.9, 0xffffff, 0, 0.9, -0.02));
@@ -340,7 +356,17 @@ export function makeBear(opts: CharacterOptions = {}): BearParts {
 
   // eyes (frogs already have theirs on top)
   const eyes: THREE.Mesh[] = [];
-  if (species !== 'frog') {
+  if (species === 'owl') {
+    // Christian-style readable eyes: bright square whites with dark voxel
+    // pupils, placed fully in front of the facial disks.
+    for (const side of [-1, 1]) {
+      const white = block(0.22, 0.24, 0.07, 0xf9fbf5, 0.23 * side, 0.52, 0.525);
+      const pupil = block(0.1, 0.14, 0.055, PALETTE.nose, 0.23 * side, 0.51, 0.59);
+      head.add(white);
+      head.add(pupil);
+      eyes.push(pupil);
+    }
+  } else if (species !== 'frog') {
     const eyeL = block(0.1, 0.14, 0.05, PALETTE.nose, -0.24, 0.5, 0.41);
     const eyeR = block(0.1, 0.14, 0.05, PALETTE.nose, 0.24, 0.5, 0.41);
     head.add(eyeL);

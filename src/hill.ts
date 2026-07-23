@@ -3,6 +3,7 @@ import { PALETTE } from './palette';
 import { makeBear, animateBear, BearParts, block, mat } from './bear';
 import { makeShiningLight, animateShiningLight, ShiningLight, setupSunShadow } from './light';
 import { DialogueLine } from './npcs';
+import { addHighwayPaving } from './road';
 
 // Chapter VII — the Hill of Difficulty.
 // At the foot of a steep hill the road splits in three: the King's marked
@@ -205,14 +206,10 @@ export class HillScene {
     s.add(ridgeTrim);
 
     // the King's way: stones straight up the slope and along the ridge
-    for (let i = 0; i <= 24; i++) {
-      const px = -28 + i * 2.9;
-      const pz = (Math.random() - 0.5) * 0.8;
-      const stone = block(0.9 + Math.random() * 0.5, 0.14, 1.7 + Math.random() * 0.6,
-        PALETTE.path, px, this.groundY(px) + 0.07, pz);
-      stone.castShadow = false;
-      s.add(stone);
-    }
+    addHighwayPaving(s, -28, 42, {
+      width: 3.1,
+      yAt: (x) => this.groundY(x),
+    });
     // the King's mark at the foot of the steep way: a little gold post
     s.add(block(0.18, 1.5, 0.18, PALETTE.woodDark, FORK_X + 2.5, 0.75, -1.6));
     const mark = block(0.4, 0.4, 0.1, PALETTE.robeGold, FORK_X + 2.5, 1.6, -1.6);

@@ -3,6 +3,7 @@ import { PALETTE } from './palette';
 import { makeBear, animateBear, addPilgrimArmorDetails, BearParts, block, mat } from './bear';
 import { makeShiningLight, animateShiningLight, ShiningLight, setupSunShadow } from './light';
 import { DialogueLine } from './npcs';
+import { addHighwayPaving } from './road';
 
 // Chapter VIII — Palace Beautiful.
 // At dusk Christian reaches a shining white palace — but two enormous lions
@@ -243,17 +244,16 @@ export class PalaceScene {
     }
 
     // the road — and through the lions' stretch, a clearly narrow causeway
-    for (let i = 0; i <= 24; i++) {
-      const px = -29 + i * 3.0;
-      if (px > LION_X0 - 1 && px < LION_X1 + 2) continue;
-      const stone = block(0.9 + Math.random() * 0.5, 0.14, 1.7 + Math.random() * 0.6,
-        PALETTE.path, px, 0.07, (Math.random() - 0.5) * 0.7);
-      stone.castShadow = false;
-      s.add(stone);
-    }
+    addHighwayPaving(s, -29, LION_X0 - 1, { width: 3.1 });
+    addHighwayPaving(s, LION_X1 + 2, 43, { width: 3.1 });
     const causeway = block(LION_X1 - LION_X0 + 3, 0.16, 2.2, 0xe4d6b4, (LION_X0 + LION_X1) / 2 + 0.5, 0.08, 0);
     causeway.castShadow = false;
     s.add(causeway);
+    addHighwayPaving(s, LION_X0 - 1, LION_X1 + 2, {
+      width: 2.0,
+      height: 0.08,
+      yAt: () => 0.16,
+    });
 
     // ---------- the lions ----------
     this.lions.push(this.makeLion(-1));
@@ -395,20 +395,14 @@ export class PalaceScene {
     gateGlow.position.set(8, 2.6, -2.4); // world coords (palace door is at world x 8, z ≈ -2)
     s.add(gateGlow);
 
-    // Watchful the porter stands right at the door, in full view of the
-    // approaching pilgrim, facing back down the road toward the lions
-    this.watchful.root.position.set(10.4, 0, -1.7);
-    this.watchful.root.rotation.y = -Math.PI / 2.4;
+    // Watchful stands on the open roadside beside the gate. His old position
+    // coincided with the east pilaster at world (10.15, -1.8).
+    this.watchful.root.position.set(11.8, 0, 1.75);
+    this.watchful.root.rotation.y = -Math.PI / 2;
     s.add(this.watchful.root);
 
     // road east of the palace, to the light
-    for (let i = 0; i <= 6; i++) {
-      const px = EAST_GATE_X + 1 + i * 2.6;
-      const stone = block(0.9 + Math.random() * 0.5, 0.14, 1.7 + Math.random() * 0.6,
-        PALETTE.path, px, 0.07, (Math.random() - 0.5) * 0.7);
-      stone.castShadow = false;
-      s.add(stone);
-    }
+    addHighwayPaving(s, EAST_GATE_X + 1, EAST_GATE_X + 17, { width: 3.1 });
 
     // ---------- the great hall (interior, reached by fade) ----------
     const hall = new THREE.Group();
@@ -418,7 +412,9 @@ export class PalaceScene {
 
     // floor + walls — NO closed ceiling (the camera looks down into the hall
     // dollhouse-style; a ceiling/roof beams would hide the whole interior)
-    hall.add(block(26, 0.6, 20, CREAM, 8, -0.3, 0));
+    const hallFloor = block(26, 0.6, 20, CREAM, 8, -0.3, 0);
+    hallFloor.receiveShadow = true;
+    hall.add(hallFloor);
     hall.add(block(26, 7, 0.8, WALL, 8, 3.5, -10));
     hall.add(block(26, 7, 0.8, WALL, 8, 3.5, 10));
     hall.add(block(0.8, 7, 20, WALL, -5, 3.5, 0));
@@ -472,20 +468,36 @@ export class PalaceScene {
       hall.add(block(0.18, 0.45, 0.18, 0xcfd6dd, 8 + gx, 1.0, 1.8));
     }
 
-    // the reading desk with the King's records
-    hall.add(block(4.0, 1.5, 2.0, WOOD, 3, 0.75, -7.6));
-    hall.add(block(3.8, 0.16, 1.6, 0xfdf6e3, 3, 1.55, -7.6));
-    hall.add(block(1.8, 0.55, 0.14, 0xfdf6e3, 3.6, 1.78, -8.15));
-    hall.add(block(1.8, 0.55, 0.14, 0xfdf6e3, 2.4, 1.78, -8.15));
-    hall.add(block(4.0, 0.55, 0.18, WOOD, 3, 0.75, -8.65));
-    // scrolls and ledgers stacked beside the desk
-    for (let i = 0; i < 4; i++) {
-      hall.add(block(0.35, 0.22, 0.5, 0xfdf6e3, 1.2 + i * 0.12, 0.5 + i * 0.24, -7.2));
+    // The King's records sit neatly in the first bay between the columns.
+    // Keeping the desk compact leaves a clear aisle around both pillars.
+    const recordsX = 1.4;
+    const recordsZ = -8.05;
+    hall.add(block(3.35, 0.18, 1.55, WOOD, recordsX, 1.38, recordsZ));
+    hall.add(block(3.5, 0.12, 1.7, GOLD, recordsX, 1.5, recordsZ)); // warm brass rim
+    hall.add(block(3.18, 0.1, 1.38, 0xf6edda, recordsX, 1.57, recordsZ));
+    for (const lx of [-1.25, 1.25]) {
+      for (const lz of [-0.48, 0.48]) {
+        hall.add(block(0.22, 1.35, 0.22, WOOD, recordsX + lx, 0.68, recordsZ + lz));
+        hall.add(block(0.32, 0.12, 0.32, GOLD, recordsX + lx, 0.08, recordsZ + lz));
+      }
     }
-    hall.add(block(0.14, 1.6, 0.14, WOOD, 1.0, 0.8, -7.6));        // reading lamp post
-    const deskLamp = block(0.32, 0.32, 0.32, 0xffe08a, 1.0, 1.55, -7.6);
+    // An open illuminated ledger, with separate cream pages and a central spine.
+    hall.add(block(1.35, 0.08, 0.72, 0xfff9e9, recordsX - 0.7, 1.68, recordsZ));
+    hall.add(block(1.35, 0.08, 0.72, 0xfff9e9, recordsX + 0.7, 1.68, recordsZ));
+    hall.add(block(0.1, 0.12, 0.76, 0x9b704e, recordsX, 1.7, recordsZ));
+    for (const lineX of [-1.02, -0.68, 0.68, 1.02]) {
+      hall.add(block(0.06, 0.025, 0.5, 0xc6ad83, recordsX + lineX, 1.73, recordsZ));
+    }
+    // Scrolls and ledgers stacked beside the desk.
+    for (let i = 0; i < 3; i++) {
+      hall.add(block(0.55 + i * 0.08, 0.16, 0.72, i % 2 ? 0xa8c4d9 : 0xc9808a,
+        recordsX - 1.05, 1.66 + i * 0.17, recordsZ + 0.25));
+    }
+    hall.add(block(0.14, 1.55, 0.14, WOOD, recordsX - 1.55, 0.78, recordsZ));
+    hall.add(block(0.48, 0.12, 0.48, GOLD, recordsX - 1.55, 1.48, recordsZ));
+    const deskLamp = block(0.3, 0.3, 0.3, 0xffe08a, recordsX - 1.55, 1.68, recordsZ);
     (deskLamp.material as THREE.MeshLambertMaterial).emissive = new THREE.Color(0xffd070);
-    (deskLamp.material as THREE.MeshLambertMaterial).emissiveIntensity = 0.5;
+    (deskLamp.material as THREE.MeshLambertMaterial).emissiveIntensity = 0.7;
     hall.add(deskLamp);
 
     // the treasure table: relics under a soft glow
@@ -533,12 +545,37 @@ export class PalaceScene {
 
     hall.position.copy(HALL);
     s.add(hall);
-    const hallLight = new THREE.PointLight(0xffeecd, 2.8, 55);
-    hallLight.position.set(HALL.x + 8, 5, 0);
-    s.add(hallLight);
-    const hallFill = new THREE.PointLight(0xfff5dc, 1.4, 30);
-    hallFill.position.set(HALL.x + 3, 4, -7);
-    s.add(hallFill);
+  const hallLight = new THREE.PointLight(0xffd99e, 3.6, 58);
+  hallLight.position.set(HALL.x + 8, 5, 0);
+  s.add(hallLight);
+  const hallFill = new THREE.PointLight(0xffedc7, 2.1, 36);
+  hallFill.position.set(HALL.x + 3, 4, -7);
+  s.add(hallFill);
+  const hallFillFar = new THREE.PointLight(0xffe2ad, 1.7, 34);
+  hallFillFar.position.set(HALL.x + 15, 4.5, 6);
+  s.add(hallFillFar);
+
+  // The exterior sun's shadow camera is centred on the palace grounds, far
+  // from this offset interior. A local, feathered spotlight keeps Christian's
+  // shadow visible in the hall without changing the outdoor dusk lighting.
+  const hallShadowLight = new THREE.SpotLight(
+    0xffd39b,
+    3.1,
+    44,
+    Math.PI / 3,
+    0.72,
+    1.2,
+  );
+  hallShadowLight.position.set(HALL.x + 1, 14, 10);
+  hallShadowLight.target.position.set(HALL.x + 8, 0, 0);
+  hallShadowLight.castShadow = true;
+  hallShadowLight.shadow.mapSize.set(2048, 2048);
+  hallShadowLight.shadow.camera.near = 1;
+  hallShadowLight.shadow.camera.far = 48;
+  hallShadowLight.shadow.bias = -0.00025;
+  hallShadowLight.shadow.normalBias = 0.025;
+  hallShadowLight.shadow.radius = 4;
+  s.add(hallShadowLight, hallShadowLight.target);
 
     // ---------- the rooftop (interior area two) ----------
     const roof = new THREE.Group();
@@ -653,6 +690,10 @@ export class PalaceScene {
     this.biteCooldown = 0;
     this.bitten = false;
     this.armorStep = -1;
+    // Reset after farewells/debug re-entry, when Watchful may have been moved
+    // to the household line-up at the east gate.
+    this.watchful.root.position.set(11.8, 0, 1.75);
+    this.watchful.root.rotation.y = -Math.PI / 2;
     this.christian.root.rotation.y = Math.PI / 2;
     this.cb.setMusic?.('gate');
     if (revisit) {
@@ -754,7 +795,7 @@ export class PalaceScene {
       return;
     }
 
-    if (this.phase === 'records' && p.distanceTo(new THREE.Vector3(HALL.x + 3, 0.1, -6.4)) < 2.2) {
+    if (this.phase === 'records' && p.distanceTo(new THREE.Vector3(HALL.x + 1.4, 0.1, -6.35)) < 2.2) {
       this.phase = 'treasures';
       this.cb.playScript([
         { speaker: 'Prudence', text: 'These are the records of the King\'s house — the deeds of His servants of old.' },

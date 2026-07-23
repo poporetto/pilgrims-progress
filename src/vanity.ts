@@ -3,6 +3,7 @@ import { PALETTE } from './palette';
 import { makeBear, animateBear, addPilgrimArmorDetails, BearParts, block, mat } from './bear';
 import { makeShiningLight, animateShiningLight, ShiningLight, setupSunShadow } from './light';
 import { DialogueLine } from './npcs';
+import { addHighwayPaving } from './road';
 
 // Chapter XI — Vanity Fair.
 // On the highway Christian and Faithful fall in with Talkative — a monkey
@@ -211,14 +212,8 @@ export class VanityScene {
     s.add(ground);
 
     // highway stones outside the city, both sides
-    for (let i = 0; i <= 30; i++) {
-      const px = -33 + i * 3.0;
-      if (px > CITY_X0 - 1 && px < CITY_X1 + 1) continue;
-      const stone = block(0.9 + Math.random() * 0.5, 0.14, 1.7 + Math.random() * 0.6,
-        PALETTE.path, px, 0.07, (Math.random() - 0.5) * 0.7);
-      stone.castShadow = false;
-      s.add(stone);
-    }
+    addHighwayPaving(s, -33, CITY_X0 - 1, { width: 3.1 });
+    addHighwayPaving(s, CITY_X1 + 1, 57, { width: 3.1 });
     for (const [tx, tz, blossom] of [
       [-30, 8, true], [-24, -8, false], [-10, 8, false], [40, 8, true], [48, -8, false],
     ] as const) {

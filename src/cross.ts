@@ -3,6 +3,7 @@ import { PALETTE } from './palette';
 import { makeBear, animateBear, addShiningOneDetails, BearParts, block, mat } from './bear';
 import { makeShiningLight, animateShiningLight, ShiningLight, setupSunShadow } from './light';
 import { DialogueLine } from './npcs';
+import { addHighwayPaving } from './road';
 
 // Chapter V — the Cross and the empty tomb.
 // The narrow road climbs a green hill. At the top stands a Cross, and a
@@ -221,16 +222,10 @@ export class CrossScene {
     }
 
     // the narrow road: scattered stepping-stones with gaps, wandering slightly
-    for (let i = 0; i <= 24; i++) {
-      const px = -34 + i * 2.9;
-      const pz = (Math.random() - 0.5) * 0.9;
-      const stone = block(
-        0.85 + Math.random() * 0.55, 0.14, 1.6 + Math.random() * 0.7,
-        PALETTE.path, px, this.groundY(px, pz) + 0.06, pz,
-      );
-      stone.castShadow = false;
-      s.add(stone);
-    }
+    addHighwayPaving(s, -34, 36, {
+      width: 3.15,
+      yAt: (x, z) => this.groundY(x, z),
+    });
 
     // ---------- the Cross on the summit ----------
     const crossG = new THREE.Group();

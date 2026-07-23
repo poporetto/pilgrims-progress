@@ -399,6 +399,7 @@ function mapParty(): Array<'pliable' | 'hopeful'> {
 
 function goToMap(): void {
   mode = 'map';
+  document.getElementById('sword-btn')?.classList.remove('show');
   music.setStyle('map');
   ui.promptKey.style.display = 'none';
   setObjective(quest.celestialDone
@@ -708,6 +709,7 @@ function enterPalace(revisit: boolean): void {
 
 // ---------- Chapter IX: the Valley of Humiliation & Apollyon ----------
 const battleUI = document.getElementById('battle-ui')!;
+const swordBtn = document.getElementById('sword-btn')! as HTMLButtonElement;
 const battleFillChr = document.querySelector('#battle-ui .brow.chr .bfill')! as HTMLElement;
 const battleFillApo = document.querySelector('#battle-ui .brow.apo .bfill')! as HTMLElement;
 
@@ -1489,6 +1491,7 @@ function debugJumpToWorldMap(): void {
   keyDragActive = false;
   keyGameBox.classList.remove('open');
   battleUI.classList.remove('show', 'solo');
+  swordBtn.classList.remove('show');
   ui.dialogue.style.display = 'none';
   ui.ending.style.display = 'none';
   ui.prompt.style.display = 'none';
@@ -1662,6 +1665,12 @@ ui.talkBtn.addEventListener('click', () => {
   else if (mode === 'lucre') lucre.tryTouchPillar();
   else if (mode === 'beulah') { if (beulah.nearAngel()) beulah.talkAngel(); }
   else if (mode === 'celestial') { if (celestial.nearSaint()) celestial.talkSaint(); }
+});
+
+// Chapter IX has its own explicit combat control. It uses the same guarded
+// attack method as the keyboard, so rapid taps cannot skip the turn sequence.
+swordBtn.addEventListener('click', () => {
+  if (mode === 'valley' && !dialogueOpen && !endingOpen) valley.trySwordButton();
 });
 
 // ---------------------------------------------------------------- interaction
@@ -2511,14 +2520,12 @@ function tick(): void {
     // battle prompt: strike when it's the player's turn
     const canStrike = valley.canAttack() && !dialogueOpen && !endingOpen;
     ui.prompt.style.display = canStrike ? 'block' : 'none';
+    swordBtn.classList.toggle('show', !dialogueOpen && !endingOpen);
     if (canStrike) {
       ui.promptKey.style.display = isTouch ? 'none' : 'inline-block';
       ui.promptWho.textContent = 'Swing the sword!';
-      if (isTouch) {
-        ui.talkBtn.textContent = '⚔';
-        ui.talkBtn.style.display = 'block';
-      }
-    } else if (isTouch && !dialogueOpen) {
+    }
+    if (isTouch && !dialogueOpen) {
       ui.talkBtn.style.display = 'none';
     }
 

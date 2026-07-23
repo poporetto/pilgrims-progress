@@ -3,6 +3,7 @@ import { PALETTE } from './palette';
 import { makeBear, animateBear, addPilgrimArmorDetails, BearParts, block, mat } from './bear';
 import { makeShiningLight, animateShiningLight, ShiningLight, setupSunShadow } from './light';
 import { DialogueLine } from './npcs';
+import { addHighwayPaving } from './road';
 
 // Chapter XIII — Doubting Castle.
 // The King's Highway turns rough and rocky. Beside it a smooth green meadow
@@ -505,17 +506,12 @@ export class CastleScene {
     // irregular worn stones and little gravel seams over it; all are shallow
     // visual details and do not change Christian's walkable collision lane.
     const roadTones = [0xc9b993, 0xb9aa89, 0xd8c8a3, 0xa99d84];
-    for (let i = 0; i < 58; i++) {
-      const x = rng(WEST_EDGE - 1, LIGHT_X + 1);
-      const z = rng(-1.55, 1.55);
-      const stone = block(
-        rng(0.38, 1.15), rng(0.025, 0.055), rng(0.22, 0.62),
-        roadTones[i % roadTones.length], x, 0.035, z,
-      );
-      stone.rotation.y = rng(-0.3, 0.3);
-      stone.castShadow = false;
-      s.add(stone);
-    }
+    addHighwayPaving(s, WEST_EDGE - 1, LIGHT_X + 1, {
+      width: 3.2,
+      height: 0.075,
+      yAt: () => 0.01,
+      colors: roadTones,
+    });
     // Broken cobbles gently define the shoulders without fencing the road in.
     for (const side of [-1, 1]) {
       for (let x = WEST_EDGE; x <= LIGHT_X; x += 2.6) {

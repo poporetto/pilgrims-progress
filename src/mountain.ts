@@ -3,6 +3,7 @@ import { PALETTE } from './palette';
 import { makeBear, animateBear, addPilgrimArmorDetails, BearParts, block, mat } from './bear';
 import { makeShiningLight, animateShiningLight, ShiningLight, setupSunShadow } from './light';
 import { DialogueLine } from './npcs';
+import { addHighwayPaving } from './road';
 
 // Chapter XIV — The Delectable Mountains.
 // After Doubting Castle, Christian and Hopeful reach the bright, safe mountains
@@ -313,17 +314,16 @@ export class MountainScene {
     // Without this explicit flag, only the meadow showed Christian's shadow.
     path.receiveShadow = true;
     s.add(path);
+    addHighwayPaving(s, WEST_EDGE, LIGHT_X + 4, {
+      width: 3.2,
+      yAt: () => 0.02,
+    });
     // worn stone edging and stepping blocks along the road
     for (let px = WEST_EDGE; px <= LIGHT_X + 4; px += 2.4) {
       for (const side of [-1, 1]) {
         const edge = block(1.6, 0.08, 0.22, PALETTE.pathEdge, px, 0.08, side * 2.35);
         edge.castShadow = false;
         s.add(edge);
-      }
-      if (Math.floor(px) % 5 === 0) {
-        const stone = block(1.7, 0.12, 1.9, 0xd9c9a8, px, 0.07, 0);
-        stone.castShadow = false;
-        s.add(stone);
       }
     }
 

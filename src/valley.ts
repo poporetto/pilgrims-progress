@@ -56,10 +56,11 @@ export class ValleyScene {
   private sword: THREE.Group;          // in his paw
   private spiritSword = false;         // after the revival: bigger, blue
   private swordGlow: THREE.Mesh;
+  private swordLight: THREE.PointLight;
   private groundSword: THREE.Group;    // where it lands when he drops it
   private apollyon: THREE.Group;
-  private apWings: THREE.Mesh[] = [];
-  private apJaw: THREE.Mesh | null = null;
+  private apWings: THREE.Group[] = [];
+  private apJaw: THREE.Group | null = null;
   private apHome = new THREE.Vector3(APOLLYON_X, 0, 0);
   private chp = 100;
   private ahp = 100;
@@ -71,11 +72,16 @@ export class ValleyScene {
   private dart: THREE.Mesh;
   private swingArc: THREE.Mesh;
   // a blade ray hurled from the sword on each swing, flying out to strike Apollyon
-  private bladeRay: THREE.Mesh;
+  private bladeRay: THREE.Group;
+  private bladeRayCore: THREE.Mesh;
+  private bladeRayHalo: THREE.Mesh;
   private rayActive = false;
+  private rayDamages = false;
   private rayT = 0;
   private rayFrom = new THREE.Vector3();
   private rayTo = new THREE.Vector3();
+  private flourishT = -1;
+  private flourishLaunched = false;
   private mutters = 0;
   private smoke: Array<{ mesh: THREE.Mesh; m: THREE.MeshBasicMaterial; life: number }> = [];
   private smokeTimer = 0;
@@ -118,12 +124,19 @@ export class ValleyScene {
     this.sword.add(block(0.09, 0.95, 0.16, 0xe8edf2, 0, 0.55, 0));
     this.sword.add(block(0.3, 0.1, 0.2, PALETTE.robeGold, 0, 0.04, 0));
     this.sword.add(block(0.1, 0.24, 0.12, 0x8a6f52, 0, -0.12, 0));
+    const swordAuraGeometry = new THREE.ConeGeometry(0.22, 1.28, 4);
     this.swordGlow = new THREE.Mesh(
-      new THREE.BoxGeometry(0.3, 1.2, 0.4),
-      new THREE.MeshBasicMaterial({ color: 0x7ab8ff, transparent: true, opacity: 0, depthWrite: false }),
+      swordAuraGeometry,
+      new THREE.MeshBasicMaterial({
+        color: 0x62b8ff, transparent: true, opacity: 0,
+        depthWrite: false, blending: THREE.AdditiveBlending,
+      }),
     );
-    this.swordGlow.position.y = 0.55;
+    this.swordGlow.position.y = 0.62;
     this.sword.add(this.swordGlow);
+    this.swordLight = new THREE.PointLight(0x64bdff, 0, 5);
+    this.swordLight.position.y = 0.62;
+    this.sword.add(this.swordLight);
     this.sword.position.set(0.16, -0.5, 0.14);
     this.christian.armR.add(this.sword);
 
@@ -148,75 +161,182 @@ export class ValleyScene {
     );
     this.swingArc.visible = false;
 
-    // the flung blade ray — an elongated crescent that shoots out to Apollyon
-    const rayGroup = new THREE.Mesh(
-      new THREE.ConeGeometry(0.42, 3.2, 8),
+    // A layered, tapered blade beam: a white-blue cutting edge wrapped in a
+    // broader translucent aura, with a curved wake left by Christian's swing.
+    const rayGroup = new THREE.Group();
+    const haloGeometry = new THREE.TorusGeometry(1.45, 0.34, 4, 20, Math.PI * 1.18);
+    this.bladeRayHalo = new THREE.Mesh(
+      haloGeometry,
       new THREE.MeshBasicMaterial({
-        color: 0xe8f0ff, transparent: true, opacity: 0,
+        color: 0x4f9fff, transparent: true, opacity: 0,
         depthWrite: false, blending: THREE.AdditiveBlending,
       }),
     );
-    // the cone points along local +z after this tilt, so it flies point-first
-    rayGroup.geometry.rotateX(Math.PI / 2);
+    const coreGeometry = new THREE.TorusGeometry(1.45, 0.12, 4, 20, Math.PI * 1.18);
+    this.bladeRayCore = new THREE.Mesh(
+      coreGeometry,
+      new THREE.MeshBasicMaterial({
+        color: 0xf4fbff, transparent: true, opacity: 0,
+        depthWrite: false, blending: THREE.AdditiveBlending,
+      }),
+    );
+    this.bladeRayHalo.rotation.z = -Math.PI * 0.59;
+    this.bladeRayCore.rotation.z = -Math.PI * 0.59;
+    rayGroup.add(this.bladeRayHalo, this.bladeRayCore);
+    for (const [y, scale] of [[-0.58, 0.72], [0.58, 0.72]] as const) {
+      const wake = new THREE.Mesh(
+        new THREE.TorusGeometry(1.45, 0.14, 4, 16, Math.PI * 1.08),
+        new THREE.MeshBasicMaterial({
+          color: 0x77c7ff, transparent: true, opacity: 0.34,
+          depthWrite: false, blending: THREE.AdditiveBlending,
+        }),
+      );
+      wake.rotation.z = -Math.PI * 0.56;
+      wake.position.set(0, y * 0.25, -0.55 - Math.abs(y) * 0.35);
+      wake.scale.setScalar(scale);
+      rayGroup.add(wake);
+    }
     rayGroup.visible = false;
     rayGroup.renderOrder = 5;
     this.bladeRay = rayGroup;
 
     // ---------- APOLLYON ----------
     const a = new THREE.Group();
-    const SCALE_A = 0x5a7a5a;
-    const SCALE_B = 0x476347;
-    const BELLY = 0x3a3230;
-    // bear feet
-    for (const [fx, fz] of [[-0.9, -0.8], [-0.9, 0.8], [0.9, -0.8], [0.9, 0.8]] as const) {
-      a.add(block(0.9, 1.0, 0.9, 0x6b5a48, fx, 0.5, fz));
-      a.add(block(1.0, 0.3, 1.05, 0x59493a, fx, 0.15, fz));
+    const CHARCOAL = 0x29252e;
+    const SCALE_DARK = 0x3d2732;
+    const SCALE_MID = 0x67404a;
+    const OXBLOOD = 0x6f2028;
+    const MEMBRANE = 0xb84c42;
+    const COLD_SCALE = 0x455765;
+    const EMBER = 0xff6038;
+    const BONE = 0xd9c5a6;
+
+    // Low, muscular bear-lion legs: broad shoulders, heavy paws and bright claws.
+    for (const [fx, fz, front] of [
+      [-1.02, 0.82, true], [1.02, 0.82, true],
+      [-0.92, -0.82, false], [0.92, -0.82, false],
+    ] as const) {
+      a.add(block(front ? 0.82 : 0.72, front ? 1.42 : 1.18, 0.78,
+        front ? SCALE_DARK : CHARCOAL, fx, front ? 0.9 : 0.72, fz));
+      a.add(block(1.02, 0.34, 1.04, 0x241d24, fx, 0.18, fz + 0.14));
+      for (const clawX of [-0.27, 0, 0.27]) {
+        a.add(block(0.12, 0.12, 0.3, BONE, fx + clawX, 0.13, fz + 0.7));
+      }
     }
-    // scaled body, banded like fish scales
-    for (let i = 0; i < 5; i++) {
-      a.add(block(2.8 - i * 0.18, 0.62, 2.2 - i * 0.14, i % 2 === 0 ? SCALE_A : SCALE_B, 0, 1.3 + i * 0.6, 0));
+
+    // Predatory chest and ancient overlapping dragon scales.
+    a.add(block(2.75, 1.45, 2.25, CHARCOAL, 0, 1.85, 0));
+    a.add(block(3.05, 0.72, 2.0, SCALE_DARK, 0, 2.65, 0));
+    for (let row = 0; row < 3; row++) {
+      for (const sx of [-0.78, 0, 0.78]) {
+        const scale = block(0.68, 0.42, 0.2, row % 2 ? SCALE_MID : OXBLOOD,
+          sx + (row % 2 ? 0.18 : 0), 1.45 + row * 0.48, 1.15);
+        scale.rotation.z = Math.PI / 4;
+        a.add(scale);
+      }
     }
-    // the burning belly
-    const belly = new THREE.Mesh(
-      new THREE.BoxGeometry(1.5, 1.1, 0.3),
-      new THREE.MeshBasicMaterial({ color: 0xff7a3d }),
-    );
-    belly.position.set(0, 1.9, 1.05);
-    a.add(belly);
-    a.add(block(1.7, 1.3, 0.2, BELLY, 0, 1.9, 0.98));
-    // lion mouth on a hunched head
+    // Ember-lit belly plates.
+    for (let i = 0; i < 4; i++) {
+      const plate = block(1.25 - i * 0.08, 0.3, 0.18, i % 2 ? 0xd74531 : EMBER,
+        0, 1.25 + i * 0.38, 1.27);
+      const pm = plate.material as THREE.MeshLambertMaterial;
+      pm.emissive = new THREE.Color(0x8f160c);
+      pm.emissiveIntensity = 0.45;
+      a.add(plate);
+    }
+
+    // A tall segmented dragon neck gives him a majestic, watchful profile.
+    for (let i = 0; i < 4; i++) {
+      a.add(block(1.55 - i * 0.1, 0.72, 1.35 - i * 0.08,
+        i % 2 ? SCALE_DARK : SCALE_MID, 0, 3.3 + i * 0.58, 0.2 + i * 0.12));
+      const spine = block(0.42, 0.58, 0.32, OXBLOOD, 0, 3.55 + i * 0.58, -0.58);
+      spine.rotation.z = Math.PI / 4;
+      a.add(spine);
+    }
+
+    // Long horned dragon head with a hinged, lion-like toothy jaw.
     const head = new THREE.Group();
-    head.add(block(1.5, 1.1, 1.3, SCALE_B, 0, 0, 0));
-    head.add(block(1.0, 0.5, 0.7, 0x8a6b4a, 0, -0.25, 0.85)); // muzzle
-    const jaw = block(0.95, 0.28, 0.65, 0x6b4a32, 0, -0.62, 0.85);
+    head.add(block(1.65, 1.08, 1.65, SCALE_DARK, 0, 0, 0));
+    head.add(block(1.48, 0.7, 1.35, SCALE_MID, 0, -0.18, 1.16));
+    // A tapered crocodilian dragon muzzle: wide at the skull, narrow and low
+    // at the tip, with angular brow plates rather than a mammal's nose.
+    head.add(block(1.4, 0.46, 0.85, SCALE_MID, 0, -0.12, 1.55));
+    head.add(block(1.22, 0.38, 0.82, CHARCOAL, 0, -0.18, 2.25));
+    head.add(block(0.98, 0.3, 0.72, SCALE_DARK, 0, -0.24, 2.92));
+    head.add(block(0.42, 0.12, 0.5, OXBLOOD, -0.42, 0.08, 1.78));
+    head.add(block(0.42, 0.12, 0.5, OXBLOOD, 0.42, 0.08, 1.78));
+    // Narrow nostril slits sit flush in the upper scales.
+    head.add(block(0.2, 0.055, 0.3, 0x120e13, -0.3, -0.07, 3.18));
+    head.add(block(0.2, 0.055, 0.3, 0x120e13, 0.3, -0.07, 3.18));
+    // The dark mouth channel visually separates the two long jaws.
+    head.add(block(1.06, 0.1, 1.75, 0x160e12, 0, -0.47, 2.38));
+    const jaw = new THREE.Group();
+    jaw.add(block(1.18, 0.28, 1.82, OXBLOOD, 0, 0, 2.34));
+    jaw.add(block(0.88, 0.12, 1.48, 0x9f3840, 0, 0.17, 2.4));
+    jaw.position.y = -0.74;
     head.add(jaw);
     this.apJaw = jaw;
-    for (const tx of [-0.3, -0.1, 0.1, 0.3]) {
-      head.add(block(0.1, 0.22, 0.08, 0xffffff, tx, -0.42, 1.16));
-    }
-    head.add(block(0.16, 0.2, 0.08, 0xff4a3d, -0.4, 0.25, 0.68)); // burning eyes
-    head.add(block(0.16, 0.2, 0.08, 0xff4a3d, 0.4, 0.25, 0.68));
-    head.add(block(0.24, 0.5, 0.24, SCALE_A, -0.55, 0.75, -0.2)); // horns
-    head.add(block(0.24, 0.5, 0.24, SCALE_A, 0.55, 0.75, -0.2));
-    head.position.set(0, 4.4, 0.4);
-    a.add(head);
-    // dragon wings
+    // Fangs line both sides of the jaw, as on a dragon rather than across a
+    // flat smiling muzzle. Lower teeth travel with the animated jaw.
     for (const side of [-1, 1]) {
-      const wing = new THREE.Mesh(new THREE.BoxGeometry(0.16, 1.8, 3.2), mat(0x3f3b3a));
-      wing.geometry.translate(0, 0.9, -1.2);
-      wing.position.set(1.5 * side, 3.2, -0.6);
-      wing.rotation.z = 0.5 * side;
-      a.add(wing);
-      const wtip = new THREE.Mesh(new THREE.BoxGeometry(0.14, 1.0, 1.6), mat(0x2e2a28));
-      wtip.geometry.translate(0, 0.5, -0.7);
-      wtip.position.set(2.2 * side, 4.3, -2.2);
-      wtip.rotation.z = 0.8 * side;
-      a.add(wtip);
-      this.apWings.push(wing, wtip);
+      for (let i = 0; i < 4; i++) {
+        const toothZ = 1.72 + i * 0.48;
+        head.add(block(0.14, 0.3 - i * 0.025, 0.14, BONE,
+          side * (0.57 - i * 0.035), -0.48, toothZ));
+        jaw.add(block(0.13, 0.26 - i * 0.02, 0.13, BONE,
+          side * (0.49 - i * 0.025), 0.22, toothZ + 0.2));
+      }
     }
-    // a heavy tail
-    a.add(block(0.9, 0.7, 2.2, SCALE_A, 0, 1.2, -2.2));
-    a.add(block(0.6, 0.5, 1.4, SCALE_B, 0, 1.1, -3.6));
+    for (const ex of [-0.52, 0.52]) {
+      head.add(block(0.3, 0.3, 0.15, 0x100d12, ex, 0.22, 0.78));
+      const eyeGlow = block(0.14, 0.14, 0.08, EMBER, ex, 0.22, 0.87);
+      (eyeGlow.material as THREE.MeshLambertMaterial).emissive = new THREE.Color(0xff2418);
+      (eyeGlow.material as THREE.MeshLambertMaterial).emissiveIntensity = 1.4;
+      head.add(eyeGlow);
+      for (let h = 0; h < 3; h++) {
+        const horn = block(0.25 - h * 0.035, 0.55, 0.28, h === 2 ? BONE : OXBLOOD,
+          ex + ex * h * 0.25, 0.68 + h * 0.38, -0.3 - h * 0.16);
+        horn.rotation.z = -Math.sign(ex) * 0.28;
+        head.add(horn);
+      }
+    }
+    head.position.set(0, 5.55, 0.65);
+    a.add(head);
+
+    // Wide articulated voxel wings: dark finger bones frame ember membranes.
+    for (const side of [-1, 1]) {
+      const wing = new THREE.Group();
+      wing.add(block(3.1, 0.28, 0.32, CHARCOAL, side * 1.52, 0.8, 0));
+      wing.add(block(2.35, 0.25, 0.3, CHARCOAL, side * 3.55, 1.22, 0));
+      wing.add(block(1.8, 0.22, 0.28, CHARCOAL, side * 4.78, 0.55, 0));
+      wing.add(block(2.5, 1.18, 0.16, MEMBRANE, side * 2.5, 0.15, 0.02));
+      wing.add(block(2.1, 1.4, 0.16, 0x8e3438, side * 4.1, 0.18, 0.02));
+      for (let i = 0; i < 3; i++) {
+        const finger = block(0.22, 1.65 - i * 0.25, 0.25, CHARCOAL,
+          side * (2.65 + i * 1.15), -0.42 - i * 0.1, 0);
+        finger.rotation.z = side * (0.15 + i * 0.08);
+        wing.add(finger);
+      }
+      wing.position.set(side * 0.65, 3.35, -0.55);
+      wing.rotation.z = side * 0.18;
+      a.add(wing);
+      this.apWings.push(wing);
+    }
+
+    // Cold fish-dragon tail, tapering into a sharp forked caudal fin.
+    for (let i = 0; i < 4; i++) {
+      const tail = block(1.05 - i * 0.18, 0.72 - i * 0.08, 1.45,
+        i % 2 ? COLD_SCALE : 0x34434d, 0, 1.18 + i * 0.14, -1.75 - i * 1.15);
+      tail.rotation.x = i * 0.08;
+      a.add(tail);
+      a.add(block(0.22, 0.55, 0.42, 0x71818a, 0, 1.65 + i * 0.14, -1.9 - i * 1.15));
+    }
+    const tailFinTop = block(0.22, 1.35, 1.25, COLD_SCALE, 0, 1.95, -5.7);
+    tailFinTop.rotation.x = -0.48;
+    a.add(tailFinTop);
+    const tailFinBottom = block(0.22, 1.15, 1.1, 0x34434d, 0, 0.65, -5.65);
+    tailFinBottom.rotation.x = 0.48;
+    a.add(tailFinBottom);
     a.visible = false;
     this.apollyon = a;
   }
@@ -264,10 +384,18 @@ export class ValleyScene {
       slab.receiveShadow = true;
       s.add(slab);
     }
-    // the high west rim behind
-    const rim = block(8, HILL_H, 26, 0x74855f, HILL_X0 - 4, HILL_H / 2, 0);
+    // The high west plateau continues well beyond the opening camera view, so
+    // Christian begins on a real peak instead of beside an empty backdrop.
+    const rim = block(50, HILL_H, 32, 0x74855f, HILL_X0 - 25, HILL_H / 2, 0);
     rim.receiveShadow = true;
     s.add(rim);
+    s.add(block(48, 0.45, 30, 0x829367, HILL_X0 - 25, HILL_H + 0.22, 0));
+    for (const [x, z, w] of [
+      [-68, -10, 3.2], [-60, 9, 2.4], [-51, -8, 2.8], [-42, 10, 3.4], [-35, -10, 2.2],
+    ] as const) {
+      s.add(block(w, 0.8, w * 0.8, 0x62675b, x, HILL_H + 0.4, z));
+      s.add(block(w * 0.55, 0.45, w * 0.5, 0x74786a, x + 0.7, HILL_H + 0.9, z - 0.4));
+    }
 
     // gnarled valley scenery: dark rocks and dead trees
     for (const [rx, rz] of [[-2, -8], [4, 8], [12, -8], [18, 7], [26, -7], [-10, 8]] as const) {
@@ -291,7 +419,6 @@ export class ValleyScene {
       stone.castShadow = false;
       s.add(stone);
     }
-
     this.apollyon.position.copy(this.apHome);
     s.add(this.apollyon);
     s.add(this.groundSword);
@@ -375,17 +502,28 @@ export class ValleyScene {
     this.turn = 'busy';
     this.animKind = null;
     this.rayActive = false;
+    this.rayDamages = false;
+    this.flourishT = -1;
+    this.flourishLaunched = false;
     this.bladeRay.visible = false;
     this.dartThrown = false;
     this.spiritSword = false;
     this.mutters = 0;
     this.fleeT = 0;
+    this.smokeTimer = 0;
     this.knockT = 0;
+    this.christian.root.rotation.order = 'YXZ';
+    this.christian.root.rotation.x = 0;
+    this.christian.root.rotation.z = 0;
     this.sword.visible = true;
     this.sword.scale.setScalar(1);
     (this.swordGlow.material as THREE.MeshBasicMaterial).opacity = 0;
+    this.swordLight.intensity = 0;
     this.groundSword.visible = false;
     this.apollyon.visible = !revisit;
+    this.apollyon.traverse((object) => {
+      if (object instanceof THREE.Mesh) object.castShadow = true;
+    });
     this.apollyon.position.copy(this.apHome);
     this.apollyon.rotation.set(0, -Math.PI / 2, 0); // face west toward Christian
     if (this.healBeam) (this.healBeam.material as THREE.MeshBasicMaterial).opacity = 0;
@@ -424,19 +562,44 @@ export class ValleyScene {
     this.cb.blipSound();
   }
 
+  trySwordButton(): void {
+    if (this.canAttack()) {
+      this.tryAttack();
+      return;
+    }
+    const canFlourish = this.phase === 'descend' || this.phase === 'freeroam' || this.phase === 'done';
+    if (!canFlourish || !this.sword.visible || this.flourishT >= 0 || this.rayActive) return;
+    this.flourishT = 0;
+    this.flourishLaunched = false;
+    this.cb.blipSound();
+  }
+
   // launch the blade ray from the sword toward Apollyon; playerHit() lands when
   // it arrives (see the ray-flight update in update())
-  private launchBladeRay(): void {
+  private launchBladeRay(damaging = true): void {
     const p = this.christian.root.position;
-    this.rayFrom.set(p.x + 0.9, 1.6, p.z);
-    this.rayTo.set(this.apollyon.position.x - 1.2, 2.6, this.apollyon.position.z);
+    const facing = this.christian.root.rotation.y;
+    const fx = Math.sin(facing);
+    const fz = Math.cos(facing);
+    this.rayFrom.set(p.x + fx * 0.9, 1.6, p.z + fz * 0.9);
+    if (damaging) {
+      this.rayTo.set(this.apollyon.position.x - 1.2, 2.6, this.apollyon.position.z);
+    } else {
+      this.rayTo.set(p.x + fx * 7.5, 1.8, p.z + fz * 7.5);
+    }
     this.bladeRay.position.copy(this.rayFrom);
     const dx = this.rayTo.x - this.rayFrom.x;
     const dz = this.rayTo.z - this.rayFrom.z;
     this.bladeRay.rotation.set(0, Math.atan2(dx, dz), 0);
-    (this.bladeRay.material as THREE.MeshBasicMaterial).color.set(this.spiritSword ? 0x7ab8ff : 0xe8f0ff);
+    const haloMat = this.bladeRayHalo.material as THREE.MeshBasicMaterial;
+    const coreMat = this.bladeRayCore.material as THREE.MeshBasicMaterial;
+    haloMat.color.set(this.spiritSword ? 0x3296ff : 0xb9d9f5);
+    coreMat.color.set(this.spiritSword ? 0xf4fbff : 0xffffff);
+    haloMat.opacity = this.spiritSword ? 0.72 : 0.38;
+    coreMat.opacity = this.spiritSword ? 1 : 0.7;
     this.bladeRay.visible = true;
     this.rayActive = true;
+    this.rayDamages = damaging;
     this.rayT = 0;
     this.cb.blipSound();
   }
@@ -563,6 +726,7 @@ export class ValleyScene {
       this.sword.visible = true;
       this.sword.scale.setScalar(1.45);
       (this.swordGlow.material as THREE.MeshBasicMaterial).opacity = 0.55;
+      this.swordLight.intensity = 1.8;
       this.groundSword.visible = false;
       this.cb.setHP(this.chp, this.ahp);
       this.cb.blipSound();
@@ -577,6 +741,19 @@ export class ValleyScene {
   private beginDefeat(): void {
     this.phase = 'defeated';
     this.fleeT = 0;
+    // He may remain visible briefly for the flight animation, but his grounded
+    // shadow must vanish the instant he is beaten.
+    this.apollyon.traverse((object) => {
+      if (object instanceof THREE.Mesh) object.castShadow = false;
+    });
+    // Retire every existing belly-smoke particle so it cannot drift into the
+    // heavenly light during the healing scene.
+    for (const sm of this.smoke) {
+      sm.life = 1;
+      sm.mesh.visible = false;
+      sm.m.opacity = 0;
+    }
+    this.smokeTimer = Number.POSITIVE_INFINITY;
     this.cb.battleUI(false);
     this.cb.playScript([
       { speaker: '', text: 'The blue blade bites deep. Apollyon staggers back — and for the first time, something like FEAR crosses the monster\'s face.' },
@@ -584,6 +761,7 @@ export class ValleyScene {
       { speaker: '', text: 'He spreads his dragon wings with a crack like thunder, and flees away over the black ridges — and Christian sees him no more.' },
       { speaker: 'Christian', text: '*leaning on the sword, gasping* "In all these things… we are more than conquerors… through Him that loved us."' },
     ], () => {
+      this.apollyon.visible = false;
       this.phase = 'healing';
       this.cb.setObjective('🍃 Light falls from heaven onto the road…');
       window.setTimeout(() => this.runHealing(), 1400);
@@ -625,15 +803,35 @@ export class ValleyScene {
     const p = this.christian.root.position;
     animateBear(this.christian, t, moving && this.moveFactor() > 0);
 
-    // knocked down / getting back up (backward fall, not sideways)
+    // Apply pitch after Christian's east-facing yaw. A negative local pitch
+    // sends his head west (backward); world-Z rotation tipped him sideways.
     if (this.knockT > 0 && this.knockT < 90) {
       this.knockT = Math.max(0, this.knockT - dt);
+      this.christian.root.rotation.z = 0;
       this.christian.root.rotation.x =
-        (Math.PI / 2) * THREE.MathUtils.clamp(this.knockT / 0.5, 0, 1);
+        -(Math.PI / 2) * THREE.MathUtils.clamp(this.knockT / 0.5, 0, 1);
     } else if (this.knockT >= 90) {
-      this.christian.root.rotation.x = Math.PI / 2; // stays on back during fallen scene
+      this.christian.root.rotation.z = 0;
+      this.christian.root.rotation.x = -Math.PI / 2; // stays on his back during the fallen scene
     } else {
       this.christian.root.rotation.x = 0;
+      this.christian.root.rotation.z = 0;
+    }
+
+    // A free sword flourish is available anywhere outside the locked duel
+    // sequences. Its wave is visual only and cannot damage an unseen Apollyon.
+    if (this.flourishT >= 0) {
+      this.flourishT += dt;
+      const u = THREE.MathUtils.clamp(this.flourishT / 0.58, 0, 1);
+      this.christian.armR.rotation.x = -2.25 * Math.sin(u * Math.PI);
+      if (!this.flourishLaunched && u >= 0.42) {
+        this.flourishLaunched = true;
+        this.launchBladeRay(false);
+      }
+      if (u >= 1) {
+        this.christian.armR.rotation.x = 0;
+        this.flourishT = -1;
+      }
     }
 
     // ---------- battle animations ----------
@@ -658,7 +856,7 @@ export class ValleyScene {
         if (this.animT >= 0) {
           const u = THREE.MathUtils.clamp(this.animT / 0.5, 0, 1);
           this.apollyon.position.x = this.apHome.x - Math.sin(u * Math.PI) * 2.6;
-          if (this.apJaw) this.apJaw.position.y = -0.62 - Math.sin(u * Math.PI) * 0.2;
+          if (this.apJaw) this.apJaw.position.y = -0.74 - Math.sin(u * Math.PI) * 0.22;
           if (this.animT >= 0.55) {
             this.apollyon.position.x = this.apHome.x;
             this.animKind = null;
@@ -694,15 +892,21 @@ export class ValleyScene {
       this.rayT += dt;
       const u = THREE.MathUtils.clamp(this.rayT / 0.22, 0, 1);
       this.bladeRay.position.lerpVectors(this.rayFrom, this.rayTo, u);
-      const rm = this.bladeRay.material as THREE.MeshBasicMaterial;
-      rm.opacity = 0.85 * Math.sin(u * Math.PI) + 0.15;
-      // stretch as it flies, then snap short on impact
-      this.bladeRay.scale.set(1, 1, 1 + u * 0.6);
+      const flare = Math.sin(u * Math.PI);
+      const haloMat = this.bladeRayHalo.material as THREE.MeshBasicMaterial;
+      const coreMat = this.bladeRayCore.material as THREE.MeshBasicMaterial;
+      haloMat.opacity = (this.spiritSword ? 0.72 : 0.4) * (0.3 + flare * 0.7);
+      coreMat.opacity = (this.spiritSword ? 1 : 0.72) * (0.45 + flare * 0.55);
+      // The wave widens through the middle of its flight like a released slash.
+      this.bladeRay.scale.set(1 + flare * 0.7, 1 + flare * 0.28, 1 + u * 0.75);
+      this.bladeRay.rotation.z = (u - 0.5) * 0.32;
       if (u >= 1) {
         this.rayActive = false;
         this.bladeRay.visible = false;
         this.bladeRay.scale.set(1, 1, 1);
-        this.playerHit();
+        this.bladeRay.rotation.z = 0;
+        if (this.rayDamages) this.playerHit();
+        this.rayDamages = false;
       }
     }
 
@@ -711,15 +915,17 @@ export class ValleyScene {
       // wings beat slowly; furious flapping as he flees
       const flap = this.phase === 'defeated' ? Math.sin(t * 14) * 0.5 : Math.sin(t * 2.2) * 0.16;
       for (let i = 0; i < this.apWings.length; i++) {
-        const side = i < 2 ? -1 : 1;
-        this.apWings[i].rotation.z = (i % 2 === 0 ? 0.5 : 0.8) * side + flap * side;
+        const side = i === 0 ? -1 : 1;
+        this.apWings[i].rotation.z = (0.18 + flap) * side;
       }
       if (this.apJaw && this.phase !== 'anim') {
-        this.apJaw.position.y = -0.62 - Math.abs(Math.sin(t * 1.8)) * 0.08;
+        this.apJaw.position.y = -0.74 - Math.abs(Math.sin(t * 1.8)) * 0.08;
       }
       // belly smoke
       this.smokeTimer -= dt;
-      if (this.smokeTimer <= 0 && this.phase !== 'descend') {
+      const apollyonCanSmoke = this.phase === 'confront' || this.phase === 'battle'
+        || this.phase === 'anim' || this.phase === 'fallen';
+      if (this.smokeTimer <= 0 && apollyonCanSmoke) {
         this.smokeTimer = 0.35;
         const sm = this.smoke.find((x) => x.life >= 1);
         if (sm) {
@@ -776,6 +982,7 @@ export class ValleyScene {
       m.opacity = 0.45 + 0.45 * pulse;
       m.color.setHSL(0.6 - pulse * 0.08, 1.0, 0.6 + pulse * 0.2);
       this.swordGlow.scale.set(1 + pulse * 0.3, 1, 1 + pulse * 0.3);
+      this.swordLight.intensity = 1.5 + pulse * 1.2;
     }
   }
 }

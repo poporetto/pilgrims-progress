@@ -3,6 +3,7 @@ import { PALETTE } from './palette';
 import { makeBear, animateBear, addPilgrimArmorDetails, BearParts, block, mat } from './bear';
 import { makeShiningLight, animateShiningLight, ShiningLight, setupSunShadow } from './light';
 import { DialogueLine } from './npcs';
+import { addHighwayPaving } from './road';
 
 // Chapter XII — the Plain of Ease and the Hill Lucre.
 // Christian and Hopeful, fresh out of Vanity Fair, overtake MR. BY-ENDS of
@@ -188,17 +189,10 @@ export class LucreScene {
     }
 
     // the King's Highway: proper PAVED stones, straight and sure
-    for (let i = 0; i <= 37; i++) {
-      const px = -32 + i * 2.0;
-      const stone = block(1.9, 0.14, 2.4, 0xd9c9a8, px, 0.07, 0);
-      stone.castShadow = false;
-      s.add(stone);
-      if (i % 4 === 0) {
-        const trim = block(1.9, 0.06, 0.2, 0xc4b494, px, 0.15, 1.15);
-        trim.castShadow = false;
-        s.add(trim);
-      }
-    }
+    addHighwayPaving(s, -32, 42, {
+      width: 3.2,
+      colors: [0xd9c9a8, 0xc8b892, 0xe7d8b7, 0xbbaa87],
+    });
 
     // silver mist clinging to the off-path edges of the plain
     for (let i = 0; i < 14; i++) {
