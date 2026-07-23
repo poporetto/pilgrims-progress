@@ -3,6 +3,7 @@ import { PALETTE } from './palette';
 import { makeBear, animateBear, BearParts, block, mat } from './bear';
 import { setupSunShadow } from './light';
 import { DialogueLine } from './npcs';
+import { addHighwayPaving } from './road';
 
 // Chapter II — The Slough of Despond.
 // Christian (and Pliable, if he came) fall into the mire. Pliable scrambles
@@ -116,12 +117,23 @@ export class SloughScene {
       s.add(p);
     }
 
-    // path in from the west, out to the east
-    for (const [px, pw] of [[-22, 16], [22, 10]] as const) {
+    // King's Highway entering from the west and continuing beyond the east
+    // bank. A low foundation prevents grass showing through the tiled paving.
+    for (const [px, pw] of [[-22, 16], [30.5, 25]] as const) {
       const path = block(pw, 0.12, 3.6, 0xd9c9a8, px, 0.06, 0);
       path.castShadow = false;
       s.add(path);
     }
+    addHighwayPaving(s, -30, -14, {
+      width: 3.4,
+      height: 0.1,
+      yAt: () => 0.12,
+    });
+    addHighwayPaving(s, 18, 43, {
+      width: 3.4,
+      height: 0.1,
+      yAt: () => 0.12,
+    });
 
     // ---------- the bog itself: layered mud blobs ----------
     const mudColors = [0x8a7355, 0x7c674c, 0x6f5a42];
@@ -216,13 +228,7 @@ export class SloughScene {
     this.help.armR.add(block(0.14, 2.2, 0.14, PALETTE.woodDark, 0.1, -0.6, 0.2));
     s.add(this.help.root);
 
-    // ---------- the way out: stepping stones east from the bank ----------
-    // (raised above the bank strip and never overlapping each other, so no
-    // coplanar faces flicker near Help)
-    for (let i = 0; i < 8; i++) {
-      const px = 21 + i * 2.6;
-      s.add(block(2.1, 0.12, 3.0, PALETTE.path, px, 0.13, Math.sin(i * 0.5) * 0.5));
-    }
+    // The tiled King's Highway above continues through this eastern meadow.
     // the marsh gives way to green, sunlit meadow near the light
     for (const [tx, tz, blossom] of [
       [26, -5, true], [30, 5, false], [34, -6, false], [37, 6, true],

@@ -1,11 +1,13 @@
 import * as THREE from 'three';
 import { PALETTE } from './palette';
 import { makeBear, animateBear, BearParts, block, mat } from './bear';
+import { makeAlpineMountain } from './alpine';
 
-// The overworld: a miniature diorama of floating rounded islands over a
-// pastel sea. The plank road runs City of Destruction → Slough of Despond →
-// a CROSSROAD islet. From there the long road continues east toward the
-// misty island (future chapters) — but until Chapter III is settled, that
+// The overworld: one long voxel storybook continent surrounded by a pastel
+// sea. Distinct coloured regions preserve each chapter's identity without
+// breaking the pilgrimage into disconnected islands. The road runs City of
+// Destruction → Slough of Despond → a CROSSROAD. From there it continues
+// east toward the misty country — but until Chapter III is settled, that
 // way is barred and a smooth, pleasant byway curves south to the village of
 // Morality, where Mount Sinai broods. Party members trail behind Christian.
 
@@ -255,7 +257,8 @@ export class WorldMap {
     this.scene.add(sprite);
   }
 
-  // a rounded island: stacked low-poly discs tapering down to a point
+  // A shallow regional terrain patch embedded in the shared continent. The
+  // chapter landmarks remain grouped locally, but there is no island cliff.
   private island(x: number, z: number, r: number, top: number): THREE.Group {
     const g = new THREE.Group();
     const seg = 14;
@@ -266,17 +269,14 @@ export class WorldMap {
       m.receiveShadow = true;
       g.add(m);
     };
-    disc(r + 0.3, 0.5, top, 0.3);                       // grassy lip
-    disc(r, 0.9, 0xd8c49a, -0.25);                      // sandy cliff band
-    disc(Math.max(r - 0.8, 0.8), 1.0, 0xb9977a, -1.1);
-    disc(Math.max(r - 1.7, 0.6), 1.0, 0xa5825f, -2.0);
-    disc(Math.max(r - 2.6, 0.4), 0.8, 0x93714f, -2.8);
-    // hanging grass tufts over the lip
-    const tufts = Math.max(5, Math.round(r * 1.6));
-    for (let i = 0; i < tufts; i++) {
-      const a = (i / tufts) * Math.PI * 2 + 0.4;
-      g.add(block(0.45, 0.3, 0.45, PALETTE.grassDark,
-        Math.cos(a) * (r + 0.2), 0.14, Math.sin(a) * (r + 0.2)));
+    disc(r + 0.34, 0.12, PALETTE.grassDark, 0.48);
+    disc(r + 0.18, 0.12, top, 0.54);
+    // A few edge tufts soften the regional colour change without tracing a
+    // complete circular rim that would make it read as another island.
+    for (let i = 0; i < 4; i++) {
+      const a = i * 1.67 + 0.45;
+      g.add(block(0.38, 0.16, 0.38, PALETTE.grassDark,
+        Math.cos(a) * (r - 0.15), 0.7, Math.sin(a) * (r - 0.15)));
     }
     g.position.set(x, 0, z);
     this.scene.add(g);
@@ -355,7 +355,104 @@ export class WorldMap {
       this.sparkles.push(w);
     }
 
-    // ---------- City of Destruction island ----------
+    // ---------- one continuous voxel continent ----------
+    // Overlapping angular sections create bays and headlands while keeping
+    // every chapter and both road branches on the same connected landmass.
+    const coastSections = [
+      [-17, 10.5, 0.0], [-7, 12.5, -0.3], [3, 14.5, 0.7],
+      [13, 17.5, 1.2], [23, 13.8, 0.2], [33, 12.8, -0.2],
+      [43, 14.2, 0.4], [53, 13.0, 0.0], [63, 14.5, -0.1],
+      [73, 13.2, 0.4], [83, 14.4, 0.0], [93, 13.0, 0.1],
+      [103, 14.8, 0.2], [113, 13.5, -0.1], [121, 10.5, -0.4],
+    ] as const;
+    for (let i = 0; i < coastSections.length; i++) {
+      const [x, depth, z] = coastSections[i];
+      const lower = block(11.2, 1.0, depth + 1.6, 0xb6926f, x, -0.35, z);
+      lower.receiveShadow = true;
+      s.add(lower);
+      const soil = block(11.5, 0.38, depth + 0.8, 0xd3bd91, x, 0.28, z);
+      soil.receiveShadow = true;
+      s.add(soil);
+      const grassColor = i < 5 ? 0x9fc98c : i < 10 ? 0x93c081 : 0x9bcd82;
+      const top = block(11.7, 0.16, depth, grassColor, x, 0.43, z);
+      top.receiveShadow = true;
+      s.add(top);
+    }
+    // South-eastern bulge carries the Morality branch without making a
+    // separate island, and a few voxel capes break up the long coastline.
+    for (const [x, z, w, d, color] of [
+      [8, 7.5, 12, 8, 0xa7d49a],
+      [18, -6.4, 10, 4.5, 0x96c387],
+      [48, 6.5, 12, 4.2, 0x9ac889],
+      [88, -6.4, 11, 4.4, 0x91bf80],
+      [108, 6.4, 12, 4.6, 0xa2d189],
+    ] as const) {
+      const cape = block(w, 0.4, d, color, x, 0.3, z);
+      cape.receiveShadow = true;
+      s.add(cape);
+    }
+
+    // ---------- northern alpine backdrop ----------
+    // A continuous foothill shelf joins the range to the continent and removes
+    // the strip of sea that previously showed between grass and mountain.
+    for (let x = -19, i = 0; x <= 123; x += 10.8, i++) {
+      const shelfDepth = 10.5 + (i % 3) * 0.8;
+      const shelf = block(
+        11.4, 0.62, shelfDepth,
+        i % 2 ? 0x8fbb83 : 0x98c58a,
+        x, 0.2, -9.1 - (i % 2) * 0.25,
+      );
+      shelf.receiveShadow = true;
+      s.add(shelf);
+      const shelfSoil = block(11.2, 0.72, shelfDepth + 0.5, 0xb6926f,
+        x, -0.44, -9.1 - (i % 2) * 0.25);
+      shelfSoil.receiveShadow = true;
+      s.add(shelfSoil);
+    }
+
+    // A long range of faceted low-poly peaks frames the upper coastline. The
+    // blue stone keeps it visually distant, while white angular caps make the
+    // silhouette read immediately as friendly storybook Alps.
+    const alpinePeak = (
+      x: number, z: number, width: number, height: number,
+      blue: number, snow: number,
+    ) => {
+      const peak = makeAlpineMountain({
+        width, height, depth: width * 0.6, rock: blue, snow,
+      });
+      peak.position.set(x, 0, z);
+      s.add(peak);
+    };
+
+    // Pale far peaks, followed by a slightly darker foreground ridge.
+    for (let x = -24, i = 0; x <= 128; x += 8.2, i++) {
+      alpinePeak(
+        x, -14.5 - (i % 3) * 0.7,
+        10.8 + (i % 4) * 0.75, 5.4 + (i % 5) * 0.55,
+        i % 2 ? 0x9ebbd0 : 0xaac6d9, 0xf8fbf7,
+      );
+    }
+    for (let x = -20, i = 0; x <= 125; x += 9.0, i++) {
+      alpinePeak(
+        x, -10.2 - (i % 2) * 0.55,
+        11.0 + (i % 3) * 0.8, 4.3 + (i % 4) * 0.55,
+        i % 2 ? 0x789db8 : 0x86abc4, 0xfffdf5,
+      );
+    }
+
+    // Compact voxel conifers tie the mountain range into the continent.
+    for (let x = -19, i = 0; x <= 123; x += 6.4, i++) {
+      const pine = new THREE.Group();
+      pine.add(block(0.18, 0.8, 0.18, 0x765d45, 0, 0.4, 0));
+      pine.add(block(1.0, 0.42, 0.9, 0x527b69, 0, 0.82, 0));
+      pine.add(block(0.74, 0.42, 0.7, 0x608b75, 0, 1.15, 0));
+      pine.add(block(0.46, 0.4, 0.44, 0x719a80, 0, 1.47, 0));
+      pine.position.set(x, 0.5, -6.1 - (i % 3) * 0.45);
+      pine.scale.setScalar(0.72 + (i % 2) * 0.12);
+      s.add(pine);
+    }
+
+    // ---------- City of Destruction region ----------
     const cod = this.island(CITY.x, CITY.z, 4.6, PALETTE.grass);
     const town = new THREE.Group();
     const miniHouse = (hx: number, hz: number, roof: number) => {
@@ -898,8 +995,17 @@ export class WorldMap {
   }
 
   private nearLand(x: number, z: number): boolean {
-    for (const isl of ISLANDS) {
-      if (Math.hypot(x - isl.c.x, z - isl.c.z) < isl.r) return true;
+    // The main continent follows the long east-west pilgrimage, with a wider
+    // southern shoulder around Morality. Keep the individual chapter radii as
+    // small coastal bulges so landmark edges always count as solid land.
+    if (x >= -23 && x <= 126) {
+      const centreZ = Math.sin((x + 12) * 0.055) * 0.45;
+      const halfDepth = 6.0 + Math.sin((x + 5) * 0.11) * 0.8;
+      if (Math.abs(z - centreZ) <= halfDepth) return true;
+    }
+    if (x >= 1 && x <= 16 && z >= 2.5 && z <= 11.5) return true;
+    for (const region of ISLANDS) {
+      if (Math.hypot(x - region.c.x, z - region.c.z) < region.r) return true;
     }
     return false;
   }
@@ -1135,9 +1241,8 @@ export class WorldMap {
       (this.crossGlow.material as THREE.MeshBasicMaterial).opacity =
         0.22 + 0.18 * Math.abs(Math.sin(t * 1.1));
     }
-    for (let i = 0; i < this.islands.length; i++) {
-      this.islands[i].position.y = Math.sin(t * 0.6 + i * 2.1) * 0.04;
-    }
+    // Regional landmarks are rooted in one continent, so they no longer bob
+    // independently like floating islands.
     for (let i = 0; i < this.sparkles.length; i++) {
       const sp = this.sparkles[i];
       (sp.material as THREE.MeshBasicMaterial).opacity =

@@ -20,6 +20,7 @@ import { CastleScene } from './castle';
 import { MountainScene } from './mountain';
 import { BeulahScene } from './beulah';
 import { CelestialScene } from './celestial';
+import { makeAlpineMountain } from './alpine';
 
 // ---------------------------------------------------------------- setup
 
@@ -142,42 +143,30 @@ for (const side of [-1, 1]) {
     }
   }
 }
-// Real stepped voxel mountains replace the flat title-page silhouettes.
-// Their bases sit behind the highway and their summits remain deliberately
-// lower in frame so the book title keeps a calm margin of sky.
+// The title uses the same faceted alpine language as the world map. Their
+// bases sit behind the highway and their summits remain deliberately lower in
+// frame so the book title keeps a calm margin of sky.
 function addTitleMountain(
-  x: number, z: number, width: number, levels: number,
+  x: number, z: number, width: number, height: number,
   colors: [number, number, number],
 ): void {
-  const mountain = new THREE.Group();
-  let y = 0;
-  for (let level = 0; level < levels; level++) {
-    const tierH = 0.78 + (level % 2) * 0.16;
-    const tierW = width * (1 - level / (levels + 1));
-    const tierD = 3.8 * (1 - level / (levels + 2));
-    const rock = block(
-      tierW, tierH, tierD, colors[level % colors.length],
-      ((level % 3) - 1) * 0.16, y + tierH / 2, level * 0.12,
-    );
-    rock.rotation.y = ((level % 3) - 1) * 0.025;
-    rock.castShadow = true;
-    rock.receiveShadow = true;
-    mountain.add(rock);
-    y += tierH * 0.82;
-  }
-  const cap = block(width * 0.3, 0.62, 1.35, 0xffffff, 0, y + 0.18, levels * 0.12);
-  cap.castShadow = true;
-  mountain.add(cap);
-  // Small side crags keep each peak from reading as a perfect staircase.
-  mountain.add(block(width * 0.24, 1.25, 1.8, colors[1], -width * 0.42, 0.62, 0.5));
-  mountain.add(block(width * 0.2, 0.95, 1.5, colors[0], width * 0.43, 0.47, 0.25));
+  const mountain = makeAlpineMountain({
+    width,
+    height,
+    depth: width * 0.55,
+    rock: colors[1],
+    rockLight: colors[0],
+    snow: 0xfffdf7,
+    snowHeightRatio: 0.375,
+    castShadow: true,
+  });
   mountain.position.set(x, -0.1, z);
   titleJourneyScene.add(mountain);
 }
-addTitleMountain(-10.5, -7.8, 7.2, 7, [0xb5d8eb, 0x91bfd9, 0xc6e2ef]);
-addTitleMountain(-3.7, -8.6, 9.0, 8, [0xa5cee4, 0x7fb3d1, 0xbadcec]);
-addTitleMountain(4.5, -8.3, 8.4, 7, [0xafd5e8, 0x88b9d4, 0xc2e0ed]);
-addTitleMountain(11.2, -7.7, 6.8, 6, [0xc0ddec, 0x9bc5dc, 0xcde5ef]);
+addTitleMountain(-10.5, -11.23, 8.64, 6.3, [0xb5d8eb, 0x91bfd9, 0xc6e2ef]);
+addTitleMountain(-3.7, -12.38, 10.8, 7.2, [0xa5cee4, 0x7fb3d1, 0xbadcec]);
+addTitleMountain(4.5, -11.95, 10.08, 6.7, [0xafd5e8, 0x88b9d4, 0xc2e0ed]);
+addTitleMountain(11.2, -11.09, 8.16, 5.8, [0xc0ddec, 0x9bc5dc, 0xcde5ef]);
 
 const titleChristian = makeBear({
   species: 'bear', fur: PALETTE.bearBrown,
@@ -234,9 +223,10 @@ const camera = new THREE.PerspectiveCamera(
   50, window.innerWidth / window.innerHeight, 0.1, 300,
 );
 
-// soft pastel lighting
-scene.add(new THREE.HemisphereLight(0xf1f6ff, 0xdcebd2, 1.25));
-const sun = new THREE.DirectionalLight(PALETTE.sun, 1.02);
+// Warm, soft morning light for Chapter I: creamy sky fill, gentle golden
+// sunlight and an earthy grass bounce keep the village welcoming.
+scene.add(new THREE.HemisphereLight(0xfff0dc, 0xd9d2b5, 1.28));
+const sun = new THREE.DirectionalLight(0xffd6a3, 1.08);
 // Mid-morning sun: still eastward but lower and slightly south of the road,
 // so shadows fall on a clear diagonal rather than straight across the ground.
 sun.position.set(50, 136, 0);

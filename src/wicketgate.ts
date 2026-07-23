@@ -147,6 +147,8 @@ export class WicketGateScene {
   private peekVolley = 0;        // arrows left to fire in the current peek volley
   private peekArrowTimer = 0;
   private goodwillNear = false;  // hysteresis for re-approaching Goodwill after the gate scene
+  private goodwillEntering = false;
+  private goodwillEntranceDone: (() => void) | null = null;
 
   // ---------- the House of the Interpreter ----------
   private interpreter: BearParts;
@@ -331,14 +333,55 @@ export class WicketGateScene {
     const castle = new THREE.Group();
     const DARK = 0x5a5464;
     const DARKER = 0x494452;
-    castle.add(block(7, 3, 5.5, 0x6e6878, 0, 1.5, 0)); // crag base
+    // Layered, uneven crag rooted into the hillside.
+    castle.add(block(9.2, 1.2, 7.4, 0x76717d, 0, 0.6, 0));
+    castle.add(block(8.0, 1.2, 6.5, 0x686370, -0.35, 1.55, -0.15));
+    castle.add(block(7, 1.2, 5.5, 0x5e5967, 0.2, 2.45, 0));
     castle.add(block(5.5, 3.4, 4.2, DARK, 0, 4.4, 0));  // keep
     castle.add(block(1.6, 5.4, 1.6, DARKER, -2.6, 4.8, -1.4)); // towers
     castle.add(block(1.6, 6.2, 1.6, DARKER, 2.4, 5.2, 1.2));
     castle.add(block(1.3, 4.8, 1.3, DARK, 2.6, 4.5, -1.8));
+    castle.add(block(1.45, 4.9, 1.45, DARKER, -2.45, 4.55, 1.5));
+    // Curtain-wall shoulders connect every tower into one fortress silhouette.
+    castle.add(block(5.5, 2.1, 0.7, 0x514b5b, 0, 4.0, 2.05));
+    castle.add(block(5.5, 2.0, 0.7, 0x514b5b, 0, 4.0, -2.05));
+    castle.add(block(0.7, 2.0, 3.5, 0x514b5b, -2.55, 4.0, 0));
+    castle.add(block(0.7, 2.0, 3.5, 0x514b5b, 2.55, 4.0, 0));
     // jagged battlements
     for (let i = 0; i < 5; i++) {
       castle.add(block(0.7, 0.7, 0.7, DARKER, -2 + i * 1.05, 6.4, 0));
+    }
+    // Crenellations around the front wall and tower tops.
+    for (const z of [-2.22, 2.22]) {
+      for (let i = 0; i < 6; i++) {
+        castle.add(block(0.5, 0.55, 0.5, 0x403b49, -2.45 + i * 0.98, 5.35, z));
+      }
+    }
+    for (const [tx, ty, tz, tw] of [
+      [-2.6, 7.75, -1.4, 1.9], [2.4, 8.55, 1.2, 1.9],
+      [2.6, 7.05, -1.8, 1.55], [-2.45, 7.05, 1.5, 1.7],
+    ] as const) {
+      const roof = new THREE.Mesh(
+        new THREE.ConeGeometry(tw * 0.72, 1.45, 4),
+        mat(0x342f3c),
+      );
+      roof.position.set(tx, ty, tz);
+      roof.rotation.y = Math.PI / 4;
+      roof.castShadow = true;
+      castle.add(roof);
+    }
+    // A recessed gate and iron teeth face the Wicket Gate across the road.
+    castle.add(block(1.55, 1.9, 0.16, 0x211d27, 0, 3.75, 2.43));
+    castle.add(block(2.15, 0.42, 0.32, 0x403b49, 0, 4.82, 2.38));
+    for (const gx of [-0.58, -0.2, 0.2, 0.58]) {
+      castle.add(block(0.1, 1.7, 0.12, 0x18151c, gx, 3.78, 2.54));
+    }
+    // Narrow arrow slits make the threat of the archers visible.
+    for (const [wx, wy, wz] of [
+      [-1.65, 4.55, 2.42], [1.65, 4.55, 2.42],
+      [-2.6, 5.55, -0.55], [2.42, 6.1, 1.98],
+    ] as const) {
+      castle.add(block(0.16, 0.62, 0.08, 0x17141c, wx, wy, wz));
     }
     // banner
     castle.add(block(0.1, 2.4, 0.1, DARKER, 0, 8, 0));
@@ -906,6 +949,8 @@ export class WicketGateScene {
     this.peekBlocked = false;
     this.peekVolley = 0;
     this.goodwillNear = false;
+    this.goodwillEntering = false;
+    this.goodwillEntranceDone = null;
     this.christian.root.position.set(-60, 0, 0);
     this.christian.root.rotation.y = Math.PI / 2;
     this.scene.add(this.christian.root);
@@ -1267,21 +1312,27 @@ export class WicketGateScene {
           { speaker: 'Christian', text: 'I am a burdened traveller from the City of Destruction. I am going to the Celestial City, and they told me the road begins through this Gate.' },
           { speaker: 'Goodwill', text: 'Then I gladly open it. We turn no one away who knocks — no one.' },
         ], () => {
-          // the doors swing wide; a great lion stands within
+          // The doors swing wide while Goodwill walks out from within rather
+          // than appearing instantly in the gateway.
           this.doorOpen = true;
           this.goodwill.root.visible = true;
+          this.goodwill.root.position.set(GATE_X + 5.2, 0, 0);
+          this.goodwill.root.rotation.y = -Math.PI / 2;
+          this.goodwillEntering = true;
           this.cb.blipSound();
-          this.cb.playScript([
-            { speaker: '', text: 'The doors swing open — and there stands a LION, golden-maned and robed in white, filling the gateway like sunrise.' },
-            { speaker: 'Goodwill', text: 'I am Goodwill, keeper of this Gate. But don\'t stand in the open, friend—' },
-            { speaker: 'Goodwill', text: 'That castle over there belongs to BEELZEBUB, and his archers shoot at every pilgrim who dares my doorstep. QUICKLY — give me your paw!' },
-          ], () => {
-            this.phase = 'volley';
-            this.volleyT = 0;
-            this.arrowTimer = 0;
-            this.cb.rumbleSound();
-            this.cb.setObjective('🏹 Arrows from the dark castle…!');
-          });
+          this.goodwillEntranceDone = () => {
+            this.cb.playScript([
+              { speaker: '', text: 'The doors swing open. A golden-maned LION in a white robe walks quickly from inside, warm and bright as sunrise.' },
+              { speaker: 'Goodwill', text: 'I am Goodwill, keeper of this Gate. But don\'t stand in the open, friend—' },
+              { speaker: 'Goodwill', text: 'That castle over there belongs to BEELZEBUB, and his archers shoot at every pilgrim who reaches my doorstep. QUICKLY — give me your paw!' },
+            ], () => {
+              this.phase = 'volley';
+              this.volleyT = 0;
+              this.arrowTimer = 0;
+              this.cb.rumbleSound();
+              this.cb.setObjective('🏹 Arrows from the dark castle…!');
+            });
+          };
         });
         return;
       }
@@ -1307,7 +1358,31 @@ export class WicketGateScene {
   update(dt: number, t: number, moving: boolean): void {
     if (!this.built) return;
     animateBear(this.christian, t, moving && this.moveFactor() > 0);
-    if (this.goodwill.root.visible) animateBear(this.goodwill, t + 0.7, false);
+    if (this.goodwill.root.visible) {
+      if (this.goodwillEntering) {
+        const targetX = GATE_X + 1.55;
+        const remaining = this.goodwill.root.position.x - targetX;
+        if (remaining > 0.08) {
+          this.goodwill.root.position.x -= Math.min(remaining, dt * 3.0);
+          this.goodwill.root.rotation.y = -Math.PI / 2;
+          animateBear(this.goodwill, t + 0.7, true);
+        } else {
+          this.goodwill.root.position.x = targetX;
+          this.goodwillEntering = false;
+          animateBear(this.goodwill, t + 0.7, false);
+          const onArrive = this.goodwillEntranceDone;
+          this.goodwillEntranceDone = null;
+          onArrive?.();
+        }
+      } else {
+        // Goodwill keeps his attention on Christian during conversations and
+        // whenever the player approaches him again.
+        const dx = this.christian.root.position.x - this.goodwill.root.position.x;
+        const dz = this.christian.root.position.z - this.goodwill.root.position.z;
+        if (Math.hypot(dx, dz) > 0.05) this.goodwill.root.rotation.y = Math.atan2(dx, dz);
+        animateBear(this.goodwill, t + 0.7, false);
+      }
+    }
 
     // foot-dust puffs while walking
     if (moving) {
@@ -1536,7 +1611,9 @@ export class WicketGateScene {
     }
 
     // the gate doors swing
-    const doorTarget = this.doorOpen ? 1.7 : 0;
+    // Match Chapter I: stop just short of 90° so panels never swing through
+    // the flanking pillars or overlap the wall.
+    const doorTarget = this.doorOpen ? 1.5 : 0;
     if (this.doorL && this.doorR) {
       this.doorL.rotation.y += (-doorTarget - this.doorL.rotation.y) * 0.06;
       this.doorR.rotation.y += (doorTarget - this.doorR.rotation.y) * 0.06;

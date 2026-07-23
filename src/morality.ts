@@ -37,9 +37,13 @@ export class MoralityScene {
   private mountain: THREE.Group | null = null;
   private fireSeams: THREE.Mesh[] = [];
   private fireLight: THREE.PointLight | null = null;
-  private sparks: Array<{ mesh: THREE.Mesh; m: THREE.MeshBasicMaterial; life: number; vx: number; vz: number }> = [];
+  private sparks: Array<{
+    mesh: THREE.Mesh; m: THREE.MeshBasicMaterial;
+    life: number; vx: number; vy: number; vz: number;
+  }> = [];
   private quake = 0;         // current shake amplitude
   private rumbleTimer = 0;
+  private emberTimer = 0;
   private evangelistT = 0;
   private wwLeaving = false;
 
@@ -197,18 +201,38 @@ export class MoralityScene {
       stone.rotation.y = x * 0.025;
       m.add(stone);
     }
-    // fiery seams on the south face
-    const seamMat = () => new THREE.MeshBasicMaterial({ color: 0xff8a3d, transparent: true, opacity: 0.9 });
-    for (const [sx, sy, sz, sw, sh] of [
-      [-2.5, 3.0, 4.9, 0.7, 1.6], [1.8, 2.2, 5.25, 0.5, 1.1],
-      [3.4, 5.2, 3.7, 0.6, 1.4], [-1.0, 6.8, 2.6, 0.8, 1.2],
-    ] as const) {
-      const seam = new THREE.Mesh(new THREE.BoxGeometry(sw, sh, 0.14), seamMat());
+    // Branching fire cracks embedded in the south face. Small overlapping
+    // segments read as hot fissures rather than giant flashing orange bars.
+    const crackSegments = [
+      [-2.7, 2.45, 4.94, -0.32, 0.74, 0xff7a32],
+      [-2.48, 3.02, 4.95, 0.22, 0.62, 0xffb347],
+      [-2.72, 3.48, 4.95, -0.18, 0.48, 0xffe08a],
+      [1.65, 1.82, 5.29, 0.28, 0.62, 0xff8b38],
+      [1.86, 2.31, 5.29, -0.2, 0.54, 0xffcc5c],
+      [3.25, 4.62, 3.74, -0.24, 0.68, 0xff7a32],
+      [3.48, 5.16, 3.74, 0.3, 0.58, 0xffb347],
+      [3.23, 5.62, 3.74, -0.16, 0.44, 0xffe08a],
+      [-1.18, 6.25, 2.64, 0.2, 0.58, 0xff8b38],
+      [-0.94, 6.72, 2.64, -0.28, 0.62, 0xffcc5c],
+      [-1.17, 7.2, 2.64, 0.18, 0.4, 0xffe08a],
+    ] as const;
+    for (let i = 0; i < crackSegments.length; i++) {
+      const [sx, sy, sz, rot, length, color] = crackSegments[i];
+      const seam = new THREE.Mesh(
+        new THREE.BoxGeometry(i % 3 === 2 ? 0.14 : 0.2, length, 0.1),
+        new THREE.MeshBasicMaterial({
+          color, transparent: true, opacity: 0.72, depthWrite: false,
+          blending: THREE.AdditiveBlending,
+        }),
+      );
       seam.position.set(sx, sy, sz);
+      seam.rotation.z = rot;
+      seam.userData.firePhase = i * 0.83;
+      seam.renderOrder = 3;
       m.add(seam);
       this.fireSeams.push(seam);
     }
-    this.fireLight = new THREE.PointLight(0xff7a3d, 1.4, 26);
+    this.fireLight = new THREE.PointLight(0xffa047, 1.15, 24);
     this.fireLight.position.set(1, 5, 4.5);
     m.add(this.fireLight);
     m.position.set(14, 0, -2);
@@ -216,12 +240,17 @@ export class MoralityScene {
     this.mountain = m;
 
     // falling spark pool
-    for (let i = 0; i < 12; i++) {
-      const sm = new THREE.MeshBasicMaterial({ color: 0xffb35c, transparent: true, opacity: 0 });
-      const mesh = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.16, 0.16), sm);
+    for (let i = 0; i < 24; i++) {
+      const sm = new THREE.MeshBasicMaterial({
+        color: i % 3 === 0 ? 0xffe08a : 0xff9a45,
+        transparent: true, opacity: 0, depthWrite: false,
+        blending: THREE.AdditiveBlending,
+      });
+      const size = 0.08 + (i % 4) * 0.025;
+      const mesh = new THREE.Mesh(new THREE.BoxGeometry(size, size, size), sm);
       mesh.visible = false;
       s.add(mesh);
-      this.sparks.push({ mesh, m: sm, life: 1, vx: 0, vz: 0 });
+      this.sparks.push({ mesh, m: sm, life: 1, vx: 0, vy: 0, vz: 0 });
     }
 
     // ---------- the village of Morality, on a rise beyond the mountain ----------
@@ -352,13 +381,15 @@ export class MoralityScene {
     const d = this.sparks.find((s) => s.life >= 1);
     if (!d) return;
     d.life = 0;
-    d.vx = (Math.random() - 0.5) * 1.2;
-    d.vz = (Math.random() - 0.5) * 1.2;
+    d.vx = (Math.random() - 0.5) * 0.55;
+    d.vy = 0.8 + Math.random() * 1.15;
+    d.vz = (Math.random() - 0.5) * 0.45;
     d.mesh.position.set(
-      this.mountain.position.x + (Math.random() - 0.5) * 8,
-      5.5 + Math.random() * 3,
-      this.mountain.position.z + 3 + Math.random() * 2.5,
+      this.mountain.position.x - 2.8 + Math.random() * 6.4,
+      2.0 + Math.random() * 5.4,
+      this.mountain.position.z + 4.4 + Math.random() * 1.2,
     );
+    d.mesh.scale.setScalar(0.8 + Math.random() * 0.7);
     d.mesh.visible = true;
   }
 
@@ -424,11 +455,28 @@ export class MoralityScene {
       this.mountain.position.z = -2 + (Math.random() - 0.5) * q;
     }
     for (let i = 0; i < this.fireSeams.length; i++) {
-      const flick = 0.35 + 0.65 * Math.abs(Math.sin(t * (2.6 + i * 0.7) + i * 2));
-      (this.fireSeams[i].material as THREE.MeshBasicMaterial).opacity = flick * menace + 0.15;
+      const seam = this.fireSeams[i];
+      const phase = seam.userData.firePhase as number;
+      // Two slow waves avoid the synchronized full-bright/full-dark flashing
+      // of the old effect while retaining a living heat shimmer.
+      const glow = 0.62
+        + Math.sin(t * 2.05 + phase) * 0.13
+        + Math.sin(t * 3.7 + phase * 1.7) * 0.07;
+      (seam.material as THREE.MeshBasicMaterial).opacity =
+        THREE.MathUtils.clamp(glow * (0.58 + menace * 0.42), 0.28, 0.86);
+      const stretch = 0.94 + Math.sin(t * 2.4 + phase) * 0.055;
+      seam.scale.set(1 + (1 - stretch) * 0.35, stretch, 1);
     }
     if (this.fireLight) {
-      this.fireLight.intensity = (0.8 + Math.abs(Math.sin(t * 3.1)) * 1.6) * menace;
+      const warmPulse = 1.02
+        + Math.sin(t * 1.75) * 0.16
+        + Math.sin(t * 3.15 + 1.2) * 0.08;
+      this.fireLight.intensity = warmPulse * (0.52 + menace * 0.62);
+    }
+    this.emberTimer -= dt;
+    if (this.emberTimer <= 0) {
+      this.emberTimer = menace >= 1 ? 0.13 + Math.random() * 0.1 : 0.38 + Math.random() * 0.25;
+      this.spawnSpark();
     }
     // rumbles + sparks, frequent while the mountain is angry
     this.rumbleTimer -= dt;
@@ -443,9 +491,13 @@ export class MoralityScene {
       d.life = Math.min(1, d.life + dt * 0.9);
       d.mesh.position.x += d.vx * dt;
       d.mesh.position.z += d.vz * dt;
-      d.mesh.position.y -= dt * 3.2;
-      d.m.opacity = 0.9 * (1 - d.life);
-      if (d.mesh.position.y < 0.1 || d.life >= 1) {
+      d.mesh.position.y += d.vy * dt;
+      d.vx *= Math.max(0, 1 - dt * 0.8);
+      const fade = Math.sin(d.life * Math.PI);
+      d.m.opacity = 0.85 * fade;
+      d.mesh.rotation.y += dt * 2.4;
+      d.mesh.scale.multiplyScalar(1 - dt * 0.32);
+      if (d.life >= 1) {
         d.life = 1;
         d.mesh.visible = false;
       }
