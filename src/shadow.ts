@@ -132,6 +132,12 @@ export class ShadowScene {
       const stone = block(0.9, 0.14, 1.6, 0x8a90a2, px, 0.07, 0);
       stone.castShadow = false;
       s.add(stone);
+      // Pale centre chips keep the safe way legible even before dawn.
+      if (i % 3 === 0) {
+        const chip = block(0.34, 0.035, 0.42, i % 2 ? 0xaeb5c6 : 0x9fa8bb, px, 0.155, 0);
+        chip.castShadow = false;
+        s.add(chip);
+      }
     }
 
     // the DITCH, north: a black gash beside the path
@@ -147,6 +153,47 @@ export class ShadowScene {
       mud.castShadow = false;
       s.add(mud);
       if (i % 3 === 0) s.add(block(0.3, 0.2, 0.3, 0x4a4a3c, px, 0.2, 3 + Math.random() * 1.5));
+    }
+
+    // Layered cliff walls frame the valley and give the darkness real depth.
+    const cliffColors = [0x242b3d, 0x2d3448, 0x353d50];
+    for (const side of [-1, 1]) {
+      for (let i = 0; i < 13; i++) {
+        const x = -28 + i * 5.1;
+        const h = 2.8 + (i % 4) * 0.75;
+        const crag = block(
+          4.8, h, 2.6 + (i % 2) * 0.7, cliffColors[(i + (side > 0 ? 1 : 0)) % cliffColors.length],
+          x, h / 2 - 0.1, side * (7.1 + (i % 3) * 0.45),
+        );
+        crag.rotation.y = side * ((i % 3) - 1) * 0.04;
+        s.add(crag);
+        if (i % 2 === 0) {
+          s.add(block(1.2, 0.65, 1.1, 0x41495a, x + 1.1, 0.32, side * 5.65));
+        }
+      }
+    }
+    // Dead voxel trees, mire reeds, and dim mushrooms make the route feel
+    // inhabited without obscuring the one-stride-wide path.
+    for (const [x, z, h] of [
+      [-25, -5.2, 2.7], [-16, 5.8, 2.2], [-7, -5.5, 3.1],
+      [3, 5.6, 2.5], [12, -5.4, 2.8], [24, 5.5, 2.3],
+    ] as const) {
+      s.add(block(0.22, h, 0.22, 0x494757, x, h / 2, z));
+      const branch = block(1.15, 0.16, 0.16, 0x494757, x + 0.28, h * 0.72, z);
+      branch.rotation.z = z > 0 ? 0.42 : -0.42;
+      s.add(branch);
+    }
+    for (let i = 0; i < 18; i++) {
+      const x = -27 + i * 3.25;
+      const side = i % 2 ? 1 : -1;
+      s.add(block(0.08, 0.65 + (i % 3) * 0.18, 0.08, 0x596052, x, 0.34, side * 4.2));
+      if (i % 3 === 0) {
+        const cap = block(0.3, 0.16, 0.3, i % 2 ? 0xa9b6d2 : 0xc1b4d3, x + 0.45, 0.25, side * 2.85);
+        const capMat = cap.material as THREE.MeshLambertMaterial;
+        capMat.emissive = new THREE.Color(0x4d5268);
+        capMat.emissiveIntensity = 0.45;
+        s.add(cap);
+      }
     }
 
     // the dangers he passes in the dark — invisible until dawn lights them
@@ -177,23 +224,54 @@ export class ShadowScene {
 
     // ---------- the house of memory (Faithful's story) ----------
     const hall = new THREE.Group();
-    hall.add(block(30, 0.6, 16, 0xd8cbb4, 10, -0.3, 0));   // floor
-    hall.add(block(30, 6, 0.8, 0xe6dcc6, 10, 3, -8));
-    hall.add(block(30, 6, 0.8, 0xe6dcc6, 10, 3, 8));
-    hall.add(block(0.8, 6, 16, 0xe6dcc6, -5, 3, 0));
-    hall.add(block(0.8, 6, 16, 0xe6dcc6, 25, 3, 0));
+    hall.add(block(30, 0.6, 16, 0xeadfc9, 10, -0.3, 0));   // warm floor
+    hall.add(block(30, 6, 0.8, 0xf3ead8, 10, 3, -8));
+    hall.add(block(30, 6, 0.8, 0xf3ead8, 10, 3, 8));
+    hall.add(block(0.8, 6, 16, 0xf3ead8, -5, 3, 0));
+    hall.add(block(0.8, 6, 16, 0xf3ead8, 25, 3, 0));
+    // A powder-blue runner joins the four memories as one journey.
+    hall.add(block(28, 0.07, 2.2, 0xbfd7df, 10, 0.07, 1.65));
+    hall.add(block(28, 0.035, 0.18, 0xf8e5a8, 10, 0.12, 0.65));
+    hall.add(block(28, 0.035, 0.18, 0xf8e5a8, 10, 0.12, 2.65));
     // four alcoves along the north wall
+    const alcoveColors = [0xded4ea, 0xd9e6c8, 0xc9dceb, 0xead9c8];
     for (let i = 0; i < 4; i++) {
       const ax = i * 7;
-      hall.add(block(5.4, 0.1, 4.2, 0xc9bda6, ax, 0.06, -5.4));
-      hall.add(block(0.5, 4.4, 0.5, 0xcfc2ab, ax - 2.6, 2.2, -6.8));
-      hall.add(block(0.5, 4.4, 0.5, 0xcfc2ab, ax + 2.6, 2.2, -6.8));
+      hall.add(block(5.4, 0.1, 4.2, alcoveColors[i], ax, 0.06, -5.4));
+      hall.add(block(0.5, 4.4, 0.5, 0xd8c8a8, ax - 2.6, 2.2, -6.8));
+      hall.add(block(0.5, 4.4, 0.5, 0xd8c8a8, ax + 2.6, 2.2, -6.8));
+      hall.add(block(5.6, 0.38, 0.55, 0xe6d6b4, ax, 4.25, -6.85));
+      // Pastel wall panel and a small golden memory lamp.
+      hall.add(block(3.4, 1.65, 0.12, alcoveColors[i], ax, 2.6, -7.52));
+      const lamp = block(0.28, 0.38, 0.22, 0xffe9a3, ax, 4.0, -7.15);
+      const lampMat = lamp.material as THREE.MeshLambertMaterial;
+      lampMat.emissive = new THREE.Color(0xffd77a);
+      lampMat.emissiveIntensity = 0.7;
+      hall.add(lamp);
+    }
+    // Benches, book stacks, and potted greenery make the hall feel cared for.
+    for (const x of [-2.3, 4.7, 11.7, 18.7, 23.4]) {
+      hall.add(block(2.0, 0.28, 0.65, 0xb89470, x, 0.56, 5.1));
+      hall.add(block(0.18, 0.75, 0.18, 0x8b684d, x - 0.72, 0.38, 5.1));
+      hall.add(block(0.18, 0.75, 0.18, 0x8b684d, x + 0.72, 0.38, 5.1));
+    }
+    for (const x of [-3.5, 23.5]) {
+      hall.add(block(0.72, 0.62, 0.72, 0xb9d8c0, x, 0.31, 5.8));
+      hall.add(block(0.18, 1.0, 0.18, 0x789f68, x, 1.05, 5.8));
+      hall.add(block(0.7, 0.48, 0.7, 0x91c27c, x, 1.55, 5.8));
     }
     hall.position.copy(HOUSE);
     s.add(hall);
-    const hallLight = new THREE.PointLight(0xffeecd, 1.5, 40);
+    const hallLight = new THREE.PointLight(0xfff0cf, 2.8, 48);
     hallLight.position.set(HOUSE.x + 10, 5, 0);
     s.add(hallLight);
+    for (let i = 0; i < 4; i++) {
+      const alcoveLight = new THREE.PointLight(
+        [0xe2d7f2, 0xe2efcf, 0xd6eaf5, 0xf2dfcc][i], 1.15, 10,
+      );
+      alcoveLight.position.set(HOUSE.x + i * 7, 3.4, -4.8);
+      s.add(alcoveLight);
+    }
 
     // the figures of Faithful's memory
     // 1 — Wanton, all charm
@@ -276,8 +354,13 @@ export class ShadowScene {
     this.sinkWarned = false;
     this.ditchWarned = false;
     this.faithfulJoined = false;
+    this.meetingDialogueStarted = false;
     this.dawnP = revisit ? 1 : 0;
     this.faithful.root.visible = !revisit;
+    // Faithful may have followed Christian to the exit on an earlier run.
+    // Always return him to his intended meeting point on a fresh entry.
+    this.faithful.root.position.set(FAITHFUL_X, 0, -0.4);
+    this.faithful.root.rotation.y = Math.PI / 2;
     this.christian.root.position.set(revisit ? -27 : -29, 0, 0);
     this.christian.root.rotation.y = Math.PI / 2;
     this.cb.setMusic?.('slough');
@@ -413,8 +496,16 @@ export class ShadowScene {
     this.meetingDialogueStarted = false;
   }
 
+  private facePilgrimsTowardEachOther(): void {
+    const c = this.christian.root.position;
+    const f = this.faithful.root.position;
+    this.christian.root.rotation.y = Math.atan2(f.x - c.x, f.z - c.z);
+    this.faithful.root.rotation.y = Math.atan2(c.x - f.x, c.z - f.z);
+  }
+
   private startMeetingDialogue(): void {
     this.meetingDialogueStarted = true;
+    this.facePilgrimsTowardEachOther();
     this.cb.playScript([
       { speaker: '', text: 'And there, at the valley\'s end, stands the owner of the voice: a white sheep with a traveller\'s pack, squinting back up the path.' },
       { speaker: 'Faithful', text: 'Baa—! CHRISTIAN?! Of the City of Destruction? Neighbour, it\'s ME — Faithful! I told you our roads would meet past the dark places!' },
@@ -443,6 +534,7 @@ export class ShadowScene {
     const near = (ax: number) => Math.hypot(p.x - (HOUSE.x + ax), p.z - (-4.2)) < 2.6;
     if (this.phase === 'story1' && near(0)) {
       this.phase = 'story2';
+      this.facePilgrimsTowardEachOther();
       this.cb.playScript([
         { speaker: 'Faithful', text: 'First, near the very start, a lady called WANTON. All smiles and soft words — promising every pleasure a young sheep could dream of, if only I\'d step off the road a while.' },
         { speaker: 'Christian', text: 'And you—?' },
@@ -452,6 +544,7 @@ export class ShadowScene {
     }
     if (this.phase === 'story2' && near(7)) {
       this.phase = 'story3';
+      this.facePilgrimsTowardEachOther();
       this.cb.playScript([
         { speaker: 'Faithful', text: 'Then at the foot of the hill, an old man: ADAM THE FIRST, of the town of Deceit. Offered me his whole estate and his three daughters for wages — the Lust of the Flesh, the Lust of the Eyes, and the Pride of Life.' },
         { speaker: 'Faithful', text: 'I\'ll be honest — I half wanted it. And the moment I half-turned, one came behind me swift as wind: MOSES. He knocked me flat, and beat me, and would have made an end of me.' },
@@ -462,6 +555,7 @@ export class ShadowScene {
     }
     if (this.phase === 'story3' && near(14)) {
       this.phase = 'story4';
+      this.facePilgrimsTowardEachOther();
       this.cb.playScript([
         { speaker: 'Faithful', text: 'In the Valley of Humiliation I met DISCONTENT. "Why suffer?" says he. "The valley is beneath you. Your friends back home would blush to see you in it."' },
         { speaker: 'Faithful', text: 'I told him: before honour is humility. The friends he spoke of never loved me — and the ones ahead never leave. He had no answer to that.' },
@@ -470,6 +564,7 @@ export class ShadowScene {
     }
     if (this.phase === 'story4' && near(21)) {
       this.phase = 'return';
+      this.facePilgrimsTowardEachOther();
       this.cb.playScript([
         { speaker: 'Faithful', text: 'And last — the worst of the lot, though he has the friendliest face. SHAME. He never threatens, Christian. He only… smirks.' },
         { speaker: 'Faithful', text: '"Religion is unmanly," says he. "The clever people laugh at it. A tender conscience will embarrass you at every party in town."' },
@@ -511,6 +606,7 @@ export class ShadowScene {
     return this.christian.root.position.distanceTo(this.faithful.root.position) < 2.5;
   }
   talkFaithful(): void {
+    this.facePilgrimsTowardEachOther();
     this.cb.playScript([
       { speaker: 'Faithful', text: 'Keep walking, friend — the Celestial City won\'t come looking for us.' },
     ]);
@@ -558,7 +654,10 @@ export class ShadowScene {
         const dx = p.x - wp.x;
         const dz = p.z - wp.z;
         const d = Math.hypot(dx, dz);
-        if (d > 1.4) {
+        // Stop outside the shared character-collision radius (≈1.44). The old
+        // 1.4 trigger was unreachable: collision pushed Christian away before
+        // this branch could ever start their meeting dialogue.
+        if (d > 2.2) {
           const sp = Math.min(5.0, d * 2.0) * dt;
           wp.x += (dx / d) * sp;
           wp.z += (dz / d) * sp;

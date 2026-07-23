@@ -555,10 +555,12 @@ export class CelestialScene {
     this.gateDoorR = makeDoor(1);
 
     // the attendants stand before the gates
-    this.attendants[0].root.position.set(GATE_X - 1.0, y, -7.3);
-    this.attendants[1].root.position.set(GATE_X - 1.0, y, 7.3);
-    this.attendants[0].root.rotation.y = 0.85;
-    this.attendants[1].root.rotation.y = Math.PI - 0.85;
+    // Keep them close enough to greet Christian while leaving the central
+    // ±2.2 lane clear for the pilgrims to pass through.
+    this.attendants[0].root.position.set(GATE_X - 1.5, y, -3.15);
+    this.attendants[1].root.position.set(GATE_X - 1.5, y, 3.15);
+    this.attendants[0].root.rotation.y = -Math.PI / 2;
+    this.attendants[1].root.rotation.y = -Math.PI / 2;
   }
 
   private buildPlaza(): void {
@@ -1027,15 +1029,10 @@ export class CelestialScene {
     if (this.scrollHop) this.scrollHop.visible = true;
     this.cb.setObjective('🚪 The Gates of Pearl — present your scrolls');
     this.christian.root.rotation.y = Math.PI / 2;
-    // Turn both attendants toward Christian for the certificate inspection.
-    // Their gate positions stay fixed; only their facing changes.
-    const christianAtGate = this.christian.root.position;
+    // Christian approaches from the west, so both guards keep a clean westward
+    // facing while they inspect the certificates.
     for (const attendant of this.attendants) {
-      const at = attendant.root.position;
-      attendant.root.rotation.y = Math.atan2(
-        christianAtGate.x - at.x,
-        christianAtGate.z - at.z,
-      );
+      attendant.root.rotation.y = -Math.PI / 2;
     }
     this.cb.playScript([
       { speaker: '', text: 'At the top of the hill stand gates made bright as pearl. Above them are the King’s words: “Blessed are those who enter by the gates into the City.”' },

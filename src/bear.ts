@@ -360,10 +360,10 @@ export function makeBear(opts: CharacterOptions = {}): BearParts {
     // the shell must clear the (possibly plump) body on every side, or the
     // fur pokes through and the coplanar faces flicker
     // shell top must clear body top (body: h=0.78 at y=0.4 → top=0.79)
-    body.add(block(opts.plump ? 1.12 : 0.98, opts.plump ? 0.54 : 0.52, opts.plump ? 0.8 : 0.7, oc, 0, opts.plump ? 0.53 : 0.52, 0));
+    body.add(block(opts.plump ? 1.12 : 0.98, opts.plump ? 0.54 : 0.52, opts.plump ? 0.82 : 0.74, oc, 0, opts.plump ? 0.53 : 0.52, 0));
     // sleeves on the upper arms
-    armL.add(block(0.32, 0.28, 0.36, oc, 0, -0.1, 0));
-    armR.add(block(0.32, 0.28, 0.36, oc, 0, -0.1, 0));
+    armL.add(block(0.32, 0.28, 0.4, oc, 0, -0.1, 0));
+    armR.add(block(0.32, 0.28, 0.4, oc, 0, -0.1, 0));
   } else if (outfit === 'dress') {
     body.add(block(1.0, 0.5, 0.68, oc, 0, 0.12, 0));
     body.add(block(0.96, 0.4, 0.7, oc, 0, 0.52, 0));
@@ -391,12 +391,13 @@ export function makeBear(opts: CharacterOptions = {}): BearParts {
 
   // --- travel sling bag (diagonal strap over the chest, bag at the hip) ---
   if (opts.sling) {
-    // straps sit just proud of the (possibly plump) tummy/back planes
-    const strapZ = opts.plump ? 0.42 : 0.34;
+    // Straps sit distinctly in front of the shirt shell. Coplanar back faces
+    // caused the dark strap and blue clothing to flicker on burdened Christian.
+    const strapZ = opts.plump ? 0.46 : 0.415;
     const strapF = block(0.14, 1.05, 0.05, 0x8a6f52, 0, 0.42, strapZ);
     strapF.rotation.z = 0.72;
     body.add(strapF);
-    const strapB = block(0.14, 1.05, 0.05, 0x8a6f52, 0, 0.42, opts.plump ? -0.41 : -0.33);
+    const strapB = block(0.14, 1.05, 0.05, 0x8a6f52, 0, 0.42, opts.plump ? -0.46 : -0.415);
     strapB.rotation.z = -0.72;
     body.add(strapB);
     // shoulder pad where the straps meet
@@ -412,9 +413,15 @@ export function makeBear(opts: CharacterOptions = {}): BearParts {
     body.add(block(0.88, 0.62, 0.54, PALETTE.burden, 0, 0.45, -0.56));
     body.add(block(0.70, 0.50, 0.46, 0x87817a, 0, 0.96, -0.54));
     body.add(block(0.50, 0.36, 0.36, PALETTE.burdenStrap, 0, 1.28, -0.52));
-    const bStrapZ = opts.plump ? 0.42 : 0.31;
-    body.add(block(0.1, 0.6, 0.08, PALETTE.burdenStrap, -0.3, 0.45, bStrapZ));
-    body.add(block(0.1, 0.6, 0.08, PALETTE.burdenStrap, 0.3, 0.45, bStrapZ));
+    // Keep the burden straps one layer farther forward than both shirt and
+    // sling, avoiding exact shared depth surfaces on Christian's chest.
+    const bStrapZ = opts.plump ? 0.48 : 0.44;
+    // Match the shirt shell exactly from hem to top; only the diagonal travel
+    // sling is allowed to continue beyond this panel.
+    const verticalStrapH = opts.plump ? 0.54 : 0.52;
+    const verticalStrapY = opts.plump ? 0.53 : 0.52;
+    body.add(block(0.1, verticalStrapH, 0.08, PALETTE.burdenStrap, -0.3, verticalStrapY, bStrapZ));
+    body.add(block(0.1, verticalStrapH, 0.08, PALETTE.burdenStrap, 0.3, verticalStrapY, bStrapZ));
   }
 
   root.scale.setScalar(scale);

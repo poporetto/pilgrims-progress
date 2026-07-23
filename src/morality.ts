@@ -102,13 +102,51 @@ export class MoralityScene {
       s.add(p);
     }
 
-    // the smooth, pleasant path — wide and easy, running west → east
-    for (let i = 0; i < 22; i++) {
-      const px = -30 + i * 2.6;
-      const path = block(2.8, 0.12, 3.4, 0xe8d9b8, px, 0.06, Math.sin(i * 0.4) * 0.8);
-      path.castShadow = false;
-      s.add(path);
+    // The King's Highway: a continuous pale ribbon with individually laid
+    // voxel stones. The earlier separated slabs looked like unrelated patches
+    // and made the intended direction hard to read.
+    const highway = new THREE.Mesh(new THREE.PlaneGeometry(76, 4.8), mat(0xe7d6ae));
+    highway.rotation.x = -Math.PI / 2;
+    highway.position.set(2, 0.025, 0);
+    highway.receiveShadow = true;
+    s.add(highway);
+    const roadColors = [0xeadcba, 0xd9c7a1, 0xf0e2c2, 0xcebd9b];
+    for (let i = 0; i < 42; i++) {
+      const px = -34 + i * 1.72;
+      const pz = ((i % 3) - 1) * 0.62;
+      const paving = block(
+        1.45 + (i % 2) * 0.18, 0.055, 0.74,
+        roadColors[i % roadColors.length], px, 0.055, pz,
+      );
+      paving.rotation.y = ((i % 5) - 2) * 0.025;
+      paving.castShadow = false;
+      s.add(paving);
     }
+    // Broken shoulder stones frame the route while keeping it open and soft.
+    for (const side of [-1, 1]) {
+      for (let i = 0; i < 18; i++) {
+        if (i % 5 === 2) continue;
+        const edge = block(
+          1.25, 0.16 + (i % 2) * 0.05, 0.42,
+          i % 3 ? 0xc7b58f : 0xb9aa8c,
+          -31 + i * 3.8, 0.09, side * 2.48,
+        );
+        edge.rotation.y = ((i % 3) - 1) * 0.08;
+        edge.castShadow = false;
+        s.add(edge);
+      }
+    }
+    // A fork marker makes the false promise visually explicit: the true Gate
+    // lies back west, while Wiseman points east toward Morality.
+    const roadSign = new THREE.Group();
+    roadSign.add(block(0.14, 1.55, 0.14, PALETTE.woodDark, 0, 0.78, 0));
+    roadSign.add(block(1.65, 0.34, 0.12, 0xf7eed8, -0.45, 1.5, 0));
+    roadSign.add(block(1.45, 0.34, 0.12, 0xd7e8d0, 0.4, 1.08, 0));
+    const westArrow = block(0.32, 0.32, 0.1, 0xf7eed8, -1.25, 1.5, 0);
+    westArrow.rotation.z = Math.PI / 4;
+    roadSign.add(westArrow);
+    roadSign.position.set(WW_X - 2.7, 0, 3.35);
+    s.add(roadSign);
 
     // friendly trees on the west half only — the east grows bare
     for (const [tx, tz, blossom] of [
@@ -131,19 +169,34 @@ export class MoralityScene {
     const m = new THREE.Group();
     const rock = (w: number, h: number, d: number, c: number, x: number, y: number, z: number) =>
       m.add(block(w, h, d, c, x, y, z));
-    // massive base on the north side of the road
-    rock(16, 4.5, 10, 0x8d8d96, 0, 2.25, -6);
-    rock(13, 3.5, 8, 0x7d7d88, 0.5, 6.2, -5.5);
-    rock(10, 3.0, 7, 0x8d8d96, 0, 9.2, -5);
-    rock(6.5, 2.6, 5, 0x6f6f7a, 0.5, 11.8, -4.5);
-    rock(3.4, 2.0, 3, 0x7d7d88, 0, 13.6, -4);
-    // the OVERHANG: a huge brow of rock leaning south over the road itself
-    rock(11, 2.6, 6, 0x7d7d88, 0.5, 8.0, -0.5);
-    rock(8, 2.2, 5.5, 0x6f6f7a, 1.0, 6.0, 1.6);
-    rock(5.5, 1.8, 4, 0x62626e, 1.2, 4.6, 3.2);
-    // crag details
-    rock(2.2, 1.2, 1.8, 0x9a9aa4, -5.5, 4.9, -2);
-    rock(1.8, 1.0, 1.4, 0x9a9aa4, 6, 5.2, -1.5);
+    // Broad foothills establish a real mountain footprint before the summit.
+    rock(20, 2.2, 13, 0x9898a1, 0, 1.1, -7.0);
+    rock(17.5, 2.5, 11, 0x898994, -0.5, 3.1, -6.7);
+    rock(14.5, 2.7, 9, 0x7b7b87, 0.2, 5.55, -6.2);
+    rock(11.5, 2.8, 7.5, 0x85858f, -0.25, 8.25, -5.8);
+    rock(8.2, 2.7, 5.8, 0x70707c, 0.35, 10.85, -5.3);
+    rock(5.2, 2.5, 4.1, 0x62626e, -0.15, 13.25, -4.9);
+    rock(2.8, 2.1, 2.5, 0x73737e, 0.2, 15.4, -4.6);
+    // Uneven secondary crags stop the silhouette reading as a single pyramid.
+    rock(5.5, 5.8, 4.6, 0x85858f, -6.2, 5.0, -6.0);
+    rock(4.2, 4.8, 3.8, 0x777783, 6.3, 4.3, -5.8);
+    rock(2.8, 3.6, 2.7, 0x696975, -4.7, 9.2, -5.1);
+    // The overhanging south face still threatens Christian, but now grows out
+    // of the mountain's slope instead of floating as a separate block shelf.
+    rock(10.5, 2.4, 5.0, 0x747480, 0.5, 7.7, -1.65);
+    rock(7.7, 2.1, 4.5, 0x676773, 0.9, 5.7, 0.75);
+    rock(5.0, 1.7, 3.4, 0x5d5d69, 1.2, 4.25, 2.8);
+    // Blocky scree and ledges soften the base into the surrounding terrain.
+    const scree = [
+      [-8.8, 0.7, -1.4, 2.4, 1.4, 2.0], [-6.5, 0.5, 0.4, 1.8, 1.0, 1.5],
+      [-3.8, 0.4, 2.0, 1.3, 0.8, 1.2], [4.6, 0.5, 1.6, 1.7, 1.0, 1.5],
+      [7.1, 0.7, -0.4, 2.1, 1.4, 1.8], [9.0, 0.5, -2.6, 1.5, 1.0, 1.4],
+    ] as const;
+    for (const [x, y, z, w, h, d] of scree) {
+      const stone = block(w, h, d, y > 0.6 ? 0x85858f : 0x9a9aa4, x, y, z);
+      stone.rotation.y = x * 0.025;
+      m.add(stone);
+    }
     // fiery seams on the south face
     const seamMat = () => new THREE.MeshBasicMaterial({ color: 0xff8a3d, transparent: true, opacity: 0.9 });
     for (const [sx, sy, sz, sw, sh] of [
@@ -197,8 +250,10 @@ export class MoralityScene {
     civility.root.rotation.y = -Math.PI / 2;
     s.add(civility.root);
 
-    // Worldly Wiseman waits beside the path (north side, clear of the dialogue panel)
-    this.wiseman.root.position.set(WW_X, 0, -2.4);
+    // Worldly Wiseman waits on the near shoulder. The fixed camera looks from
+    // the south, so his old north-side position was hidden behind Christian
+    // and the newly defined highway paving.
+    this.wiseman.root.position.set(WW_X, 0, 2.85);
     this.wiseman.root.rotation.y = -Math.PI / 2;
     s.add(this.wiseman.root);
 
@@ -215,6 +270,8 @@ export class MoralityScene {
     this.revisit = revisit;
     this.quake = 0;
     this.wwLeaving = false;
+    this.wiseman.root.position.set(WW_X, 0, 2.85);
+    this.wiseman.root.rotation.y = -Math.PI / 2;
     // revisits spawn clear of the western exit threshold
     this.christian.root.position.set(revisit ? -24 : -27, 0, 0);
     this.christian.root.rotation.y = Math.PI / 2;
