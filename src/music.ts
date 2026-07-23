@@ -4,7 +4,7 @@
 //   map     — adventurous but mellow travelling tune (arpeggios + shaker)
 //   slough  — slow minor murk (low pad, sparse notes, water drips)
 
-export type MusicStyle = 'village' | 'map' | 'slough' | 'sinai' | 'gate' | 'interpreter' | 'cross' | 'fair';
+export type MusicStyle = 'village' | 'map' | 'slough' | 'sinai' | 'gate' | 'interpreter' | 'cross' | 'fair' | 'celestial';
 
 interface StyleDef {
   bpm: number;
@@ -103,6 +103,18 @@ const STYLES: Record<MusicStyle, StyleDef> = {
       [130.81, 164.81, 196.0, 261.63],
     ],
     scale: [349.23, 392.0, 440.0, 493.88, 523.25, 587.33],
+  },
+  celestial: {
+    bpm: 68,
+    // C – F – Am7 – G : comforting, majestic, hopeful — the City at last.
+    // Wide warm voicings; the scheduler adds a shimmering "choir" octave.
+    chords: [
+      [130.81, 196.0, 261.63, 329.63],
+      [87.31, 174.61, 220.0, 349.23],
+      [110.0, 164.81, 261.63, 329.63],
+      [98.0, 196.0, 246.94, 392.0],
+    ],
+    scale: [523.25, 659.25, 783.99, 1046.5, 1318.5, 1568.0], // high C-major bells
   },
 };
 
@@ -372,6 +384,23 @@ export class Music {
         osc.start(td);
         osc.stop(td + 0.25);
       }
+    } else if (this.style === 'celestial') {
+      // celestial: comforting, majestic, hopeful — a broad warm pad with a
+      // shimmering choir octave above it, slow rising bell arpeggios, and a
+      // deep, gentle bass. No percussion at all: only light.
+      this.pad(t0, chord, barLen, 0.055);
+      this.pad(t0, chord.map((f) => f * 2), barLen, 0.02, 'sine'); // the "choir" shimmer
+      // a rising quarter-note arpeggio up the chord, like steps of gold
+      for (let i = 0; i < 4; i++) {
+        this.pluck(t0 + i * (barLen / 4), chord[i] * 2, 0.07, 1.2);
+      }
+      // high bell sparkles drifting over the top
+      if (bar % 2 === 0) {
+        this.pluck(t0 + eighth * 5, def.scale[bar % def.scale.length] , 0.045, 1.6);
+        this.pluck(t0 + eighth * 7, def.scale[(bar + 2) % def.scale.length], 0.035, 1.8);
+      }
+      this.bass(t0, chord[0] / 2, 0.11, 1.2);
+      this.bass(t0 + barLen / 2, chord[1] / 2, 0.07, 1.0);
     } else {
       // sinai: gentle plucks over minor chords — a pretty road with a shadow on it
       this.pad(t0, chord, barLen, 0.05, 'sine');

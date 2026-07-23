@@ -42,6 +42,7 @@ export interface QuestState {
   castleDone: boolean;
   mountainDone: boolean;
   beulahDone: boolean;
+  celestialDone: boolean;
 }
 
 interface NPCDef {

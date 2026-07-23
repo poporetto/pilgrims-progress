@@ -19,6 +19,7 @@ import { LucreScene } from './lucre';
 import { CastleScene } from './castle';
 import { MountainScene } from './mountain';
 import { BeulahScene } from './beulah';
+import { CelestialScene } from './celestial';
 
 // ---------------------------------------------------------------- setup
 
@@ -98,6 +99,7 @@ const quest: QuestState = {
   castleDone: false,
   mountainDone: false,
   beulahDone: false,
+  celestialDone: false,
 };
 
 const music = new Music();
@@ -105,7 +107,7 @@ const worldMap = new WorldMap(window.innerWidth / window.innerHeight);
 let mode:
   | 'village' | 'map' | 'slough' | 'morality' | 'wicket' | 'cross'
   | 'highway' | 'hill' | 'palace' | 'valley' | 'shadow' | 'vanity' | 'lucre' | 'castle'
-  | 'mountain' | 'beulah' = 'village';
+  | 'mountain' | 'beulah' | 'celestial' = 'village';
 
 // ---------------------------------------------------------------- UI refs
 
@@ -208,8 +210,10 @@ function goToMap(): void {
   mode = 'map';
   music.setStyle('map');
   ui.promptKey.style.display = 'none';
-  setObjective(quest.beulahDone
-    ? '🗺 The journey is complete — Christian has crossed into the Celestial City ✨'
+  setObjective(quest.celestialDone
+    ? '🗺 The pilgrimage is finished — Christian is home in the Celestial City 👑'
+    : quest.beulahDone
+    ? '🗺 Across the River — the angels wait to lead you up to the Celestial City ✨'
     : quest.mountainDone
     ? '🗺 The Delectable Mountains are behind you — beyond lies Beulah Land, and the River'
     : quest.castleDone
@@ -948,18 +952,17 @@ const beulah = new BeulahScene({
   onComplete: () => {
     quest.beulahDone = true;
     showEnding(
-      '🏙 The Celestial City',
-      'Chapter XV — Beulah Land · The Journey\'s End',
+      '✨ Across the River',
+      'Chapter XV — Beulah Land',
       'In the golden country of Beulah, in sight of the shining City, Christian and '
       + 'Hopeful came at last to the deep River of death, where no bridge is and every '
       + 'pilgrim must cross. Christian sank, and old fears and sins rose about him like '
       + 'dark clouds — until Hopeful, feeling the bottom, held him up: "Be of good cheer; '
-      + 'the King is with us." The doubts were put away, the far shore reached, and two '
-      + 'Shining Ones came down to meet them. Pain, sorrow, temptation, and death were '
-      + 'left behind in the water. And so the pilgrims passed through the Gate, into the '
-      + 'light of the King\'s kingdom — home, at the last. ✨  The End.',
+      + 'the King is with us." The doubts were put away, the far shore was reached, and '
+      + 'two Shining Ones came down to meet them. Now, together, the angels will lead the '
+      + 'pilgrims up the last shining hill — home to the Celestial City…',
       () => {
-        // mark the whole road complete, and return to the finished world map
+        // the road is now open all the way to the City's gate
         worldMap.sloughDone = true;
         worldMap.moralityDone = true;
         worldMap.wicketDone = true;
@@ -990,6 +993,44 @@ function enterBeulah(revisit: boolean): void {
   ui.talkBtn.style.display = 'none';
   beulahActors = beulah.enter(revisit);
   camTarget.copy(beulahActors.christian.root.position);
+}
+
+// ---------- Chapter XVI: the Celestial City (the true finale) ----------
+const celestial = new CelestialScene({
+  playScript,
+  setObjective,
+  onExit: () => goToMap(),
+  blipSound: () => music.blip(),
+  rumbleSound: () => music.rumble(),
+  setMusic: (style) => music.setStyle(style),
+  fade: (mid) => fadeTransition(() => {
+    mid();
+    if (celestialActors) camTarget.copy(celestial.focus().position);
+  }, 900),
+  onComplete: () => {
+    quest.celestialDone = true;
+    worldMap.celestialDone = true;
+    // the true ending: Bunyan's scroll, then "The End"
+    showFinale();
+  },
+});
+let celestialActors: { christian: import('./bear').BearParts; hopeful: import('./bear').BearParts } | null = null;
+
+function enterCelestial(revisit: boolean): void {
+  mode = 'celestial';
+  ui.prompt.style.display = 'none';
+  ui.talkBtn.style.display = 'none';
+  celestialActors = celestial.enter(revisit);
+  camTarget.copy(celestialActors.christian.root.position);
+}
+
+// the closing sequence: fade to a scroll bearing Bunyan's warning, then "The End"
+function showFinale(): void {
+  const finale = document.getElementById('finale')!;
+  finale.classList.add('show');
+  requestAnimationFrame(() => requestAnimationFrame(() => finale.classList.add('reveal')));
+  // after a good long read, dissolve the scroll into "The End"
+  window.setTimeout(() => finale.classList.add('end'), 9000);
 }
 
 function enterVanity(revisit: boolean): void {
@@ -1195,6 +1236,7 @@ function tryEnterFromMap(): void {
   else if (spot === 'castle') enterCastle(quest.castleDone);
   else if (spot === 'mountain') enterMountain(quest.mountainDone);
   else if (spot === 'beulah') enterBeulah(quest.beulahDone);
+  else if (spot === 'celestial') enterCelestial(quest.celestialDone);
 }
 window.addEventListener('keyup', (e) => keys.delete(e.code));
 // don't leave movement keys stuck when the tab loses focus mid-keypress
@@ -1258,7 +1300,7 @@ ui.debugPanel.addEventListener('click', (e) => {
   // flags agree with wherever we're jumping to — otherwise a later visit to
   // the map can snap Christian's progress back to an earlier chapter
   // each jump implies every earlier chapter is behind us
-  const ORDER = ['village', 'slough', 'morality', 'wicket-approach', 'cross', 'highway', 'hill', 'palace', 'valley', 'shadow', 'vanity', 'lucre', 'castle', 'mountain', 'beulah'];
+  const ORDER = ['village', 'slough', 'morality', 'wicket-approach', 'cross', 'highway', 'hill', 'palace', 'valley', 'shadow', 'vanity', 'lucre', 'castle', 'mountain', 'beulah', 'celestial'];
   const rank = ORDER.indexOf(
     jump === 'wicket-highway' || jump === 'interpreter' ? 'wicket-approach' : jump === 'map' ? 'village' : jump,
   );
@@ -1275,6 +1317,7 @@ ui.debugPanel.addEventListener('click', (e) => {
   if (rank >= 12) { worldMap.lucreDone = true; quest.lucreDone = true; }
   if (rank >= 13) { worldMap.castleDone = true; quest.castleDone = true; }
   if (rank >= 14) { worldMap.mountainDone = true; quest.mountainDone = true; }
+  if (rank >= 15) { worldMap.beulahDone = true; quest.beulahDone = true; }
   if (jump === 'village') enterVillage();
   else if (jump === 'slough') enterSlough(false);
   else if (jump === 'morality') enterMorality(false);
@@ -1292,6 +1335,7 @@ ui.debugPanel.addEventListener('click', (e) => {
   else if (jump === 'castle') enterCastle(false);
   else if (jump === 'mountain') enterMountain(false);
   else if (jump === 'beulah') enterBeulah(false);
+  else if (jump === 'celestial') enterCelestial(false);
   else if (jump === 'map') { worldMap.start(mapParty()); worldMap.road = 'main'; goToMap(); }
 });
 
@@ -1805,6 +1849,7 @@ function tick(): void {
     if (spot === 'castle' && !quest.castleDone) { enterCastle(false); return; }
     if (spot === 'mountain' && !quest.mountainDone) { enterMountain(false); return; }
     if (spot === 'beulah' && !quest.beulahDone) { enterBeulah(false); return; }
+    if (spot === 'celestial' && !quest.celestialDone) { enterCelestial(false); return; }
 
     ui.prompt.style.display = spot === 'road' ? 'none' : 'block';
     ui.promptKey.style.display = 'none';
@@ -1871,6 +1916,10 @@ function tick(): void {
       ui.promptWho.textContent = quest.beulahDone
         ? '✨ Return to Beulah Land'
         : '✨ Enter Beulah Land — the River and the Celestial City';
+    } else if (spot === 'celestial') {
+      ui.promptWho.textContent = quest.celestialDone
+        ? '👑 Return to the Celestial City'
+        : '👑 Climb the shining hill to the Celestial City';
     }
     if (spot !== 'road' && spot !== 'fork') {
       ui.promptKey.style.display = isTouch ? 'none' : 'inline-block';
@@ -2468,6 +2517,41 @@ function tick(): void {
     return;
   }
 
+  if (mode === 'celestial' && celestialActors) {
+    // ---- The Celestial City mode (outdoor; camera pulls back as they ascend) ----
+    const cc = celestialActors.christian;
+    let mx = 0;
+    let mz = 0;
+    if (keys.has('KeyW') || keys.has('ArrowUp')) mz -= 1;
+    if (keys.has('KeyS') || keys.has('ArrowDown')) mz += 1;
+    if (keys.has('KeyA') || keys.has('ArrowLeft')) mx -= 1;
+    if (keys.has('KeyD') || keys.has('ArrowRight')) mx += 1;
+    mx += joy.x;
+    mz += joy.y;
+    const len = Math.hypot(mx, mz);
+    const factor = celestial.moveFactor();
+    const moving = len > 0.15 && !dialogueOpen && !endingOpen && factor > 0;
+    if (moving) {
+      mx /= Math.max(len, 1);
+      mz /= Math.max(len, 1);
+      cc.root.position.x += mx * SPEED * factor * dt;
+      cc.root.position.z += mz * SPEED * factor * dt;
+      cc.root.rotation.y = lerpAngle(cc.root.rotation.y, Math.atan2(mx, mz), 12 * dt);
+    }
+    celestial.afterMove();
+    celestial.update(dt, t, moving);
+
+    // the camera pulls back and lifts as the pilgrims climb toward the City,
+    // emphasising its towering scale; the epilogue follows Ignorance instead
+    const focus = celestial.focus();
+    const pull = 1 + THREE.MathUtils.clamp((focus.position.y) / 10, 0, 1) * 0.55;
+    camTarget.lerp(focus.position, Math.min(3 * dt, 1));
+    camera.position.copy(camTarget).add(camOffset.clone().multiplyScalar(pull)).add(new THREE.Vector3(0, focus.position.y * 0.15, 0));
+    camera.lookAt(camTarget.x, camTarget.y + 1.6, camTarget.z);
+    renderer.render(celestial.scene, camera);
+    return;
+  }
+
   // ---- village mode ----
   if (started) {
     updatePlayer(dt, t);
@@ -2524,7 +2608,7 @@ tick();
   wicket, enterWicket, cross, enterCross, highway, enterHighway, hill, enterHill,
   palace, enterPalace, valley, enterValley, shadow, enterShadow,
   vanity, enterVanity, lucre, enterLucre, playScript, goToMap,
-  castle, enterCastle, mountain, enterMountain, beulah, enterBeulah, renderer, camera, camOffset, DUNGEON_CAM_OFFSET,
+  castle, enterCastle, mountain, enterMountain, beulah, enterBeulah, celestial, enterCelestial, renderer, camera, camOffset, DUNGEON_CAM_OFFSET,
   get mode() { return mode; },
   get castleActors() { return castleActors; },
   get keys() { return keys; },

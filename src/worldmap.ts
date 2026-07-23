@@ -12,7 +12,7 @@ import { makeBear, animateBear, BearParts, block, mat } from './bear';
 export type MapSpot =
   | 'city' | 'road' | 'slough' | 'fork' | 'morality' | 'beyond' | 'cross'
   | 'highway' | 'hill' | 'palace' | 'valley' | 'shadow' | 'vanity' | 'lucre'
-  | 'castle' | 'mountain' | 'beulah';
+  | 'castle' | 'mountain' | 'beulah' | 'celestial';
 
 const CITY = new THREE.Vector3(-14.5, 0, 0);
 const SLOUGH = new THREE.Vector3(-3.5, 0, 0);
@@ -30,6 +30,7 @@ const LUCRE   = new THREE.Vector3(81.5, 0, -0.5);
 const CASTLE  = new THREE.Vector3(89.5, 0, 1.0);
 const MOUNTAIN = new THREE.Vector3(97.5, 0, -0.5);
 const BEULAH = new THREE.Vector3(105.5, 0, 1.0);
+const CELESTIAL = new THREE.Vector3(113.5, 0, -0.5);
 
 // island centres + how close the road must be to count as "on land"
 const ISLANDS: Array<{ c: THREE.Vector3; r: number }> = [
@@ -49,6 +50,7 @@ const ISLANDS: Array<{ c: THREE.Vector3; r: number }> = [
   { c: CASTLE,  r: 4.0 },
   { c: MOUNTAIN, r: 4.2 },
   { c: BEULAH, r: 4.2 },
+  { c: CELESTIAL, r: 4.4 },
 ];
 
 export class WorldMap {
@@ -71,6 +73,7 @@ export class WorldMap {
   castleDone  = false;
   mountainDone = false;
   beulahDone = false;
+  celestialDone = false;
   justDiverted = false; // set when the barred way shunts Christian onto the byway
   // t-parameters along the main curve nearest each stop, resolved in ctor
   cityT = 0.02;
@@ -86,8 +89,9 @@ export class WorldMap {
   vanityT = 0.96;
   lucreT  = 0.99;
   castleT = 0.99;
-  mountainT = 0.995;
-  beulahT = 1.00;
+  mountainT = 0.99;
+  beulahT = 0.995;
+  celestialT = 1.00;
   private mainCurve: THREE.CatmullRomCurve3;
   private branchCurve: THREE.CatmullRomCurve3;
   private branchSpeed = 1; // t-speed scale so ground speed matches the main road
@@ -156,6 +160,9 @@ export class WorldMap {
       // …and on at last to Beulah Land, in sight of the Celestial City
       new THREE.Vector3(101.4, 0.62, 0.2),
       new THREE.Vector3(BEULAH.x - 0.6, 0.62, BEULAH.z),
+      // …and the last golden mile, up to the Celestial City itself
+      new THREE.Vector3(109.6, 0.62, 0.2),
+      new THREE.Vector3(CELESTIAL.x - 0.6, 0.62, CELESTIAL.z),
     ]);
     this.cityT = this.tForPoint(CITY);
     this.sloughT = this.tForPoint(SLOUGH);
@@ -172,6 +179,7 @@ export class WorldMap {
     this.castleT = this.tForPoint(CASTLE);
     this.mountainT = this.tForPoint(MOUNTAIN);
     this.beulahT = this.tForPoint(BEULAH);
+    this.celestialT = this.tForPoint(CELESTIAL);
     // the byway begins exactly where the main road passes the crossroad,
     // so switching roads never makes Christian jump
     const forkPoint = this.mainCurve.getPointAt(this.forkT);
@@ -670,8 +678,31 @@ export class WorldMap {
     beuIsle.add(block(0.18, 0.3, 0.18, 0xfff0a0, -1.2, 0.75, 1.6));
     this.label('Beulah Land', BEULAH.x, BEULAH.z, 5.4);
 
+    // ---------- the Celestial City island (journey's end) ----------
+    const celIsle = this.island(CELESTIAL.x, CELESTIAL.z, 4.4, 0xf0d894);
+    // shining golden towers with pearl-white caps, glowing
+    const gold = 0xffe08a;
+    for (const [cx, ch, cz] of [
+      [-1.1, 3.2, -0.9], [0.0, 4.4, -1.2], [1.1, 3.0, -0.8], [0.2, 2.4, 0.4],
+    ] as const) {
+      const tw = block(0.85, ch, 0.85, gold, cx, 0.6 + ch / 2, cz);
+      const m = tw.material as THREE.MeshLambertMaterial;
+      m.emissive = new THREE.Color(0xffd76a); m.emissiveIntensity = 0.75;
+      celIsle.add(tw);
+      const cap = block(0.5, 0.5, 0.5, 0xfffdf4, cx, 0.6 + ch + 0.2, cz);
+      (cap.material as THREE.MeshLambertMaterial).emissive = new THREE.Color(0xfff0c0);
+      (cap.material as THREE.MeshLambertMaterial).emissiveIntensity = 0.6;
+      celIsle.add(cap);
+    }
+    // the pearl gates at the front
+    for (const side of [-1, 1]) {
+      celIsle.add(block(0.4, 2.4, 0.4, 0xfdf8f0, side * 0.9, 1.8, 1.3));
+    }
+    celIsle.add(block(2.4, 0.4, 0.4, 0xffe08a, 0, 3.0, 1.3));
+    this.label('The Celestial City', CELESTIAL.x, CELESTIAL.z, 5.6);
+
     // ---------- both roads: stones on land, plank bridges over water ----------
-    this.buildRoad(this.mainCurve, 80);
+    this.buildRoad(this.mainCurve, 86);
     this.buildRoad(this.branchCurve, 26);
 
     // ---------- drifting clouds: soft, round and white ----------
@@ -798,7 +829,8 @@ export class WorldMap {
     if (this.progress < this.cityT + 0.03) return 'city';
     if (Math.abs(this.progress - this.sloughT) < 0.03) return 'slough';
     if (Math.abs(this.progress - this.forkT) < 0.025) return 'fork';
-    if (this.progress > this.beulahT - 0.015) return 'beulah';
+    if (this.progress > this.celestialT - 0.015) return 'celestial';
+    if (Math.abs(this.progress - this.beulahT) < 0.015) return 'beulah';
     if (Math.abs(this.progress - this.mountainT) < 0.015) return 'mountain';
     if (Math.abs(this.progress - this.castleT) < 0.015) return 'castle';
     if (Math.abs(this.progress - this.lucreT) < 0.015) return 'lucre';
@@ -828,7 +860,9 @@ export class WorldMap {
         this.moving = true;
         // the long road east stays barred until Morality is settled;
         // the road past the Gate opens only once the Gate chapter is done
-        const maxP = this.mountainDone
+        const maxP = this.beulahDone
+          ? this.celestialT + 0.01
+          : this.mountainDone
           ? this.beulahT + 0.01
           : this.castleDone
           ? this.mountainT + 0.01
