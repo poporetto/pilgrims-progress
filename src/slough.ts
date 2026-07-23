@@ -594,9 +594,10 @@ export class SloughScene {
           { speaker: 'Help', text: 'So it goes with every pilgrim. Here — give me your paw!' },
           { speaker: 'Help', text: '*HEAVE!*' },
         ], () => {
-          // hauled out onto the bank, at Help's left, the two face to face
+          // Hauled out onto the bank one clear walking step from Help, so the
+          // two do not begin their conversation shoulder-to-shoulder.
           this.rescueT = 2;
-          this.christian.root.position.set(16.5, 0, -0.5);
+          this.christian.root.position.set(15.5, 0, -0.5);
           this.christian.root.rotation.y = Math.PI / 2; // faces Help
           this.help.armR.rotation.x = 0;
           this.sink = 0;

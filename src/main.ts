@@ -43,10 +43,11 @@ const camera = new THREE.PerspectiveCamera(
 );
 
 // soft pastel lighting
-scene.add(new THREE.HemisphereLight(0xdff0ff, 0xc9e8c0, 0.9));
-const sun = new THREE.DirectionalLight(PALETTE.sun, 1.6);
-// light from the EAST (+x) so shadows fall to the left across the town
-sun.position.set(55, 45, 22);
+scene.add(new THREE.HemisphereLight(0xeaf4ff, 0xd9ebcc, 1.15));
+const sun = new THREE.DirectionalLight(PALETTE.sun, 1.28);
+// Mid-morning sun: still eastward but lower and slightly south of the road,
+// so shadows fall on a clear diagonal rather than straight across the ground.
+sun.position.set(50, 136, 0);
 sun.castShadow = true;
 sun.shadow.mapSize.set(2048, 2048);
 sun.shadow.camera.left = -60;
@@ -54,6 +55,7 @@ sun.shadow.camera.right = 60;
 sun.shadow.camera.top = 60;
 sun.shadow.camera.bottom = -60;
 sun.shadow.camera.far = 150;
+sun.shadow.radius = 3;
 scene.add(sun);
 
 // ---------------------------------------------------------------- world & actors

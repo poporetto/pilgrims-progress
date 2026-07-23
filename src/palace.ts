@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { PALETTE } from './palette';
-import { makeBear, animateBear, BearParts, block, mat } from './bear';
+import { makeBear, animateBear, addPilgrimArmorDetails, BearParts, block, mat } from './bear';
 import { makeShiningLight, animateShiningLight, ShiningLight, setupSunShadow } from './light';
 import { DialogueLine } from './npcs';
 
@@ -938,6 +938,9 @@ export class PalaceScene {
   }
 
   private runFarewell(): void {
+    // The finishing plates appear once the final piece has been bestowed, then
+    // carry forward unchanged through every subsequent chapter.
+    addPilgrimArmorDetails(this.christian);
     this.cb.playScript([
       { speaker: '', text: 'Christian stands arrayed head to paw in the whole armor of God, the morning light bright on the steel.' },
       { speaker: 'Christian', text: 'I hardly know myself. …Thank you. All of you. For the table, and the tales, and the glimpse from the roof — and for this.' },

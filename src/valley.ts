@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { PALETTE } from './palette';
-import { makeBear, animateBear, BearParts, block, mat } from './bear';
+import { makeBear, animateBear, addPilgrimArmorDetails, BearParts, block, mat } from './bear';
 import { makeShiningLight, animateShiningLight, ShiningLight, setupSunShadow } from './light';
 import { DialogueLine } from './npcs';
 
@@ -106,6 +106,7 @@ export class ValleyScene {
     helmet.add(block(0.26, 0.24, 0.22, PALETTE.bearBrown, 0.38, 1.08, 0));
     this.christian.head.add(helmet);
     this.christian.body.add(block(1.16, 0.62, 0.88, STEEL, 0, 0.42, 0));
+    addPilgrimArmorDetails(this.christian);
     const shield = new THREE.Group();
     shield.add(block(0.12, 0.8, 0.62, STEEL, 0, 0, 0));
     shield.add(block(0.14, 0.42, 0.12, PALETTE.robeGold, 0, 0, 0));
@@ -354,9 +355,11 @@ export class ValleyScene {
     s.add(props);
     this.healProps = props;
 
-    // the shining light at the valley's end (the standard beacon)
+    // Keep the beacon inside the reachable end of the road. Previously it sat
+    // beyond the completion boundary, so Chapter IX could end before its light
+    // was ever clearly in view.
     this.shining = makeShiningLight();
-    this.shining.group.position.set(LIGHT_X + 1.5, 0, 0);
+    this.shining.group.position.set(LIGHT_X - 1.2, 0, 0);
     s.add(this.shining.group);
 
     s.add(this.christian.root);

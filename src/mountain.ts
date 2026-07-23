@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { PALETTE } from './palette';
-import { makeBear, animateBear, BearParts, block, mat } from './bear';
+import { makeBear, animateBear, addPilgrimArmorDetails, BearParts, block, mat } from './bear';
 import { makeShiningLight, animateShiningLight, ShiningLight, setupSunShadow } from './light';
 import { DialogueLine } from './npcs';
 
@@ -106,6 +106,7 @@ export class MountainScene {
     helmet.add(block(0.26, 0.24, 0.22, PALETTE.bearBrown, 0.38, 1.08, 0));
     this.christian.head.add(helmet);
     this.christian.body.add(block(1.16, 0.62, 0.88, STEEL, 0, 0.42, 0));
+    addPilgrimArmorDetails(this.christian);
     const sword = new THREE.Group();
     sword.add(block(0.09, 0.95, 0.16, 0xe8edf2, 0, 0.55, 0));
     sword.add(block(0.3, 0.1, 0.2, PALETTE.robeGold, 0, 0.04, 0));
@@ -308,6 +309,9 @@ export class MountainScene {
     const path = new THREE.Mesh(new THREE.PlaneGeometry(LIGHT_X - WEST_EDGE + 12, 4.2), mat(PALETTE.path));
     path.rotation.x = -Math.PI / 2;
     path.position.set((WEST_EDGE + LIGHT_X) / 2, 0.02, PATH_Z);
+    // The highway must receive the same real directional shadows as the grass.
+    // Without this explicit flag, only the meadow showed Christian's shadow.
+    path.receiveShadow = true;
     s.add(path);
     // worn stone edging and stepping blocks along the road
     for (let px = WEST_EDGE; px <= LIGHT_X + 4; px += 2.4) {

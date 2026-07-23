@@ -57,6 +57,10 @@ export function makeShiningLight(): ShiningLight {
 
 // gentle twinkle: the star slowly turns and the outer glow breathes
 export function animateShiningLight(l: ShiningLight, t: number): void {
+  // Match Chapter I: the complete yellow column gently breathes, not merely
+  // its star. This makes the end-of-chapter light feel alive everywhere.
+  const beamPulse = 1 + Math.sin(t * 2.4) * 0.12;
+  l.group.scale.set(beamPulse, 1, beamPulse);
   l.star.rotation.y = t * 0.6;
   const s = 1 + Math.sin(t * 2.2) * 0.12;
   l.starGlow.scale.setScalar(s);

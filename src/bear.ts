@@ -27,6 +27,12 @@ export interface BearParts {
   armR: THREE.Group;
   legL: THREE.Group;
   legR: THREE.Group;
+  tail?: THREE.Mesh;
+  eyes?: THREE.Mesh[];
+  /** Stylized movement dust; kept on the actor so every chapter gets it. */
+  dustPuffs?: THREE.Mesh[];
+  dustTimer?: number;
+  dustLastT?: number;
 }
 
 const geoCache = new Map<string, THREE.BoxGeometry>();
@@ -96,6 +102,32 @@ export function makeBear(opts: CharacterOptions = {}): BearParts {
   const scale = opts.scale ?? 1;
 
   const root = new THREE.Group();
+  // Scene-agnostic character collision metadata. The active pilgrim is marked
+  // by the same burdened/pre-armor or plump/post-Cross options used elsewhere.
+  root.userData.characterRadius = 0.72 * scale;
+  root.userData.isPilgrim = species === 'bear' && (opts.plump === true || opts.burden === true);
+
+  // Chapter I-style dust pool. These are emitted into the scene (rather than
+  // remaining parented to the character) so each puff genuinely stays behind
+  // Christian and drifts away after his step.
+  const dustPuffs: THREE.Mesh[] = [];
+  // Christian is burdened before the Cross and plump after it; both forms need
+  // the same trail. Other bears stay dust-free.
+  const hasFootDust = species === 'bear' && (opts.plump === true || opts.burden === true);
+  for (const side of [-1, 1]) {
+    const puff = new THREE.Mesh(
+      new THREE.BoxGeometry(0.22, 0.22, 0.22),
+      new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, depthWrite: false }),
+    );
+    puff.position.set(side * 0.2, 0.11, -0.58);
+    puff.scale.setScalar(1);
+    puff.castShadow = false;
+    puff.visible = false;
+    puff.userData.life = 1;
+    puff.userData.vx = 0;
+    puff.userData.vz = 0;
+    if (hasFootDust) dustPuffs.push(puff);
+  }
 
   // --- legs (pivots at hip so they can swing) ---
   const makeLeg = (side: number) => {
@@ -127,8 +159,11 @@ export function makeBear(opts: CharacterOptions = {}): BearParts {
   body.add(block(0.52, 0.22, 0.46, fur, 0, 0.88, 0));
 
   // species tails
+  let tail: THREE.Mesh | undefined;
   if (species === 'bear') {
-    body.add(block(0.2, 0.2, 0.2, fur, 0, 0.25, -0.34));
+    // Normal, snug tail position. Armour moves this back only after it is worn.
+    tail = block(0.2, 0.2, 0.2, fur, 0, 0.25, -(bodyD / 2 + 0.1));
+    body.add(tail);
   } else if (species === 'pig') {
     body.add(block(0.12, 0.12, 0.16, 0xef9fac, 0.08, 0.3, -0.36));
     body.add(block(0.12, 0.12, 0.12, 0xef9fac, 0.16, 0.4, -0.4));
@@ -149,11 +184,16 @@ export function makeBear(opts: CharacterOptions = {}): BearParts {
     body.add(block(bodyW + 0.12, 0.34, bodyD + 0.12, 0xffffff, 0, 0.66, 0));
     body.add(block(0.22, 0.22, 0.18, 0xffffff, 0, 0.3, -(bodyD / 2 + 0.06)));
   } else if (species === 'dog') {
-    // a happy upright tail, angled like mid-wag
-    const tail = block(0.16, 0.55, 0.16, fur, 0.12, 0.5, -(bodyD / 2 + 0.1));
-    tail.rotation.x = -0.45;
-    body.add(tail);
-    body.add(block(0.2, 0.2, 0.2, BELLY.dog, 0.12, 0.78, -(bodyD / 2 + 0.24))); // pale tip
+    // A short, three-piece voxel tail with a jaunty upward wag.
+    const tailBase = block(0.18, 0.22, 0.3, fur, 0.1, 0.42, -(bodyD / 2 + 0.12));
+    tailBase.rotation.x = -0.45;
+    body.add(tailBase);
+    const tailMid = block(0.16, 0.28, 0.18, fur, 0.18, 0.62, -(bodyD / 2 + 0.31));
+    tailMid.rotation.x = -0.68;
+    tailMid.rotation.z = -0.18;
+    body.add(tailMid);
+    const tailTip = block(0.18, 0.18, 0.18, BELLY.dog, 0.27, 0.82, -(bodyD / 2 + 0.4));
+    body.add(tailTip);
   }
   // frogs and owls have no visible tail
 
@@ -265,17 +305,20 @@ export function makeBear(opts: CharacterOptions = {}): BearParts {
     head.add(block(0.36, 0.26, 0.16, 0xfaf7ef, 0, 0.24, 0.45));
     head.add(block(0.13, 0.1, 0.07, 0xe0a3ac, 0, 0.32, 0.54));
   } else if (species === 'dog') {
-    // long floppy ears hanging DOWN the sides of the head — nothing bear about them
+    // Rounded floppy ears, warm muzzle, and bright eyes give Hopeful a gentle,
+    // puppy-like face rather than a square bear face with dog parts attached.
     const earC = new THREE.Color(fur).multiplyScalar(0.72).getHex();
     for (const side of [-1, 1]) {
-      const ear = block(0.24, 0.66, 0.18, earC, 0.52 * side, 0.5, -0.02);
+      const ear = new THREE.Mesh(new THREE.SphereGeometry(0.22, 8, 6), mat(earC));
+      ear.scale.set(0.85, 1.7, 0.6);
+      ear.position.set(0.5 * side, 0.48, 0.02);
       ear.rotation.z = 0.18 * side;
       head.add(ear);
-      head.add(block(0.18, 0.3, 0.12, earC, 0.6 * side, 0.14, 0.0)); // the dangling tip
     }
-    // a proper protruding muzzle with a big black nose
-    head.add(block(0.5, 0.4, 0.38, belly, 0, 0.2, 0.52));
-    head.add(block(0.22, 0.18, 0.12, 0x2e2a28, 0, 0.34, 0.72));
+    // A layered voxel muzzle reads friendly while matching the blocky art style.
+    head.add(block(0.54, 0.3, 0.28, belly, 0, 0.2, 0.5));
+    head.add(block(0.36, 0.2, 0.16, 0xfff3df, 0, 0.26, 0.65));
+    head.add(block(0.18, 0.14, 0.1, 0x2e2a28, 0, 0.34, 0.72));
     // mouth line + a little pink tongue lolling out
     head.add(block(0.34, 0.05, 0.06, 0x8a6f52, 0, 0.06, 0.7));
     head.add(block(0.16, 0.07, 0.16, 0xe58a9b, 0.08, 0.0, 0.62));
@@ -296,9 +339,13 @@ export function makeBear(opts: CharacterOptions = {}): BearParts {
   }
 
   // eyes (frogs already have theirs on top)
+  const eyes: THREE.Mesh[] = [];
   if (species !== 'frog') {
-    head.add(block(0.1, 0.14, 0.05, PALETTE.nose, -0.24, 0.5, 0.41));
-    head.add(block(0.1, 0.14, 0.05, PALETTE.nose, 0.24, 0.5, 0.41));
+    const eyeL = block(0.1, 0.14, 0.05, PALETTE.nose, -0.24, 0.5, 0.41);
+    const eyeR = block(0.1, 0.14, 0.05, PALETTE.nose, 0.24, 0.5, 0.41);
+    head.add(eyeL);
+    head.add(eyeR);
+    eyes.push(eyeL, eyeR);
   }
   // rosy cheeks for everyone
   head.add(block(0.12, 0.08, 0.04, 0xf7b2bd, -0.36, 0.32, 0.41));
@@ -371,11 +418,49 @@ export function makeBear(opts: CharacterOptions = {}): BearParts {
   }
 
   root.scale.setScalar(scale);
-  return { root, body, head, armL, armR, legL, legR };
+  return { root, body, head, armL, armR, legL, legR, tail, eyes, dustPuffs, dustTimer: 0, dustLastT: 0 };
+}
+
+// Shared finishing layer for Christian's post-Palace armour. Scene-specific
+// swords and shields can still be added independently, but the breastplate,
+// pauldrons, belt, and greaves now read the same throughout the journey.
+export function addPilgrimArmorDetails(parts: BearParts): void {
+  const STEEL_LIGHT = 0xe8edf2;
+  parts.body.add(block(0.72, 0.42, 0.07, STEEL_LIGHT, 0, 0.43, 0.48));
+  parts.body.add(block(0.1, 0.46, 0.08, PALETTE.robeGold, 0, 0.43, 0.53));
+  parts.body.add(block(0.98, 0.1, 0.09, PALETTE.robeGold, 0, 0.15, 0.48));
+  // The breastplate's rear face occupies the tail's normal position. Move the
+  // existing tail behind it only for armored Christian, preventing flicker
+  // without making the earlier burdened/unarmored tail look detached.
+  if (parts.tail) parts.tail.position.z = -0.64;
+  for (const side of [-1, 1]) {
+    parts.body.add(block(0.24, 0.18, 0.72, 0xc0c9d0, side * 0.56, 0.68, 0));
+    const leg = side < 0 ? parts.legL : parts.legR;
+    leg.add(block(0.31, 0.24, 0.38, 0xcfd6dd, 0, -0.2, 0));
+  }
 }
 
 // Animate limbs: call every frame with elapsed time and whether moving.
 export function animateBear(parts: BearParts, t: number, moving: boolean): void {
+  // Keep the player from walking through any other character in the current
+  // scene. Characters are direct scene children in every chapter, so the
+  // shared rig can enforce this without scene-specific collider lists.
+  if (parts.root.userData.isPilgrim && parts.root.parent) {
+    const here = parts.root.position;
+    const myRadius = parts.root.userData.characterRadius as number;
+    for (const other of parts.root.parent.children) {
+      if (other === parts.root || !other.visible || typeof other.userData.characterRadius !== 'number') continue;
+      const dx = here.x - other.position.x;
+      const dz = here.z - other.position.z;
+      const distance = Math.hypot(dx, dz);
+      const minDistance = myRadius + (other.userData.characterRadius as number);
+      if (distance > 0.0001 && distance < minDistance) {
+        const push = minDistance - distance;
+        here.x += (dx / distance) * push;
+        here.z += (dz / distance) * push;
+      }
+    }
+  }
   const swing = moving ? Math.sin(t * 9) * 0.7 : 0;
   const idle = Math.sin(t * 2) * 0.02;
   parts.legL.rotation.x = swing;
@@ -384,4 +469,41 @@ export function animateBear(parts: BearParts, t: number, moving: boolean): void 
   parts.armR.rotation.x = swing * 0.8;
   parts.body.position.y = 0.55 + (moving ? Math.abs(Math.sin(t * 9)) * 0.06 : idle);
   parts.head.rotation.z = moving ? Math.sin(t * 4.5) * 0.04 : Math.sin(t * 1.5) * 0.03;
+  const puffs = parts.dustPuffs ?? [];
+  const dt = Math.min(Math.max(t - (parts.dustLastT ?? t), 0), 0.1);
+  parts.dustLastT = t;
+  for (const puff of puffs) {
+    const life = puff.userData.life as number;
+    if (life >= 1) continue;
+    const nextLife = Math.min(1, life + dt * 2.2);
+    puff.userData.life = nextLife;
+    puff.position.x += (puff.userData.vx as number) * dt;
+    puff.position.z += (puff.userData.vz as number) * dt;
+    puff.position.y += dt * 0.9;
+    puff.scale.setScalar(0.6 + nextLife * 1.6);
+    (puff.material as THREE.MeshBasicMaterial).opacity = 0.55 * (1 - nextLife);
+    if (nextLife >= 1) puff.visible = false;
+  }
+  if (moving && puffs.length && parts.root.parent) {
+    parts.dustTimer = (parts.dustTimer ?? 0) - dt;
+    if (parts.dustTimer <= 0) {
+      parts.dustTimer = 0.13;
+      const puff = puffs.find((candidate) => (candidate.userData.life as number) >= 1);
+      if (puff) {
+        const pos = parts.root.getWorldPosition(new THREE.Vector3());
+        const rear = new THREE.Vector3(0, 0, -1).applyQuaternion(parts.root.getWorldQuaternion(new THREE.Quaternion()));
+        puff.position.set(
+          pos.x + rear.x * 0.45 + (Math.random() - 0.5) * 0.5,
+          pos.y + 0.12,
+          pos.z + rear.z * 0.45 + (Math.random() - 0.5) * 0.5,
+        );
+        puff.userData.life = 0;
+        puff.userData.vx = (Math.random() - 0.5) * 0.8;
+        puff.userData.vz = (Math.random() - 0.5) * 0.8;
+        puff.scale.setScalar(0.6);
+        puff.visible = true;
+        parts.root.parent.add(puff);
+      }
+    }
+  }
 }

@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { PALETTE } from './palette';
-import { makeBear, animateBear, BearParts, block, mat } from './bear';
+import { makeBear, animateBear, addPilgrimArmorDetails, BearParts, block, mat } from './bear';
 import { makeShiningLight, animateShiningLight, ShiningLight, setupSunShadow } from './light';
 import { DialogueLine } from './npcs';
 
@@ -106,6 +106,7 @@ export class BeulahScene {
     helmet.add(block(0.2, 0.24, 0.9, PALETTE.robeGold, 0, 1.16, 0));
     this.christian.head.add(helmet);
     this.christian.body.add(block(1.16, 0.62, 0.88, STEEL, 0, 0.42, 0));
+    addPilgrimArmorDetails(this.christian);
 
     // Hopeful the young dog
     this.hopeful = makeBear({
@@ -209,22 +210,26 @@ export class BeulahScene {
     const base = new THREE.Mesh(new THREE.PlaneGeometry(320, 180), mat(0x9ed67e));
     base.rotation.x = -Math.PI / 2;
     base.position.set(LIGHT_X - 10, 0, 0);
+    base.receiveShadow = true;
     s.add(base);
 
     // the far golden shore (east of the river), raised just above the green base
     const farShore = new THREE.Mesh(new THREE.PlaneGeometry(140, 180), mat(0xe8d69a));
     farShore.rotation.x = -Math.PI / 2;
     farShore.position.set(FAR_SHORE_X + 60, 0.02, 0);
+    farShore.receiveShadow = true;
     s.add(farShore);
 
     // ---- the paths (above the ground tints) ----
     const path = new THREE.Mesh(new THREE.PlaneGeometry(RIVER_X - WEST_EDGE + 8, 4.2), mat(PALETTE.path));
     path.rotation.x = -Math.PI / 2;
     path.position.set((WEST_EDGE + RIVER_X) / 2, 0.05, PATH_Z);
+    path.receiveShadow = true;
     s.add(path);
     const path2 = new THREE.Mesh(new THREE.PlaneGeometry(LIGHT_X - FAR_SHORE_X + 8, 4.2), mat(0xf2e2b0));
     path2.rotation.x = -Math.PI / 2;
     path2.position.set((FAR_SHORE_X + LIGHT_X) / 2, 0.05, PATH_Z);
+    path2.receiveShadow = true;
     s.add(path2);
 
     // ---- the River — banks, shallows, deep channel, drifting ripples ----

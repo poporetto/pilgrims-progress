@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { PALETTE } from './palette';
-import { makeBear, animateBear, BearParts, block, mat } from './bear';
+import { makeBear, animateBear, addPilgrimArmorDetails, BearParts, block, mat } from './bear';
 import { makeShiningLight, animateShiningLight, ShiningLight, setupSunShadow } from './light';
 import { DialogueLine } from './npcs';
 
@@ -327,6 +327,7 @@ export class CastleScene {
     helmet.add(block(0.26, 0.24, 0.22, PALETTE.bearBrown, 0.38, 1.08, 0));
     this.christian.head.add(helmet);
     this.christian.body.add(block(1.16, 0.62, 0.88, STEEL, 0, 0.42, 0));
+    addPilgrimArmorDetails(this.christian);
     const sword = new THREE.Group();
     sword.add(block(0.09, 0.95, 0.16, 0xe8edf2, 0, 0.55, 0));
     sword.add(block(0.3, 0.1, 0.2, PALETTE.robeGold, 0, 0.04, 0));
@@ -459,6 +460,7 @@ export class CastleScene {
     );
     ground.rotation.x = -Math.PI / 2;
     ground.position.set(LIGHT_X / 2, 0, 0);
+    ground.receiveShadow = true;
     s.add(ground);
 
     // ---- rocky King's Highway (x: WEST_EDGE to FORK_X) ----
@@ -466,39 +468,34 @@ export class CastleScene {
     const hwyRoad = new THREE.Mesh(new THREE.PlaneGeometry(Math.abs(FORK_X - WEST_EDGE) + 4, 4), mat(PALETTE.path));
     hwyRoad.rotation.x = -Math.PI / 2;
     hwyRoad.position.set((FORK_X + WEST_EDGE) / 2, 0.01, HWY_Z);
+    hwyRoad.receiveShadow = true;
     s.add(hwyRoad);
 
     // ---- continued highway east of fork (sign → exit) ----
     const hwyEast = new THREE.Mesh(new THREE.PlaneGeometry(LIGHT_X - FORK_X + 4, 4), mat(PALETTE.path));
     hwyEast.rotation.x = -Math.PI / 2;
     hwyEast.position.set((FORK_X + LIGHT_X) / 2, 0.01, HWY_Z);
+    hwyEast.receiveShadow = true;
     s.add(hwyEast);
 
-    // rocks along the whole highway — rough going from end to end. Kept clear
-    // of the walkable lane (|z| up to ~1.8 across the enter/highway/sign
-    // phases) so they read as scenery rather than something Christian clips
-    // through mid-stride.
+    // Small, irregular clusters along the shoulder. They deliberately leave
+    // breaths of grass between them: a natural, Animal-Crossing-like rocky
+    // verge rather than a continuous wall of identical blocks.
     const rockColors = [0x7a6e62, 0x6e6258, 0x8a7e72];
     const rng = (a: number, b: number) => a + Math.random() * (b - a);
-    for (let i = 0; i < 60; i++) {
+    for (let i = 0; i < 26; i++) {
       const rx = rng(WEST_EDGE + 1, LIGHT_X - 1);
-      const rz = (Math.random() < 0.5 ? -1 : 1) * rng(2.0, 3.6);
-      s.add(this.makeRock(rng(0.5, 1.3), rng(0.3, 0.9), rng(0.4, 1.1), rockColors[i % 3], rx, rz));
-    }
-    // a continuous rock wall right at the lane's edge, so the movement clamp
-    // reads as running into rocks rather than an unexplained stop. The row is
-    // placed so each rock's near face sits just outside the clamp line
-    // (LANE_HALF_WIDTH), so Christian and Hopeful bump the wall but never clip
-    // into it. Stepped tightly so there are no walk-through gaps.
-    const BOUNDARY_Z = LANE_HALF_WIDTH + 0.55; // rounded rocks bulge, so extra standoff
-    for (let bx = WEST_EDGE; bx <= LIGHT_X; bx += rng(0.8, 1.1)) {
-      for (const bz of [-BOUNDARY_Z, BOUNDARY_Z]) {
-        s.add(this.makeRock(rng(0.9, 1.5), rng(0.6, 1.2), rng(0.7, 1.0), rockColors[Math.floor(rng(0, 3))], bx + rng(-0.2, 0.2), bz));
+      const rz = (Math.random() < 0.5 ? -1 : 1) * rng(2.7, 5.2);
+      const count = Math.random() < 0.45 ? 2 : 1;
+      for (let r = 0; r < count; r++) {
+        s.add(this.makeRock(rng(0.65, 1.35), rng(0.35, 0.85), rng(0.55, 1.15),
+          rockColors[Math.floor(rng(0, rockColors.length))], rx + rng(-0.8, 0.8), rz + rng(-0.65, 0.65)));
       }
     }
-    // a few bigger boulders set back on the shoulders (never in the walkable
-    // lane, so the pilgrims can't clip through them) for a rough, broken look
-    const pathRockXs = [-28, -22, -15, -8, 2, 10, 18, 27, 36, 45, 54, 63];
+    // A few landmark boulders set farther back frame the road without making
+    // the walking lane feel fenced in.
+    const BOUNDARY_Z = LANE_HALF_WIDTH + 0.55;
+    const pathRockXs = [-27, -16, -4, 12, 29, 47, 63];
     for (const px of pathRockXs) {
       const pz = (Math.random() < 0.5 ? -1 : 1) * rng(BOUNDARY_Z + 0.6, BOUNDARY_Z + 1.8);
       s.add(this.makeRock(rng(0.7, 1.2), rng(0.4, 0.8), rng(0.6, 1.0), 0x7a6e62, px, pz));
@@ -857,16 +854,21 @@ export class CastleScene {
   // onto the existing fork signpost; see the fork sign + triggerSign.)
   private buildWarningSign(): void { /* intentionally empty */ }
 
-  // a chunky BLOCKY (voxel-style) boulder: a base cube with a couple of smaller
-  // cubes stacked and offset on top, sitting on the ground at (x, z) with an
-  // approximate w×h×d footprint
+  // Low-poly, rounded boulder with a small moss cap. The faceting keeps the
+  // storybook style while avoiding the old stacked-cube appearance.
   private makeRock(w: number, h: number, d: number, color: number, x: number, z: number): THREE.Object3D {
     const g = new THREE.Group();
-    const jit = (s: number) => (Math.random() - 0.5) * s;
-    g.add(block(w, h * 0.7, d, color, 0, h * 0.35, 0));                       // base slab
-    g.add(block(w * 0.72, h * 0.5, d * 0.72, color, jit(0.3) * w, h * 0.72, jit(0.3) * d)); // upper block
-    if (Math.random() < 0.65) {
-      g.add(block(w * 0.44, h * 0.42, d * 0.44, color, jit(0.5) * w, h * 0.98, jit(0.5) * d)); // cap
+    const stone = new THREE.Mesh(new THREE.DodecahedronGeometry(0.62, 0), mat(color));
+    stone.scale.set(w, h * 1.15, d);
+    stone.position.y = h * 0.48;
+    stone.rotation.set(Math.random() * 0.35, Math.random() * Math.PI, Math.random() * 0.25);
+    g.add(stone);
+    if (Math.random() < 0.38) {
+      const moss = new THREE.Mesh(new THREE.DodecahedronGeometry(0.34, 0), mat(0x6f9d5a));
+      moss.scale.set(w * 0.55, h * 0.25, d * 0.52);
+      moss.position.set(-w * 0.12, h * 0.88, d * 0.02);
+      moss.rotation.y = stone.rotation.y;
+      g.add(moss);
     }
     g.position.set(x, 0, z);
     g.rotation.y = Math.random() * Math.PI * 0.5; // quarter-turn variety, staying axis-aligned-ish

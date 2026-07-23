@@ -51,6 +51,7 @@ export class HillScene {
   phase: Phase = 'walk';
   private cb: HillCallbacks;
   private christian: BearParts;
+  private sleepEyes: THREE.Group;
   private pawScroll: THREE.Group;
   private formalist: BearParts;
   private hypocrisy: BearParts;
@@ -58,6 +59,7 @@ export class HillScene {
   private timorous: BearParts;
   private mistrust: BearParts;
   private fleeT = 0;
+  private warningDialogueStarted = false;
   private sleepT = 0;
   private duskP = 0;      // 0 = bright day … 1 = sunset
   private duskTarget = 0;
@@ -84,6 +86,13 @@ export class HillScene {
     const seal = block(0.10, 0.10, 0.04, PALETTE.robeGold, 0, 0.62, 0.42);
     seal.castShadow = false;
     this.christian.head.add(seal);
+    this.sleepEyes = new THREE.Group();
+    // Thin horizontal voxel eyelids sit just ahead of the normal eyes.
+    for (const side of [-1, 1]) {
+      this.sleepEyes.add(block(0.18, 0.04, 0.06, 0x3f3028, side * 0.24, 0.5, 0.47));
+    }
+    this.sleepEyes.visible = false;
+    this.christian.head.add(this.sleepEyes);
     this.pawScroll = new THREE.Group();
     const roll = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.5, 8), mat(0xfdf6e3));
     roll.rotation.z = Math.PI / 2;
@@ -232,13 +241,15 @@ export class HillScene {
     }
     // a three-armed signpost at the fork
     const post = new THREE.Group();
-    post.add(block(0.16, 2.0, 0.16, PALETTE.woodDark, 0, 1.0, 0));
-    post.add(block(1.3, 0.34, 0.1, PALETTE.wood, 0.55, 1.8, 0));       // up the hill
-    const armL = block(0.1, 0.34, 1.3, PALETTE.wood, 0, 1.45, -0.55);  // Danger
+    post.add(block(0.16, 2.8, 0.16, PALETTE.woodDark, 0, 1.4, 0));
+    post.add(block(1.3, 0.34, 0.1, PALETTE.wood, 0.55, 2.45, 0));       // up the hill
+    const armL = block(0.1, 0.34, 1.3, PALETTE.wood, 0, 2.1, -0.55);   // Danger
     post.add(armL);
-    const armR = block(0.1, 0.34, 1.3, PALETTE.wood, 0, 1.1, 0.55);    // Destruction
+    const armR = block(0.1, 0.34, 1.3, PALETTE.wood, 0, 1.75, 0.55);   // Destruction
     post.add(armR);
-    post.position.set(FORK_X, 0, -0.2);
+    // Set back on the north shoulder so it reads clearly without standing in
+    // the middle of the King's Highway.
+    post.position.set(FORK_X, 0, -3.1);
     s.add(post);
 
     // ---------- the arbor, halfway up — a shaded shelter with a bench ----------
@@ -350,6 +361,9 @@ export class HillScene {
     this.duskP = 0;
     this.duskTarget = 0;
     this.fleeT = 0;
+    this.warningDialogueStarted = false;
+    this.sleepEyes.visible = false;
+    for (const eye of this.christian.eyes ?? []) eye.visible = true;
     this.timorous.root.visible = false;
     this.mistrust.root.visible = false;
     if (this.scrollProp) this.scrollProp.visible = false;
@@ -410,9 +424,10 @@ export class HillScene {
     p.x = THREE.MathUtils.clamp(p.x, WEST_EDGE - 1, eastCap);
     p.y = this.groundY(p.x);
 
-    // arbor collision: push player out of the structure's footprint
-    if (p.x > ARBOR.x - 1.6 && p.x < ARBOR.x + 1.6 && p.z < ARBOR.z + 1.3) {
-      p.z = ARBOR.z + 1.3;
+    // Keep only the solid rear of the arbor blocked; the path-side entrance
+    // must remain open so it does not feel like an invisible highway wall.
+    if (p.x > ARBOR.x - 1.3 && p.x < ARBOR.x + 1.3 && p.z < ARBOR.z + 0.6) {
+      p.z = ARBOR.z + 0.6;
     }
 
     if (this.revisit || this.phase === 'done') {
@@ -439,7 +454,9 @@ export class HillScene {
       return;
     }
 
-    if (this.phase === 'climb' && Math.abs(p.x - ARBOR.x) < 2) {
+    // Trigger the rest scene only after Christian has cleared the arbor rather
+    // than while he is approaching it; this keeps the middle of the path free.
+    if (this.phase === 'climb' && p.x > ARBOR.x + 1.7) {
       this.phase = 'arbor';
       this.christian.root.rotation.y = 0; // faces the arbor
       this.cb.playScript([
@@ -474,21 +491,12 @@ export class HillScene {
     if (this.phase === 'climb3' && p.x > 8.5) {
       this.phase = 'warning';
       this.timorous.root.visible = true;
-      this.timorous.root.position.set(p.x + 5, this.groundY(p.x + 5), p.z - 1.2);
+      // Start well up the hill and visibly sprint down into the encounter.
+      this.timorous.root.position.set(p.x + 19, this.groundY(p.x + 19), p.z - 1.2);
       this.timorous.root.rotation.y = -Math.PI / 2;
       this.mistrust.root.visible = true;
-      this.mistrust.root.position.set(p.x + 6.2, this.groundY(p.x + 6.2), p.z + 1.0);
+      this.mistrust.root.position.set(p.x + 21, this.groundY(p.x + 21), p.z + 1.0);
       this.mistrust.root.rotation.y = -Math.PI / 2;
-      this.cb.playScript([
-        { speaker: '', text: 'Two travellers come pelting down the hill as though wolves were at their heels.' },
-        { speaker: 'Christian', text: 'Whoa — friends! You\'re running the wrong way! What happened?' },
-        { speaker: 'Timorous', text: 'T-t-turn back! We were bound for Zion, same as you — but the farther we went, the MORE danger we saw!' },
-        { speaker: 'Mistrust', text: 'Just ahead, in the very path, lie two LIONS! Asleep or awake we did not stay to find out — but whoever goes on will be torn to pieces!' },
-        { speaker: 'Timorous', text: 'Turn back, turn back while you still have legs to carry you!' },
-      ], () => {
-        this.phase = 'fleeing';
-        this.fleeT = 0;
-      });
       return;
     }
 
@@ -552,8 +560,10 @@ export class HillScene {
     // ---------- the arbor nap ----------
     if (this.phase === 'sleeping') {
       this.sleepT += dt;
-      // he slumps forward on the bench, stays on the ground level
-      this.christian.root.rotation.x = Math.PI / 6 * Math.min(1, this.sleepT / 0.6);
+      this.sleepEyes.visible = true;
+      for (const eye of this.christian.eyes ?? []) eye.visible = false;
+      // He eases back into the arbor bench as sleep overtakes him.
+      this.christian.root.rotation.x = -Math.PI / 6 * Math.min(1, this.sleepT / 0.6);
       this.christian.root.position.y = this.groundY(p.x);
       this.zzzTimer -= dt;
       if (this.zzzTimer <= 0) {
@@ -566,6 +576,8 @@ export class HillScene {
         }
       }
       if (this.sleepT > 4.2) {
+        this.sleepEyes.visible = false;
+        for (const eye of this.christian.eyes ?? []) eye.visible = true;
         this.christian.root.rotation.x = 0;
         this.christian.root.rotation.z = 0;
         this.christian.root.position.y = this.groundY(p.x);
@@ -590,6 +602,37 @@ export class HillScene {
     }
 
     // ---------- Timorous & Mistrust bolt downhill ----------
+    if (this.phase === 'warning') {
+      const runners = [this.timorous, this.mistrust];
+      if (!this.warningDialogueStarted) {
+        for (const who of runners) {
+          const wp = who.root.position;
+          wp.x -= dt * 15;
+          wp.y = this.groundY(wp.x);
+          who.root.rotation.y = -Math.PI / 2;
+          animateBear(who, t * 2.2, true);
+        }
+      }
+      if (!this.warningDialogueStarted && this.timorous.root.position.x <= p.x + 3.5) {
+        this.warningDialogueStarted = true;
+        this.timorous.root.position.x = p.x + 3.5;
+        this.mistrust.root.position.x = p.x + 4.7;
+        animateBear(this.timorous, t, false);
+        animateBear(this.mistrust, t, false);
+        this.cb.playScript([
+          { speaker: '', text: 'Two travellers come pelting down the hill as though wolves were at their heels.' },
+          { speaker: 'Christian', text: 'Whoa — friends! You\'re running the wrong way! What happened?' },
+          { speaker: 'Timorous', text: 'T-t-turn back! We were bound for Zion, same as you — but the farther we went, the MORE danger we saw!' },
+          { speaker: 'Mistrust', text: 'Just ahead, in the very path, lie two LIONS! Asleep or awake we did not stay to find out — but whoever goes on will be torn to pieces!' },
+          { speaker: 'Timorous', text: 'Turn back, turn back while you still have legs to carry you!' },
+        ], () => {
+          this.phase = 'fleeing';
+          this.fleeT = 0;
+        });
+      } else if (this.warningDialogueStarted) {
+        for (const who of runners) animateBear(who, t, false);
+      }
+    }
     if (this.phase === 'fleeing') {
       this.fleeT += dt;
       for (const who of [this.timorous, this.mistrust]) {

@@ -213,26 +213,36 @@ export class WorldMap {
 
   private label(text: string, x: number, z: number, y: number, color = '#5b4a3f'): void {
     const canvas = document.createElement('canvas');
-    canvas.width = 512;
-    canvas.height = 128;
+    // Wide labels (especially “Delectable Mountains”) need a larger texture;
+    // the previous 512px canvas clipped the rounded title plaque at its sides.
+    canvas.width = 1024;
+    canvas.height = 160;
     const c = canvas.getContext('2d')!;
-    c.font = 'bold 52px "Trebuchet MS", sans-serif';
+    c.font = 'bold 54px "Trebuchet MS", sans-serif';
     c.textAlign = 'center';
     c.textBaseline = 'middle';
-    // soft rounded plate behind the text
-    const w = c.measureText(text).width + 70;
-    c.fillStyle = 'rgba(255, 248, 239, 0.92)';
-    c.strokeStyle = 'rgba(244, 184, 196, 1)';
-    c.lineWidth = 8;
+    // A soft pastel signboard gives each scene title a friendly, map-book feel.
+    const w = Math.min(960, c.measureText(text).width + 104);
+    const left = (canvas.width - w) / 2;
+    const gradient = c.createLinearGradient(0, 22, 0, 138);
+    gradient.addColorStop(0, 'rgba(255, 252, 244, 0.97)');
+    gradient.addColorStop(1, 'rgba(232, 240, 255, 0.97)');
+    c.shadowColor = 'rgba(113, 91, 116, 0.22)';
+    c.shadowBlur = 10;
+    c.shadowOffsetY = 4;
+    c.fillStyle = gradient;
+    c.strokeStyle = 'rgba(227, 174, 202, 1)';
+    c.lineWidth = 7;
     c.beginPath();
-    c.roundRect((512 - w) / 2, 18, w, 92, 46);
+    c.roundRect(left, 22, w, 112, 52);
     c.fill();
     c.stroke();
+    c.shadowColor = 'transparent';
     c.fillStyle = color;
-    c.fillText(text, 256, 66);
+    c.fillText(text, canvas.width / 2, 78);
     const tex = new THREE.CanvasTexture(canvas);
     const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true }));
-    sprite.scale.set(6.4, 1.6, 1);
+    sprite.scale.set(12.8, 2.0, 1);
     sprite.position.set(x, y, z);
     this.scene.add(sprite);
   }

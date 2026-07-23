@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { PALETTE } from './palette';
-import { makeBear, animateBear, BearParts, block, mat } from './bear';
+import { makeBear, animateBear, addPilgrimArmorDetails, BearParts, block, mat } from './bear';
 import { makeShiningLight, animateShiningLight, ShiningLight, setupSunShadow } from './light';
 import { DialogueLine } from './npcs';
 
@@ -105,6 +105,7 @@ export class VanityScene {
     helmet.add(block(0.26, 0.24, 0.22, PALETTE.bearBrown, 0.38, 1.08, 0));
     this.christian.head.add(helmet);
     this.christian.body.add(block(1.16, 0.62, 0.88, STEEL, 0, 0.42, 0));
+    addPilgrimArmorDetails(this.christian);
     const sword = new THREE.Group();
     sword.add(block(0.09, 0.95, 0.16, 0xe8edf2, 0, 0.55, 0));
     sword.add(block(0.3, 0.1, 0.2, PALETTE.robeGold, 0, 0.04, 0));
@@ -284,11 +285,14 @@ export class VanityScene {
         const h = 3.4 + (hIdx % 3) * 0.9;
         const house = new THREE.Group();
         house.add(block(3.6, h, 3, 0xfaf3e3, 0, h / 2, 0));
-        house.add(block(3.6, h * 0.45, 3, wall, 0, h * 0.225, 0.02));
+        // A thin, street-facing painted façade. The previous full-depth colour
+        // block occupied the same volume as the cream house, causing visible
+        // z-fighting/flicker as the camera moved.
+        house.add(block(3.6, h * 0.45, 0.1, wall, 0, h * 0.225, side * -1.55));
         house.add(block(4.0, 1.0, 3.4, roof, 0, h + 0.5, 0));
-        house.add(block(0.9, 1.1, 0.14, PALETTE.woodDark, 0, 0.55, side * -1.52));
+        house.add(block(0.9, 1.1, 0.14, PALETTE.woodDark, 0, 0.55, side * -1.61));
         const win = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.8, 0.1), new THREE.MeshBasicMaterial({ color: 0xffe9a0 }));
-        win.position.set(0.9, h - 1, side * -1.52);
+        win.position.set(0.9, h - 1, side * -1.69);
         house.add(win);
         house.position.set(hx + (side > 0 ? 2.2 : 0), 0, side * 11);
         s.add(house);
