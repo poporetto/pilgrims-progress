@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { PALETTE } from './palette';
-import { makeBear, animateBear, addPilgrimArmorDetails, BearParts, block, mat } from './bear';
+import { makeBear, animateBear, addPilgrimArmorDetails, addShiningOneDetails, BearParts, block, mat } from './bear';
 import { makeShiningLight, animateShiningLight, ShiningLight, setupSunShadow } from './light';
 import { DialogueLine } from './npcs';
 
@@ -73,6 +73,7 @@ export class BeulahScene {
   private shining: ShiningLight | null = null;
   private mist: THREE.Mesh[] = [];
   private ripples: THREE.Mesh[] = [];
+  private riverGlints: THREE.Mesh[] = [];
 
   // doubt balloons
   private balloons: Balloon[] = [];
@@ -87,6 +88,7 @@ export class BeulahScene {
   private sinkT = 0;
 
   private brinkTriggered = false;
+  private angelArrivalT = -1;
   private revisit = false;
   private built = false;
 
@@ -102,11 +104,15 @@ export class BeulahScene {
     this.christian.body.add(block(1.18, 0.14, 0.86, PALETTE.robeGold, 0, 0.3, 0));
     const STEEL = 0xcfd6dd;
     const helmet = new THREE.Group();
-    helmet.add(block(1.02, 0.4, 0.86, STEEL, 0, 0.92, 0));
-    helmet.add(block(0.2, 0.24, 0.9, PALETTE.robeGold, 0, 1.16, 0));
+    // Match the half-height, bear-eared helmet established in Chapter XIV.
+    helmet.add(block(1.02, 0.28, 0.86, STEEL, 0, 0.84, 0));
+    helmet.add(block(0.18, 0.16, 0.9, PALETTE.robeGold, 0, 1.05, 0));
+    helmet.add(block(0.26, 0.24, 0.22, PALETTE.bearBrown, -0.38, 1.08, 0));
+    helmet.add(block(0.26, 0.24, 0.22, PALETTE.bearBrown, 0.38, 1.08, 0));
     this.christian.head.add(helmet);
     this.christian.body.add(block(1.16, 0.62, 0.88, STEEL, 0, 0.42, 0));
     addPilgrimArmorDetails(this.christian);
+    if (this.christian.tail) this.christian.tail.position.z = -0.54;
 
     // Hopeful the young dog
     this.hopeful = makeBear({
@@ -118,21 +124,7 @@ export class BeulahScene {
       const ang = makeBear({
         species: 'bear', fur: 0xf6f2e6, outfit: 'robe', outfitColor: 0xfff0c0,
       });
-      // wings
-      for (const side of [-1, 1]) {
-        const wing = block(0.2, 1.5, 0.9, 0xfffdf4, 0.5 * side, 0.7, -0.4);
-        wing.rotation.z = 0.3 * side;
-        wing.rotation.y = 0.4 * side;
-        ang.body.add(wing);
-      }
-      // halo
-      const halo = new THREE.Mesh(
-        new THREE.TorusGeometry(0.42, 0.06, 8, 20),
-        new THREE.MeshBasicMaterial({ color: 0xfff2b0 }),
-      );
-      halo.rotation.x = Math.PI / 2;
-      halo.position.set(0, 1.7, 0);
-      ang.head.add(halo);
+      addShiningOneDetails(ang);
       this.angels.push(ang);
     }
 
@@ -150,6 +142,7 @@ export class BeulahScene {
     this.brinkTriggered = false;
     this.sinkT = 0;
     this.walkT = 0;
+    this.angelArrivalT = -1;
     if (!this.built) this.build();
 
     // reset balloons + particles
@@ -183,12 +176,14 @@ export class BeulahScene {
     return { christian: this.christian, hopeful: this.hopeful };
   }
 
-  private setAngelsVisible(v: boolean): void {
+  private setAngelsVisible(v: boolean, flyDown = false): void {
     for (let i = 0; i < 2; i++) {
       this.angels[i].root.visible = v;
-      this.angels[i].root.position.set(FAR_SHORE_X + 3 + i * 3, 0, -1.4 + i * 2.8);
+      // Same x-position = one welcoming row, side by side.
+      this.angels[i].root.position.set(FAR_SHORE_X + 4.2, flyDown ? 11 : 0, i === 0 ? -1.55 : 1.55);
       this.angels[i].root.rotation.set(0, -Math.PI / 2, 0);
     }
+    this.angelArrivalT = v && flyDown ? 0 : -1;
   }
 
   // ---------------------------------------------------------------- build
@@ -220,17 +215,22 @@ export class BeulahScene {
     farShore.receiveShadow = true;
     s.add(farShore);
 
-    // ---- the paths (above the ground tints) ----
-    const path = new THREE.Mesh(new THREE.PlaneGeometry(RIVER_X - WEST_EDGE + 8, 4.2), mat(PALETTE.path));
-    path.rotation.x = -Math.PI / 2;
-    path.position.set((WEST_EDGE + RIVER_X) / 2, 0.05, PATH_Z);
-    path.receiveShadow = true;
-    s.add(path);
-    const path2 = new THREE.Mesh(new THREE.PlaneGeometry(LIGHT_X - FAR_SHORE_X + 8, 4.2), mat(0xf2e2b0));
-    path2.rotation.x = -Math.PI / 2;
-    path2.position.set((FAR_SHORE_X + LIGHT_X) / 2, 0.05, PATH_Z);
-    path2.receiveShadow = true;
-    s.add(path2);
+    // ---- divided timber walkways (small gaps keep them readable as planks) ----
+    const addPlankWalk = (fromX: number, toX: number, colors: number[]): void => {
+      const count = Math.ceil((toX - fromX) / 1.55);
+      for (let i = 0; i < count; i++) {
+        const x = fromX + 0.75 + i * 1.55;
+        const plank = block(1.42, 0.18, 4.05, colors[i % colors.length], x, 0.09, PATH_Z);
+        plank.rotation.y = ((i % 3) - 1) * 0.012;
+        plank.receiveShadow = true;
+        s.add(plank);
+        // two small golden-brown pegs make each board feel crafted.
+        s.add(block(0.1, 0.06, 0.1, 0x8f6847, x, 0.21, -1.55));
+        s.add(block(0.1, 0.06, 0.1, 0x8f6847, x, 0.21, 1.55));
+      }
+    };
+    addPlankWalk(WEST_EDGE - 4, RIVER_X, [0xcda878, 0xd9b98b, 0xb99669]);
+    addPlankWalk(FAR_SHORE_X, LIGHT_X + 3, [0xe8cf94, 0xf0dca9, 0xdcbf83]);
 
     // ---- the River — banks, shallows, deep channel, drifting ripples ----
     const RW = FAR_SHORE_X - RIVER_X;
@@ -275,6 +275,21 @@ export class BeulahScene {
       s.add(rip);
       this.ripples.push(rip);
     }
+    // Short voxel glints break up the broad water surface and follow the flow.
+    for (let i = 0; i < 34; i++) {
+      const glint = new THREE.Mesh(
+        new THREE.BoxGeometry(0.7 + (i % 4) * 0.28, 0.035, 0.12),
+        new THREE.MeshBasicMaterial({
+          color: i % 3 === 0 ? 0xffedbd : 0xc9efff,
+          transparent: true, opacity: 0.42, depthWrite: false,
+        }),
+      );
+      glint.position.set(rng(RIVER_X + 0.6, FAR_SHORE_X - 0.6), 0.23, rng(-27, 27));
+      glint.userData.baseX = glint.position.x;
+      glint.userData.phase = rng(0, Math.PI * 2);
+      s.add(glint);
+      this.riverGlints.push(glint);
+    }
     // a few reeds and bank rocks at the near shore
     for (let i = 0; i < 8; i++) {
       const rz = (Math.random() < 0.5 ? -1 : 1) * rng(3, 12);
@@ -316,6 +331,32 @@ export class BeulahScene {
     }
     for (let i = 0; i < 12; i++) {
       this.buildFruitTree(rng(WEST_EDGE, RIVER_X - 2), (Math.random() < 0.5 ? -1 : 1) * rng(5, 16), i < 3);
+    }
+    // Garden details make Beulah feel inhabited and lovingly tended.
+    for (let i = 0; i < 18; i++) {
+      const bx = rng(WEST_EDGE - 3, RIVER_X - 3);
+      const bz = (Math.random() < 0.5 ? -1 : 1) * rng(5, 19);
+      const bush = new THREE.Group();
+      bush.add(block(1.25, 0.72, 1.1, i % 2 ? 0x78bd66 : 0x86c973, 0, 0.36, 0));
+      bush.add(block(0.72, 0.62, 0.8, 0x96d47e, 0.25, 0.78, -0.05));
+      for (let f = 0; f < 3; f++) {
+        bush.add(block(0.16, 0.16, 0.16, flowerColors[(i + f) % flowerColors.length],
+          -0.35 + f * 0.35, 0.72 + (f % 2) * 0.22, 0.45));
+      }
+      bush.position.set(bx, 0, bz);
+      s.add(bush);
+    }
+    for (let i = 0; i < 6; i++) {
+      const basket = new THREE.Group();
+      basket.add(block(0.9, 0.34, 0.7, 0xa97b4f, 0, 0.17, 0));
+      basket.add(block(0.12, 0.65, 0.12, 0x8d633f, -0.38, 0.48, 0));
+      basket.add(block(0.12, 0.65, 0.12, 0x8d633f, 0.38, 0.48, 0));
+      for (let f = 0; f < 5; f++) {
+        basket.add(block(0.2, 0.2, 0.2, f % 2 ? 0xf25b6a : 0xff9b52,
+          -0.32 + (f % 3) * 0.3, 0.48 + Math.floor(f / 3) * 0.17, (f % 2) * 0.2 - 0.1));
+      }
+      basket.position.set(rng(WEST_EDGE, RIVER_X - 4), 0, (i % 2 ? -1 : 1) * rng(3.5, 8));
+      s.add(basket);
     }
 
     // ---- the Celestial City on the far golden cliffs ----
@@ -409,11 +450,13 @@ export class BeulahScene {
       const shade = new THREE.Group();
       shade.add(new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.5, 1.3), body.material));
       shade.add(new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.5, 0.8), body.material));
+      shade.add(new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.18, 0.72), body.material));
+      shade.children[2].position.y = 0.7;
       group.add(shade);
-      // a knot + string hanging down (non-raycast children)
+      // No strings: the doubts hover like weightless thoughts. A small voxel
+      // highlight keeps each muted balloon readable against the river.
       const face = new THREE.Group();
-      face.add(block(0.16, 0.16, 0.16, col, 0, -0.78, 0)); // knot
-      face.add(block(0.05, 1.3, 0.05, 0x8a8496, 0, -1.5, 0)); // string
+      face.add(block(0.2, 0.28, 0.06, 0xe9e1ef, -0.32, 0.38, 0.61));
       // a downcast frown face on the front (+z)
       face.add(block(0.12, 0.16, 0.05, 0x5a5266, -0.24, 0.14, 0.6)); // eye
       face.add(block(0.12, 0.16, 0.05, 0x5a5266, 0.24, 0.14, 0.6));  // eye
@@ -427,7 +470,7 @@ export class BeulahScene {
         group, body, face,
         angle: (i / labels) * Math.PI * 2,
         radius: 1.9 + (i % 2) * 0.6,
-        height: 2.4 + (i % 3) * 0.55,
+        height: 4.5 + (i % 3) * 0.62,
         bob: Math.random() * Math.PI * 2,
         popped: false, popT: 0,
       });
@@ -478,9 +521,7 @@ export class BeulahScene {
     const target = c.clone().add(new THREE.Vector3(-1.9, inRiver ? -0.3 : 0, 1.1));
     if (inRiver) target.y = Math.max(-0.35, target.y); // never as deep as Christian
     hp.lerp(target, 0.09);
-    if (this.phase !== 'brink' && this.phase !== 'shore') {
-      this.hopeful.root.rotation.y = Math.PI / 2;
-    }
+    this.hopeful.root.rotation.y = this.christian.root.rotation.y;
   }
 
   canPop(): boolean {
@@ -614,7 +655,7 @@ export class BeulahScene {
 
   private triggerShore(): void {
     this.phase = 'shore';
-    this.setAngelsVisible(true);
+    this.setAngelsVisible(true, true);
     this.cb.setObjective('✨ Two Shining Ones come to meet them');
     this.cb.playScript([
       { speaker: '',            text: 'As they set foot on the far shore, two Shining Ones come down to meet them, their faces bright as the sun.' },
@@ -649,6 +690,13 @@ export class BeulahScene {
       r.position.z += dt * (r.userData.speed as number);
       if (r.position.z > 28) r.position.z = -28;
       (r.material as THREE.MeshBasicMaterial).opacity = 0.25 + Math.abs(Math.sin(t * 1.6 + r.position.z)) * 0.2;
+    }
+    for (const glint of this.riverGlints) {
+      const phase = glint.userData.phase as number;
+      glint.position.z += dt * (0.5 + (phase % 0.7));
+      if (glint.position.z > 28) glint.position.z = -28;
+      glint.position.x = (glint.userData.baseX as number) + Math.sin(t * 0.8 + phase) * 0.25;
+      (glint.material as THREE.MeshBasicMaterial).opacity = 0.24 + Math.abs(Math.sin(t * 1.4 + phase)) * 0.38;
     }
     for (const m of this.mist) {
       m.position.y = (m.userData.baseY as number) + Math.sin(t * 0.8 + m.position.x) * 0.3;
@@ -716,6 +764,20 @@ export class BeulahScene {
           if (k >= 1) { b.group.visible = false; b.popT = 0; }
         }
       }
+    }
+
+    // The Shining Ones descend together from above the golden shore.
+    if (this.angelArrivalT >= 0) {
+      this.angelArrivalT = Math.min(1, this.angelArrivalT + dt * 0.55);
+      const eased = 1 - Math.pow(1 - this.angelArrivalT, 3);
+      for (let i = 0; i < this.angels.length; i++) {
+        const angel = this.angels[i];
+        angel.root.position.x = FAR_SHORE_X + 4.2;
+        angel.root.position.z = i === 0 ? -1.55 : 1.55;
+        angel.root.position.y = THREE.MathUtils.lerp(11, 0, eased) + Math.sin(t * 3 + i) * 0.08;
+        angel.root.rotation.y = -Math.PI / 2;
+      }
+      if (this.angelArrivalT >= 1) this.angelArrivalT = -1;
     }
 
     // ---- pop particles ----

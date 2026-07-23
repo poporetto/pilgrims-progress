@@ -44,8 +44,8 @@ const camera = new THREE.PerspectiveCamera(
 );
 
 // soft pastel lighting
-scene.add(new THREE.HemisphereLight(0xeaf4ff, 0xd9ebcc, 1.15));
-const sun = new THREE.DirectionalLight(PALETTE.sun, 1.28);
+scene.add(new THREE.HemisphereLight(0xf1f6ff, 0xdcebd2, 1.25));
+const sun = new THREE.DirectionalLight(PALETTE.sun, 1.02);
 // Mid-morning sun: still eastward but lower and slightly south of the road,
 // so shadows fall on a clear diagonal rather than straight across the ground.
 sun.position.set(50, 136, 0);
@@ -56,7 +56,7 @@ sun.shadow.camera.right = 60;
 sun.shadow.camera.top = 60;
 sun.shadow.camera.bottom = -60;
 sun.shadow.camera.far = 150;
-sun.shadow.radius = 3;
+sun.shadow.radius = 5;
 scene.add(sun);
 
 // ---------------------------------------------------------------- world & actors
@@ -1033,6 +1033,10 @@ function showFinale(): void {
   window.setTimeout(() => finale.classList.add('end'), 9000);
 }
 
+document.getElementById('finale-restart')?.addEventListener('click', () => {
+  window.location.reload();
+});
+
 function enterVanity(revisit: boolean): void {
   mode = 'vanity';
   ui.prompt.style.display = 'none';
@@ -1216,6 +1220,7 @@ window.addEventListener('keydown', (e) => {
     else if (mode === 'valley') valley.tryAttack();
     else if (mode === 'lucre') lucre.tryTouchPillar();
     else if (mode === 'beulah') { if (beulah.nearAngel()) beulah.talkAngel(); }
+    else if (mode === 'celestial') { if (celestial.nearSaint()) celestial.talkSaint(); }
   }
 });
 
@@ -1402,6 +1407,7 @@ ui.talkBtn.addEventListener('click', () => {
   else if (mode === 'valley') valley.tryAttack();
   else if (mode === 'lucre') lucre.tryTouchPillar();
   else if (mode === 'beulah') { if (beulah.nearAngel()) beulah.talkAngel(); }
+  else if (mode === 'celestial') { if (celestial.nearSaint()) celestial.talkSaint(); }
 });
 
 // ---------------------------------------------------------------- interaction
@@ -2540,6 +2546,19 @@ function tick(): void {
     }
     celestial.afterMove();
     celestial.update(dt, t, moving);
+
+    if (celestial.nearSaint() && !dialogueOpen && !endingOpen) {
+      ui.prompt.style.display = 'block';
+      ui.promptKey.style.display = isTouch ? 'none' : 'inline-block';
+      ui.promptWho.textContent = `Talk to ${celestial.nearbySaintName()}`;
+      if (isTouch) {
+        ui.talkBtn.textContent = 'Talk';
+        ui.talkBtn.style.display = 'block';
+      }
+    } else {
+      ui.prompt.style.display = 'none';
+      if (isTouch && !dialogueOpen) ui.talkBtn.style.display = 'none';
+    }
 
     // the camera pulls back and lifts as the pilgrims climb toward the City,
     // emphasising its towering scale; the epilogue follows Ignorance instead

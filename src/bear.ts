@@ -440,6 +440,30 @@ export function addPilgrimArmorDetails(parts: BearParts): void {
   }
 }
 
+// Shared Shining One treatment used at the Cross, Beulah, and the Celestial
+// City. Two compact feather blocks per side stay behind the robe instead of
+// cutting through the arms and torso.
+export function addShiningOneDetails(parts: BearParts): void {
+  for (const side of [-1, 1]) {
+    const upper = block(0.15, 0.82, 0.4, 0xfffdf4, side * 0.5, 0.66, -0.51);
+    upper.rotation.z = side * 0.18;
+    upper.rotation.y = side * 0.12;
+    parts.body.add(upper);
+
+    const lower = block(0.13, 0.58, 0.32, 0xf5ecd8, side * 0.56, 0.22, -0.53);
+    lower.rotation.z = side * 0.34;
+    lower.rotation.y = side * 0.16;
+    parts.body.add(lower);
+  }
+  const halo = new THREE.Mesh(
+    new THREE.TorusGeometry(0.38, 0.055, 8, 20),
+    new THREE.MeshBasicMaterial({ color: 0xfff2b0 }),
+  );
+  halo.rotation.x = Math.PI / 2;
+  halo.position.set(0, 1.28, 0);
+  parts.head.add(halo);
+}
+
 // Animate limbs: call every frame with elapsed time and whether moving.
 export function animateBear(parts: BearParts, t: number, moving: boolean): void {
   // Keep the player from walking through any other character in the current

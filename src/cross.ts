@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { PALETTE } from './palette';
-import { makeBear, animateBear, BearParts, block, mat } from './bear';
+import { makeBear, animateBear, addShiningOneDetails, BearParts, block, mat } from './bear';
 import { makeShiningLight, animateShiningLight, ShiningLight, setupSunShadow } from './light';
 import { DialogueLine } from './npcs';
 
@@ -289,14 +289,7 @@ export class CrossScene {
         species: 'bear', fur: 0xf2e2c9, outfit: 'robe',
         outfitColor: PALETTE.robeWhite, scale: 1.05,
       });
-      // a golden halo hovering over each head
-      const haloRing = new THREE.Mesh(
-        new THREE.TorusGeometry(0.32, 0.06, 8, 18),
-        new THREE.MeshBasicMaterial({ color: PALETTE.robeGold }),
-      );
-      haloRing.rotation.x = Math.PI / 2;
-      haloRing.position.y = 1.15;
-      angel.head.add(haloRing);
+      addShiningOneDetails(angel);
       angel.root.visible = false;
       s.add(angel.root);
       this.angels.push(angel);

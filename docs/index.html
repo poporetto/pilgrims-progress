@@ -263,46 +263,89 @@
     #finale {
       position: fixed; inset: 0; z-index: 70;
       display: none; align-items: center; justify-content: center;
-      background: radial-gradient(circle at 50% 40%, #241a12, #0c0906);
+      background:
+        radial-gradient(circle at 50% 38%, rgba(117, 82, 105, 0.38), transparent 38%),
+        linear-gradient(145deg, #27202f, #100d17 72%);
       opacity: 0; transition: opacity 1.2s ease;
     }
     #finale.show { display: flex; opacity: 1; }
     #finale-scroll {
       display: flex; flex-direction: column; align-items: stretch;
-      width: min(560px, calc(100% - 40px));
+      width: min(620px, calc(100% - 34px));
       transform: translateY(14px) scale(0.96); opacity: 0;
       transition: transform 1.1s ease, opacity 1.1s ease;
     }
     #finale.reveal #finale-scroll { transform: translateY(0) scale(1); opacity: 1; }
     #finale-scroll .scroll-cap {
-      height: 22px; border-radius: 12px;
-      background: linear-gradient(#c9a06a, #a5764e);
-      box-shadow: 0 3px 10px rgba(0,0,0,0.5);
+      height: 25px; margin: 0 -16px; border-radius: 14px;
+      border: 2px solid #79563f;
+      background: linear-gradient(#e2bd82, #a87850 55%, #80583f);
+      box-shadow: 0 5px 14px rgba(0,0,0,0.42), inset 0 2px rgba(255,255,255,0.3);
     }
     #finale-scroll .scroll-body {
-      background: linear-gradient(#fdf3df, #f3e3c4);
-      color: #5b4a3f; padding: 34px 34px 40px; text-align: center;
-      box-shadow: inset 0 0 40px rgba(165, 118, 78, 0.25);
+      position: relative; overflow: hidden;
+      background:
+        linear-gradient(90deg, rgba(158, 112, 68, 0.17), transparent 11%, transparent 89%, rgba(158, 112, 68, 0.17)),
+        linear-gradient(#fff7e6, #f4dfb8);
+      color: #554239; padding: 42px 48px 44px; text-align: center;
+      border-left: 2px solid #c99c63; border-right: 2px solid #c99c63;
+      box-shadow: inset 0 0 48px rgba(137, 91, 49, 0.2), 0 10px 34px rgba(0,0,0,0.28);
+    }
+    #finale-scroll .scroll-body::before {
+      content: '✦'; display: block; color: #c28c52; font-size: 25px;
+      margin-bottom: 8px; text-shadow: 14px 0 #e6bd78, -14px 0 #e6bd78;
     }
     #finale-heading {
-      font-size: 20px; letter-spacing: 0.04em; margin-bottom: 18px;
-      color: #a5764e; text-transform: uppercase;
+      font-size: 23px; letter-spacing: 0.07em; margin-bottom: 7px;
+      color: #8c5e42; text-transform: uppercase;
+    }
+    #finale-author {
+      margin-bottom: 23px; color: #b07a53; font-size: 14px;
+      letter-spacing: 0.13em; text-transform: uppercase;
     }
     #finale-quote {
-      font-size: 22px; line-height: 1.55; font-style: italic;
-      margin-bottom: 20px; color: #6a4a2e;
+      font-family: Georgia, 'Times New Roman', serif;
+      font-size: 23px; line-height: 1.55; font-style: italic;
+      margin-bottom: 23px; color: #634328;
     }
-    #finale-note { font-size: 15px; line-height: 1.6; opacity: 0.85; }
+    #finale-note {
+      font-size: 15px; line-height: 1.65; opacity: 0.88;
+      padding-top: 18px; border-top: 1px solid rgba(140, 94, 66, 0.28);
+    }
     #finale-end {
       position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
-      color: #fdf3df; font-size: clamp(40px, 9vw, 84px); letter-spacing: 0.12em;
-      text-shadow: 0 4px 24px rgba(255, 220, 150, 0.35);
+      flex-direction: column; color: #fff3d2;
       opacity: 0; transition: opacity 1.6s ease; pointer-events: none;
     }
+    #finale-end .end-ornament {
+      color: #e9bd73; font-size: clamp(22px, 4vw, 34px);
+      letter-spacing: 0.45em; margin-left: 0.45em; margin-bottom: 14px;
+    }
+    #finale-end .end-words {
+      font-family: Georgia, 'Times New Roman', serif;
+      font-size: clamp(50px, 10vw, 96px); letter-spacing: 0.16em;
+      margin-left: 0.16em; font-variant: small-caps;
+      text-shadow: 0 4px 0 #7d5944, 0 0 34px rgba(255, 220, 150, 0.48);
+    }
+    #finale-end .end-sub {
+      margin-top: 16px; color: #e8cfaa; font-size: 15px;
+      letter-spacing: 0.18em; text-transform: uppercase;
+    }
+    #finale-restart {
+      pointer-events: auto; margin-top: 30px;
+      font-family: inherit; font-size: 17px; font-weight: bold;
+      color: #554239; background: linear-gradient(#fff4d5, #eacb91);
+      border: 3px solid #fff4d5; border-radius: 999px;
+      padding: 12px 30px; cursor: pointer;
+      box-shadow: 0 5px 0 #8d6549, 0 0 24px rgba(255, 224, 158, 0.2);
+      transition: transform 0.18s ease, box-shadow 0.18s ease;
+    }
+    #finale-restart:hover { transform: translateY(-2px); box-shadow: 0 7px 0 #8d6549, 0 0 28px rgba(255, 224, 158, 0.34); }
+    #finale-restart:active { transform: translateY(3px); box-shadow: 0 2px 0 #8d6549; }
     #finale.end #finale-scroll { opacity: 0; transition: opacity 1.0s ease; }
     #finale.end #finale-end { opacity: 1; }
   </style>
-  <script type="module" crossorigin src="./assets/index-D7OH7ReF.js"></script>
+  <script type="module" crossorigin src="./assets/index-PK2LNRKd.js"></script>
 </head>
 <body>
   <div id="app"></div>
@@ -401,13 +444,19 @@
       <div class="scroll-cap"></div>
       <div class="scroll-body">
         <h3 id="finale-heading">Bunyan's Final Warning</h3>
-        <p id="finale-quote">"Then I saw that there was a way to hell, even from the gates of heaven, as well as from the City of Destruction."</p>
+        <p id="finale-author">John Bunyan · The Pilgrim's Progress</p>
+        <p id="finale-quote">“Then I saw that there was a way to hell, even from the gates of heaven, as well as from the City of Destruction!”</p>
         <p id="finale-note">Ignorance came so close. He looked like a pilgrim, and walked much of the
           same road. But he never entered by the Gate, and never trusted the King — and so he could not enter the City.</p>
       </div>
       <div class="scroll-cap"></div>
     </div>
-    <div id="finale-end">The End</div>
+    <div id="finale-end">
+      <div class="end-ornament">✦ ✧ ✦</div>
+      <div class="end-words">The End</div>
+      <div class="end-sub">The pilgrimage is complete</div>
+      <button id="finale-restart">Start the Journey Again ↻</button>
+    </div>
   </div>
 
 </body>
