@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { PALETTE } from './palette';
-import { makeBear, animateBear } from './bear';
+import { makeBear, animateBear, block, mat } from './bear';
 import { buildWorld, WALL, Interactable } from './world';
 import { createNPCs, NPC, QuestState, DialogueLine } from './npcs';
 import { Music } from './music';
@@ -34,6 +34,197 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 app.appendChild(renderer.domElement);
+
+// The opening cover uses the real Chapter I Christian rig on a miniature
+// highway—not a CSS imitation. It renders independently behind the title card.
+const titleJourneyCanvas = document.getElementById('title-journey-canvas') as HTMLCanvasElement;
+const titleJourneyRenderer = new THREE.WebGLRenderer({
+  canvas: titleJourneyCanvas, alpha: true, antialias: true,
+});
+titleJourneyRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+titleJourneyRenderer.setClearColor(0xc9e7f6, 1);
+titleJourneyRenderer.shadowMap.enabled = true;
+titleJourneyRenderer.shadowMap.type = THREE.PCFSoftShadowMap;
+const titleJourneyScene = new THREE.Scene();
+titleJourneyScene.background = new THREE.Color(0xc9e7f6);
+titleJourneyScene.fog = new THREE.Fog(0xc9e7f6, 24, 62);
+const titleJourneyCamera = new THREE.PerspectiveCamera(34, 1, 0.1, 80);
+titleJourneyCamera.position.set(0, 7.2, 15);
+titleJourneyCamera.lookAt(0, 1.1, 0);
+titleJourneyScene.add(new THREE.HemisphereLight(0xeaf5fb, 0xc4aa87, 1.45));
+const titleJourneySun = new THREE.DirectionalLight(0xffefcf, 1.35);
+titleJourneySun.position.set(-7, 12, 8);
+titleJourneySun.castShadow = true;
+titleJourneySun.shadow.mapSize.set(1024, 1024);
+titleJourneySun.shadow.camera.left = -18;
+titleJourneySun.shadow.camera.right = 18;
+titleJourneySun.shadow.camera.top = 10;
+titleJourneySun.shadow.camera.bottom = -8;
+titleJourneyScene.add(titleJourneySun);
+
+const titleGround = new THREE.Mesh(new THREE.PlaneGeometry(74, 34), mat(0xaecf91));
+titleGround.rotation.x = -Math.PI / 2;
+titleGround.position.y = -0.03;
+titleGround.receiveShadow = true;
+titleJourneyScene.add(titleGround);
+const titleHighway = new THREE.Mesh(new THREE.PlaneGeometry(42, 3.7), mat(0xe6d4ae));
+titleHighway.rotation.x = -Math.PI / 2;
+titleHighway.position.y = 0.015;
+titleHighway.receiveShadow = true;
+titleJourneyScene.add(titleHighway);
+for (let i = 0; i < 25; i++) {
+  const roadStone = block(
+    1.15, 0.055, 0.72,
+    [0xd6c29c, 0xeadbbb, 0xcab58f][i % 3],
+    -14 + i * 1.18, 0.055, ((i % 3) - 1) * 0.62,
+  );
+  roadStone.rotation.y = ((i % 5) - 2) * 0.025;
+  roadStone.castShadow = false;
+  titleJourneyScene.add(roadStone);
+}
+for (const side of [-1, 1]) {
+  for (let i = 0; i < 12; i++) {
+    const edge = block(0.75, 0.14, 0.34, i % 2 ? 0xaa9274 : 0xbba483,
+      -13.5 + i * 2.45, 0.08, side * 1.95);
+    edge.castShadow = false;
+    titleJourneyScene.add(edge);
+  }
+}
+// Voxel trees now live in the same rendered world as Christian and the road.
+function addTitleTree(x: number, z: number, scale: number, blossom = false): void {
+  const tree = new THREE.Group();
+  tree.add(block(0.42, 2.0, 0.42, 0x967252, 0, 1.0, 0));
+  tree.add(block(2.0, 1.25, 1.8, blossom ? 0xf2bfd0 : 0x8db87a, 0, 2.3, 0));
+  tree.add(block(1.35, 1.0, 1.25, blossom ? 0xf7d3df : 0xa4c891, 0.2, 3.15, 0));
+  tree.scale.setScalar(scale);
+  tree.position.set(x, 0, z);
+  titleJourneyScene.add(tree);
+}
+addTitleTree(-13, -2.9, 1.05, true);
+addTitleTree(-8.5, -4.1, 0.78);
+addTitleTree(8.7, -4.0, 0.82, true);
+addTitleTree(13.2, -2.8, 1.08);
+addTitleTree(-16, 2.7, 0.72);
+addTitleTree(16, 2.8, 0.7, true);
+
+// Block-built clouds and sun complete the fully 3D title background.
+function addTitleCloud(x: number, y: number, z: number, scale: number): void {
+  const cloud = new THREE.Group();
+  cloud.add(block(3.4, 0.8, 1.2, 0xf8fcff, 0, 0, 0));
+  cloud.add(block(1.8, 1.0, 1.25, 0xffffff, -1.0, 0.55, 0));
+  cloud.add(block(2.0, 1.2, 1.3, 0xffffff, 0.8, 0.62, 0));
+  cloud.add(block(1.3, 0.75, 1.0, 0xeaf4fa, 2.0, 0.1, 0));
+  cloud.scale.setScalar(scale);
+  cloud.position.set(x, y, z);
+  titleJourneyScene.add(cloud);
+}
+addTitleCloud(-10, 7.4, -12, 0.7);
+addTitleCloud(0.5, 8.5, -15, 0.52);
+addTitleCloud(11, 7.1, -13, 0.62);
+const titleSun = block(1.7, 1.7, 0.8, 0xffe89a, 11.5, 9.2, -18);
+const titleSunMat = titleSun.material as THREE.MeshLambertMaterial;
+titleSunMat.emissive = new THREE.Color(0xffd66b);
+titleSunMat.emissiveIntensity = 0.65;
+titleJourneyScene.add(titleSun);
+// Soft grass and flowers replace the old blue-brown lower band around the
+// highway. They stay low so Christian remains the unmistakable focal point.
+const titleFlowerColors = [0xf2b8cc, 0xffefad, 0xc9dfff, 0xf7f2e7];
+for (const side of [-1, 1]) {
+  for (let i = 0; i < 18; i++) {
+    const x = -14 + i * 1.65;
+    const z = side * (2.45 + (i % 3) * 0.38);
+    titleJourneyScene.add(block(0.07, 0.32 + (i % 2) * 0.12, 0.07,
+      i % 2 ? 0x779e67 : 0x89af75, x, 0.18, z));
+    if (i % 2 === 0) {
+      titleJourneyScene.add(block(0.2, 0.16, 0.2,
+        titleFlowerColors[(i / 2 + (side > 0 ? 1 : 0)) % titleFlowerColors.length],
+        x, 0.42, z));
+    }
+  }
+}
+// Real stepped voxel mountains replace the flat title-page silhouettes.
+// Their bases sit behind the highway and their summits remain deliberately
+// lower in frame so the book title keeps a calm margin of sky.
+function addTitleMountain(
+  x: number, z: number, width: number, levels: number,
+  colors: [number, number, number],
+): void {
+  const mountain = new THREE.Group();
+  let y = 0;
+  for (let level = 0; level < levels; level++) {
+    const tierH = 0.78 + (level % 2) * 0.16;
+    const tierW = width * (1 - level / (levels + 1));
+    const tierD = 3.8 * (1 - level / (levels + 2));
+    const rock = block(
+      tierW, tierH, tierD, colors[level % colors.length],
+      ((level % 3) - 1) * 0.16, y + tierH / 2, level * 0.12,
+    );
+    rock.rotation.y = ((level % 3) - 1) * 0.025;
+    rock.castShadow = true;
+    rock.receiveShadow = true;
+    mountain.add(rock);
+    y += tierH * 0.82;
+  }
+  const cap = block(width * 0.3, 0.62, 1.35, 0xffffff, 0, y + 0.18, levels * 0.12);
+  cap.castShadow = true;
+  mountain.add(cap);
+  // Small side crags keep each peak from reading as a perfect staircase.
+  mountain.add(block(width * 0.24, 1.25, 1.8, colors[1], -width * 0.42, 0.62, 0.5));
+  mountain.add(block(width * 0.2, 0.95, 1.5, colors[0], width * 0.43, 0.47, 0.25));
+  mountain.position.set(x, -0.1, z);
+  titleJourneyScene.add(mountain);
+}
+addTitleMountain(-10.5, -7.8, 7.2, 7, [0xb5d8eb, 0x91bfd9, 0xc6e2ef]);
+addTitleMountain(-3.7, -8.6, 9.0, 8, [0xa5cee4, 0x7fb3d1, 0xbadcec]);
+addTitleMountain(4.5, -8.3, 8.4, 7, [0xafd5e8, 0x88b9d4, 0xc2e0ed]);
+addTitleMountain(11.2, -7.7, 6.8, 6, [0xc0ddec, 0x9bc5dc, 0xcde5ef]);
+
+const titleChristian = makeBear({
+  species: 'bear', fur: PALETTE.bearBrown,
+  outfit: 'shirt', outfitColor: 0x8fb8d8,
+  sling: true, burden: true, scale: 1.22,
+});
+titleChristian.root.rotation.y = Math.PI / 2;
+titleJourneyScene.add(titleChristian.root);
+
+// Christian's actual voxel face fills the small title medallion.
+const titleFaceCanvas = document.getElementById('title-face-canvas') as HTMLCanvasElement;
+const titleFaceRenderer = new THREE.WebGLRenderer({
+  canvas: titleFaceCanvas, alpha: true, antialias: true,
+});
+titleFaceRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+titleFaceRenderer.setClearColor(0x000000, 0);
+const titleFaceScene = new THREE.Scene();
+titleFaceScene.add(new THREE.HemisphereLight(0xf8fbff, 0xb89472, 1.75));
+const titleFaceLight = new THREE.DirectionalLight(0xffedcf, 1.4);
+titleFaceLight.position.set(-3, 5, 5);
+titleFaceScene.add(titleFaceLight);
+const titleFaceChristian = makeBear({
+  species: 'bear', fur: PALETTE.bearBrown, outfit: 'none',
+});
+// The medallion is a portrait seal: detach the shared head rig so no torso,
+// arms, or clothing can enter the circular crop.
+const titleFaceHead = titleFaceChristian.head;
+titleFaceChristian.body.remove(titleFaceHead);
+titleFaceHead.position.set(0, 0, 0);
+titleFaceScene.add(titleFaceHead);
+const titleFaceCamera = new THREE.PerspectiveCamera(26, 1, 0.1, 20);
+titleFaceCamera.position.set(0, 0.48, 3.4);
+titleFaceCamera.lookAt(0, 0.48, 0);
+
+function resizeTitleJourney(): void {
+  const width = Math.max(1, titleJourneyCanvas.clientWidth);
+  const height = Math.max(1, titleJourneyCanvas.clientHeight);
+  titleJourneyRenderer.setSize(width, height, false);
+  titleJourneyCamera.aspect = width / height;
+  titleJourneyCamera.updateProjectionMatrix();
+  const faceWidth = Math.max(1, titleFaceCanvas.clientWidth);
+  const faceHeight = Math.max(1, titleFaceCanvas.clientHeight);
+  titleFaceRenderer.setSize(faceWidth, faceHeight, false);
+  titleFaceCamera.aspect = faceWidth / faceHeight;
+  titleFaceCamera.updateProjectionMatrix();
+}
+resizeTitleJourney();
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(PALETTE.sky);
@@ -1882,6 +2073,18 @@ function tick(): void {
   const dt = Math.min(clock.getDelta(), 0.05);
   const t = clock.elapsedTime;
 
+  if (!started) {
+    // A slow, unhurried eastward walk. Once Christian leaves the right edge he
+    // begins again beyond the left, suggesting a road much longer than one view.
+    const journeyP = (t % 18) / 18;
+    titleChristian.root.position.set(-12.5 + journeyP * 25, 0, 0);
+    titleChristian.root.rotation.y = Math.PI / 2;
+    animateBear(titleChristian, t * 0.62, true);
+    titleJourneyRenderer.render(titleJourneyScene, titleJourneyCamera);
+    titleFaceHead.rotation.z = Math.sin(t * 0.7) * 0.025;
+    titleFaceRenderer.render(titleFaceScene, titleFaceCamera);
+  }
+
   if (mode === 'map') {
     // ---- world map mode ----
     let ax = 0;
@@ -2679,6 +2882,7 @@ window.addEventListener('resize', () => {
   camera.updateProjectionMatrix();
   worldMap.resize(window.innerWidth / window.innerHeight);
   renderer.setSize(window.innerWidth, window.innerHeight);
+  resizeTitleJourney();
 });
 
 tick();

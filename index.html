@@ -30,6 +30,8 @@
       position: fixed; top: 14px; left: 50%; transform: translateX(-50%);
       background: var(--paper); border: 3px solid var(--accent);
       border-radius: 999px; padding: 8px 22px; font-size: 15px; font-weight: bold;
+      font-family: Georgia, "Times New Roman", serif;
+      letter-spacing: 0.012em;
       box-shadow: 0 4px 0 rgba(91, 74, 63, 0.15);
       white-space: nowrap; pointer-events: none; z-index: 10;
       transition: opacity 0.4s;
@@ -159,16 +161,68 @@
     #title-screen {
       overflow: hidden;
       isolation: isolate;
-      background: linear-gradient(180deg, #bfe4fa 0%, #d9effc 52%, #cbe6b5 52%, #9fce88 100%);
+      background: #c9e3f1;
     }
-    #title-screen::after {
-      content: ''; position: absolute; left: -8%; right: -8%; bottom: -11vh;
-      height: 39vh; z-index: -2;
-      background:
-        linear-gradient(153deg, transparent 0 28%, #8fbd78 28% 49%, transparent 49%) 0 0 / 42% 100%,
-        linear-gradient(207deg, transparent 0 27%, #add493 27% 53%, transparent 53%) 100% 0 / 46% 100%,
-        #a8d28e;
-      clip-path: polygon(0 32%, 13% 17%, 27% 34%, 43% 8%, 57% 32%, 73% 13%, 88% 34%, 100% 18%, 100% 100%, 0 100%);
+    .title-landscape {
+      position: absolute; inset: -7%; z-index: -3; overflow: hidden;
+      background: linear-gradient(180deg, #bcdff3 0%, #e1f1f8 67%, #d7e8c7 67%, #b9d49f 100%);
+      transform-origin: 50% 66%;
+      animation: title-pullback 38s cubic-bezier(.2,.55,.3,1) forwards;
+    }
+    .title-hills {
+      position: absolute; left: -3%; right: -3%; bottom: -4vh;
+      height: 30vh; background: #b8d49d;
+      clip-path: polygon(0 24%, 12% 17%, 24% 27%, 39% 13%, 55% 25%, 70% 15%, 86% 29%, 100% 19%, 100% 100%, 0 100%);
+    }
+    .title-mountains {
+      position: absolute; left: -8%; right: -8%; top: 8%; height: 61%;
+      opacity: .92;
+    }
+    .title-mountain {
+      position: absolute; bottom: 0;
+      clip-path: polygon(
+        0 100%, 7% 84%, 16% 84%, 16% 68%, 25% 68%, 25% 52%,
+        34% 52%, 34% 36%, 43% 36%, 43% 19%, 50% 6%,
+        57% 19%, 57% 36%, 66% 36%, 66% 52%, 75% 52%,
+        75% 68%, 84% 68%, 84% 84%, 93% 84%, 100% 100%
+      );
+      background: #91aeba;
+      filter: drop-shadow(0 8px 0 rgba(92,116,127,.12));
+    }
+    .title-mountain::before {
+      content: ''; position: absolute; inset: 0;
+      clip-path: polygon(50% 6%, 57% 19%, 57% 36%, 66% 36%, 66% 52%, 75% 52%, 75% 68%, 100% 100%, 55% 100%);
+      background: rgba(91,123,139,.32);
+    }
+    .title-mountain::after {
+      content: ''; position: absolute; left: 34%; top: 5%; width: 32%; height: 34%;
+      background: #eaf3f4;
+      clip-path: polygon(50% 0, 100% 68%, 75% 62%, 62% 82%, 49% 61%, 34% 80%, 0 68%);
+    }
+    .title-mountain.m1 { left: -5%; width: 39%; height: 84%; background: #afc4cc; }
+    .title-mountain.m2 { left: 18%; width: 48%; height: 100%; background: #89a7b5; }
+    .title-mountain.m3 { right: 8%; width: 42%; height: 91%; background: #9db6c1; }
+    .title-mountain.m4 { right: -9%; width: 34%; height: 77%; background: #b5c9d0; }
+    .title-mountain.m1::after, .title-mountain.m4::after { background: #f1f4ed; }
+    }
+    .title-tree {
+      position: absolute; z-index: 1; width: 14px; height: 48px;
+      background: #8b6c50; border-radius: 2px;
+    }
+    .title-tree::before, .title-tree::after {
+      content: ''; position: absolute; left: 50%; transform: translateX(-50%);
+      background: #8fb47d; border-radius: 4px;
+    }
+    .title-tree::before { width: 58px; height: 38px; bottom: 25px; }
+    .title-tree::after { width: 40px; height: 34px; bottom: 51px; background: #a5c693; }
+    .title-tree.t1 { left: 8%; bottom: 24%; transform: scale(.85); }
+    .title-tree.t2 { left: 21%; bottom: 27%; transform: scale(.58); opacity: .85; }
+    .title-tree.t3 { right: 10%; bottom: 23%; transform: scale(.92); }
+    .title-tree.t4 { right: 25%; bottom: 27%; transform: scale(.62); opacity: .86; }
+    }
+    @keyframes title-pullback {
+      from { transform: scale(1.16); }
+      to { transform: scale(1); }
     }
     .title-sun {
       position: absolute; width: 78px; height: 78px; right: 9%; top: 9%;
@@ -188,14 +242,86 @@
     .voxel-cloud.c2 { right: 18%; top: 29%; transform: scale(.62); opacity: .82; }
     .voxel-cloud.c3 { left: 25%; top: 7%; transform: scale(.46); opacity: .72; }
     .title-road {
-      position: absolute; z-index: -1; left: 50%; bottom: -7vh;
+      position: absolute; z-index: 1; left: 50%; bottom: -7vh;
       width: min(230px, 31vw); height: 48vh; transform: translateX(-50%);
       background: linear-gradient(90deg, #c8ad82, #ead3a8 48%, #c3a67e);
       clip-path: polygon(44% 0, 56% 0, 100% 100%, 0 100%);
       opacity: .92;
     }
+    #title-journey-canvas {
+      position: absolute; inset: 0; z-index: 3; width: 100%; height: 100%;
+      pointer-events: none; touch-action: none;
+    }
+    /* A small hand-built Christian crosses the cover forever. */
+    .title-christian {
+      position: absolute; z-index: 3; left: -90px; bottom: 8%;
+      width: 58px; height: 76px;
+      animation: christian-journey 13s linear infinite;
+      filter: drop-shadow(0 5px 2px rgba(84,68,52,.18));
+    }
+    .christian-rig {
+      position: absolute; inset: 0;
+      animation: christian-step 0.52s ease-in-out infinite;
+    }
+    .christian-burden {
+      position: absolute; left: 1px; bottom: 23px; width: 18px; height: 31px;
+      border: 3px solid #775b42; background: #9b7959; border-radius: 3px;
+    }
+    .christian-body {
+      position: absolute; left: 15px; bottom: 16px; width: 36px; height: 31px;
+      border: 3px solid #6d8794; background: #91b8ca; border-radius: 3px;
+    }
+    .christian-body::after {
+      content: ''; position: absolute; left: 5px; top: -2px; width: 5px; height: 35px;
+      background: #785d46; transform: rotate(-34deg); transform-origin: top;
+    }
+    .christian-head {
+      position: absolute; left: 14px; bottom: 43px; width: 38px; height: 31px;
+      border: 3px solid #725238; background: #9c704d; border-radius: 4px;
+    }
+    .christian-head::before, .christian-head::after {
+      content: ''; position: absolute; top: -8px; width: 11px; height: 10px;
+      border: 3px solid #725238; background: #9c704d; border-radius: 2px;
+    }
+    .christian-head::before { left: 1px; }
+    .christian-head::after { right: 1px; }
+    .christian-face {
+      position: absolute; right: -3px; bottom: 5px; width: 18px; height: 13px;
+      background: #eadcc5; border: 2px solid #8b6a4d; border-radius: 2px;
+    }
+    .christian-face::before {
+      content: ''; position: absolute; right: 3px; top: -8px; width: 4px; height: 4px;
+      background: #332a24; box-shadow: 7px 8px 0 #332a24;
+    }
+    .christian-leg {
+      position: absolute; bottom: 0; width: 11px; height: 20px;
+      border: 2px solid #7d6047; background: #a98261; transform-origin: top;
+    }
+    .christian-leg.left { left: 18px; animation: christian-leg-a .52s ease-in-out infinite; }
+    .christian-leg.right { left: 38px; animation: christian-leg-b .52s ease-in-out infinite; }
+    @keyframes christian-journey {
+      from { left: -90px; }
+      to { left: calc(100% + 40px); }
+    }
+    @keyframes christian-step {
+      0%,100% { transform: translateY(0); }
+      50% { transform: translateY(-3px); }
+    }
+    @keyframes christian-leg-a {
+      0%,100% { transform: rotate(17deg); }
+      50% { transform: rotate(-17deg); }
+    }
+    @keyframes christian-leg-b {
+      0%,100% { transform: rotate(-17deg); }
+      50% { transform: rotate(17deg); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .title-landscape { animation: none; transform: scale(1); }
+      .title-christian { animation-duration: 26s; }
+      .christian-rig, .christian-leg.left, .christian-leg.right { animation: none; }
+    }
     .title-card {
-      position: relative; width: min(620px, calc(100vw - 32px));
+      position: relative; z-index: 2; width: min(620px, calc(100vw - 32px));
       padding: clamp(28px, 5vw, 48px) clamp(22px, 6vw, 58px) 38px;
       border: 8px double #bda66e; border-radius: 18px;
       background: linear-gradient(180deg, rgba(255,253,239,.97), rgba(244,238,208,.97));
@@ -203,20 +329,21 @@
                   inset 0 0 0 3px rgba(255,255,255,.72);
     }
     .title-card::before, .title-card::after {
-      content: '❦'; position: absolute; top: 20px; color: #8fa77b; font-size: 25px;
+      content: '❦'; position: absolute; top: 20px; color: #94785f; font-size: 25px;
     }
     .title-card::before { left: 24px; }
     .title-card::after { right: 24px; color: #89a8b4; transform: scaleX(-1); }
     .title-mark {
       display: grid; place-items: center; width: 78px; height: 78px;
       margin: -74px auto 14px; border: 6px double #fff9df;
-      border-radius: 50%; background: #c9ddb9; font-size: 42px;
-      box-shadow: 0 7px 0 #829771, 0 12px 24px rgba(91,74,63,.15);
+      border-radius: 50%; background: #c6dce8; font-size: 42px; overflow: hidden;
+      box-shadow: 0 7px 0 #829fac, 0 12px 24px rgba(91,74,63,.15);
     }
+    #title-face-canvas { width: 100%; height: 100%; display: block; }
     #title-screen .eyebrow {
       font-family: Georgia, "Times New Roman", serif;
       font-size: 12px; line-height: 1; font-weight: 700; letter-spacing: .2em;
-      text-transform: uppercase; color: #718066; margin-bottom: 13px;
+      text-transform: uppercase; color: #826b57; margin-bottom: 13px;
     }
     #title-screen h1 {
       font-family: Georgia, "Times New Roman", serif;
@@ -224,7 +351,7 @@
       color: #604c36; letter-spacing: -.035em; font-weight: 700;
       text-shadow: 0 3px 0 #fffdf2, 0 6px 0 #d6c795;
     }
-    #title-screen h1 span { display: block; color: #7d9270; font-style: italic; }
+    #title-screen h1 span { display: block; color: #718f9d; font-style: italic; }
     #title-screen h2 {
       display: inline-block; margin: 20px 0 18px; padding: 7px 18px;
       border-top: 2px solid #af9c6d; border-bottom: 2px solid #af9c6d;
@@ -240,13 +367,13 @@
     }
     #title-screen #start-btn {
       position: relative; min-width: min(300px, 100%); padding: 15px 30px;
-      border-color: #fffbea; background: linear-gradient(180deg, #91b59b, #718f7a);
-      box-shadow: 0 7px 0 #536e5b, 0 13px 28px rgba(83,110,91,.24);
+      border-color: #fffbea; background: linear-gradient(180deg, #8fb9ce, #6f98ad);
+      box-shadow: 0 7px 0 #516f7e, 0 13px 28px rgba(81,111,126,.24);
       font-family: Georgia, "Times New Roman", serif; letter-spacing: .025em;
     }
     #title-screen #start-btn::after { content: '  ❧'; color: #fff0ad; }
-    #title-screen #start-btn:hover { transform: translateY(-2px); box-shadow: 0 9px 0 #536e5b, 0 15px 30px rgba(83,110,91,.28); }
-    #title-screen #start-btn:active { transform: translateY(4px); box-shadow: 0 3px 0 #536e5b; }
+    #title-screen #start-btn:hover { transform: translateY(-2px); box-shadow: 0 9px 0 #516f7e, 0 15px 30px rgba(81,111,126,.28); }
+    #title-screen #start-btn:active { transform: translateY(4px); box-shadow: 0 3px 0 #516f7e; }
     .title-credit { margin-top: 14px; font-size: 11px; font-weight: bold; opacity: .5; letter-spacing: .08em; }
     @media (max-height: 650px) {
       .title-card { padding-top: 28px; padding-bottom: 22px; }
@@ -527,20 +654,18 @@
   <button id="talk-btn">Talk</button>
 
   <div id="title-screen" class="screen">
-    <div class="title-sun" aria-hidden="true"></div>
-    <div class="voxel-cloud c1" aria-hidden="true"></div>
-    <div class="voxel-cloud c2" aria-hidden="true"></div>
-    <div class="voxel-cloud c3" aria-hidden="true"></div>
-    <div class="title-road" aria-hidden="true"></div>
+    <div class="title-landscape" aria-hidden="true">
+      <canvas id="title-journey-canvas"></canvas>
+    </div>
     <div class="title-card">
-      <div class="title-mark" aria-hidden="true">🐻</div>
+      <div class="title-mark" aria-hidden="true"><canvas id="title-face-canvas"></canvas></div>
       <div class="eyebrow">A journey of faith and courage</div>
       <h1>Pilgrim’s <span>Progress</span></h1>
       <h2>Chapter I · The City of Destruction</h2>
       <p>Christian carries a heavy burden and knows he must find a better way.
          Walk beside him as his hopeful journey toward the Celestial City begins.</p>
       <button id="start-btn">Begin the Journey</button>
-      <div class="title-credit">A VOXEL STORYBOOK ADVENTURE · AFTER JOHN BUNYAN</div>
+      <div class="title-credit">AN ILLUSTRATED STORYBOOK ADVENTURE · AFTER JOHN BUNYAN</div>
     </div>
   </div>
 
