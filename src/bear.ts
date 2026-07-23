@@ -326,14 +326,14 @@ export function makeBear(opts: CharacterOptions = {}): BearParts {
     head.add(block(0.36, 0.26, 0.16, 0xfaf7ef, 0, 0.24, 0.45));
     head.add(block(0.13, 0.1, 0.07, 0xe0a3ac, 0, 0.32, 0.54));
   } else if (species === 'dog') {
-    // Rounded floppy ears, warm muzzle, and bright eyes give Hopeful a gentle,
-    // puppy-like face rather than a square bear face with dog parts attached.
+    // Stepped voxel ears keep Hopeful's puppy silhouette fully block-built.
     const earC = new THREE.Color(fur).multiplyScalar(0.72).getHex();
     for (const side of [-1, 1]) {
-      const ear = new THREE.Mesh(new THREE.SphereGeometry(0.22, 8, 6), mat(earC));
-      ear.scale.set(0.85, 1.7, 0.6);
-      ear.position.set(0.5 * side, 0.48, 0.02);
-      ear.rotation.z = 0.18 * side;
+      const ear = new THREE.Group();
+      ear.add(block(0.24, 0.32, 0.16, earC, 0, 0, 0));
+      ear.add(block(0.2, 0.22, 0.15, earC, side * 0.04, -0.25, 0));
+      ear.position.set(0.5 * side, 0.56, 0.02);
+      ear.rotation.z = 0.13 * side;
       head.add(ear);
     }
     // A layered voxel muzzle reads friendly while matching the blocky art style.

@@ -64,6 +64,13 @@ export class MountainScene {
   // the four shepherds, in fixed order: Knowledge, Experience, Watchful, Sincere
   private shepherds: BearParts[] = [];
   private shepherdNames = ['Knowledge', 'Experience', 'Watchful', 'Sincere'];
+  private shepherdNear = [false, false, false, false]; // talk hysteresis (depart)
+  private shepherdLines: DialogueLine[][] = [
+    [{ speaker: 'Knowledge', text: 'The road is short now, pilgrim. Keep the Word open every day — it is the only map that never lies.' }],
+    [{ speaker: 'Experience', text: 'I have walked every valley you have walked. The King never once failed me — and He will not fail you.' }],
+    [{ speaker: 'Watchful', text: 'Stay awake, friend. Drowsiness is a clever thief this close to the City.' }],
+    [{ speaker: 'Sincere', text: 'Go with a whole heart. Half-hearted pilgrims lose their way in sight of the very gates.' }],
+  ];
 
   private hemi: THREE.HemisphereLight;
   private sun: THREE.DirectionalLight;
@@ -898,7 +905,8 @@ export class MountainScene {
     barrel.rotation.z = -Math.PI / 2.4; // tilt up toward the east
     scope.add(barrel);
     // just off the north edge of the path, well in front of the peak's base
-    scope.position.set(-1.5, 0, -1.6);
+    // nudged further north, well clear of the path
+    scope.position.set(-1.5, 0, -3.4);
     g.add(scope);
 
     g.position.set(x, 0, 0);
@@ -977,6 +985,20 @@ export class MountainScene {
     } else if (this.phase === 'depart') {
       p.x = Math.max(WARNING_X - 2, Math.min(p.x, LIGHT_X - 0.5));
       p.z = Math.max(PATH_Z - LANE_HALF_WIDTH, Math.min(p.z, PATH_Z + LANE_HALF_WIDTH));
+      // each shepherd stands at the parting spot and can be spoken to again
+      for (let i = 0; i < this.shepherds.length; i++) {
+        const sp = this.shepherds[i].root.position;
+        const near = Math.hypot(p.x - sp.x, p.z - sp.z) < 2.2;
+        if (near && !this.shepherdNear[i]) {
+          this.shepherdNear[i] = true;
+          this.shepherds[i].root.rotation.y = Math.atan2(p.x - sp.x, p.z - sp.z);
+          this.christian.root.rotation.y = Math.atan2(sp.x - p.x, sp.z - p.z);
+          this.cb.playScript(this.shepherdLines[i]);
+          return;
+        } else if (!near) {
+          this.shepherdNear[i] = false;
+        }
+      }
       if (p.x >= LIGHT_X - 2) this.triggerExit();
     }
 

@@ -41,6 +41,7 @@ export interface QuestState {
   lucreDone: boolean;
   castleDone: boolean;
   mountainDone: boolean;
+  enchantedDone: boolean;
   beulahDone: boolean;
   celestialDone: boolean;
 }
@@ -209,7 +210,7 @@ const DEFS: NPCDef[] = [
         : [
             { speaker: 'Mrs. Bramble', text: 'Fresh honey-buns! Oh — Christian, dear, you look pale as flour.' },
             { speaker: 'Christian', text: 'I\'m well enough, Mrs. Bramble. Just… this burden. It won\'t let me rest.' },
-            { speaker: 'Mrs. Bramble', text: 'Here, imagine I gave you a bun. On the house. You\'ll need your strength, whatever it is you\'re up to.' },
+            { speaker: 'Mrs. Bramble', text: 'Here, take a honey-bun. On the house. You\'ll need your strength, whatever it is you\'re up to.' },
           ],
   },
   {

@@ -14,7 +14,7 @@ import { makeAlpineMountain } from './alpine';
 export type MapSpot =
   | 'city' | 'road' | 'slough' | 'fork' | 'morality' | 'beyond' | 'cross'
   | 'highway' | 'hill' | 'palace' | 'valley' | 'shadow' | 'vanity' | 'lucre'
-  | 'castle' | 'mountain' | 'beulah' | 'celestial';
+  | 'castle' | 'mountain' | 'enchanted' | 'beulah' | 'celestial';
 
 const CITY = new THREE.Vector3(-14.5, 0, 0);
 const SLOUGH = new THREE.Vector3(-3.5, 0, 0);
@@ -31,8 +31,9 @@ const VANITY = new THREE.Vector3(73.5, 0, 1);
 const LUCRE   = new THREE.Vector3(81.5, 0, -0.5);
 const CASTLE  = new THREE.Vector3(89.5, 0, 1.0);
 const MOUNTAIN = new THREE.Vector3(97.5, 0, -0.5);
-const BEULAH = new THREE.Vector3(105.5, 0, 1.0);
-const CELESTIAL = new THREE.Vector3(113.5, 0, -0.5);
+const ENCHANTED = new THREE.Vector3(105.5, 0, 1.0);
+const BEULAH = new THREE.Vector3(113.5, 0, -0.5);
+const CELESTIAL = new THREE.Vector3(121.5, 0, 1.0);
 
 // island centres + how close the road must be to count as "on land"
 const ISLANDS: Array<{ c: THREE.Vector3; r: number }> = [
@@ -51,6 +52,7 @@ const ISLANDS: Array<{ c: THREE.Vector3; r: number }> = [
   { c: LUCRE,   r: 4.0 },
   { c: CASTLE,  r: 4.0 },
   { c: MOUNTAIN, r: 4.2 },
+  { c: ENCHANTED, r: 4.2 },
   { c: BEULAH, r: 4.2 },
   { c: CELESTIAL, r: 4.4 },
 ];
@@ -74,6 +76,7 @@ export class WorldMap {
   lucreDone   = false;
   castleDone  = false;
   mountainDone = false;
+  enchantedDone = false;
   beulahDone = false;
   celestialDone = false;
   justDiverted = false; // set when the barred way shunts Christian onto the byway
@@ -92,6 +95,7 @@ export class WorldMap {
   lucreT  = 0.99;
   castleT = 0.99;
   mountainT = 0.99;
+  enchantedT = 0.992;
   beulahT = 0.995;
   celestialT = 1.00;
   private mainCurve: THREE.CatmullRomCurve3;
@@ -159,11 +163,14 @@ export class WorldMap {
       // …and up into the bright Delectable Mountains
       new THREE.Vector3(93.4, 0.62, 0.4),
       new THREE.Vector3(MOUNTAIN.x - 0.6, 0.62, MOUNTAIN.z),
-      // …and on at last to Beulah Land, in sight of the Celestial City
+      // …into the golden, dreaming Enchanted Ground
       new THREE.Vector3(101.4, 0.62, 0.2),
+      new THREE.Vector3(ENCHANTED.x - 0.6, 0.62, ENCHANTED.z),
+      // …and on at last to Beulah Land, in sight of the Celestial City
+      new THREE.Vector3(109.4, 0.62, 0.2),
       new THREE.Vector3(BEULAH.x - 0.6, 0.62, BEULAH.z),
       // …and the last golden mile, up to the Celestial City itself
-      new THREE.Vector3(109.6, 0.62, 0.2),
+      new THREE.Vector3(117.6, 0.62, 0.2),
       new THREE.Vector3(CELESTIAL.x - 0.6, 0.62, CELESTIAL.z),
     ]);
     this.cityT = this.tForPoint(CITY);
@@ -180,6 +187,7 @@ export class WorldMap {
     this.lucreT  = this.tForPoint(LUCRE);
     this.castleT = this.tForPoint(CASTLE);
     this.mountainT = this.tForPoint(MOUNTAIN);
+    this.enchantedT = this.tForPoint(ENCHANTED);
     this.beulahT = this.tForPoint(BEULAH);
     this.celestialT = this.tForPoint(CELESTIAL);
     // the byway begins exactly where the main road passes the crossroad,
@@ -794,7 +802,22 @@ export class WorldMap {
     mtnIsle.add(block(0.5, 0.1, 0.1, 0x8d6848, 2.43, 1.67, 0.55));
     this.label('Delectable Mountains', MOUNTAIN.x, MOUNTAIN.z, 5.4);
 
-    // ---------- Beulah Land island (the finale, in sight of the City) ----------
+    // ---------- Enchanted Ground ----------
+    const enchIsle = this.island(ENCHANTED.x, ENCHANTED.z, 4.2, 0xd8bd68);
+    enchIsle.add(block(5.0, 0.08, 0.62, 0xe9d89a, 0, 0.66, 0.15));
+    enchIsle.add(block(2.4, 0.08, 0.48, 0xe9d89a, -0.7, 0.67, -0.8));
+    enchIsle.add(block(2.4, 0.08, 0.48, 0xe9d89a, -0.7, 0.67, 1.05));
+    enchIsle.add(this.miniTree(-2.25, -1.45, false));
+    enchIsle.add(this.miniTree(2.2, 1.35, false));
+    enchIsle.add(block(1.15, 0.16, 0.8, 0xd7cfbd, 0.7, 0.77, -1.2));
+    enchIsle.add(block(0.62, 0.1, 0.46, 0xa9865e, 1.45, 0.74, -1.25));
+    for (let i = 0; i < 5; i++) {
+      enchIsle.add(block(0.07, 0.34, 0.07, 0xb58c55, -1.6 + i * 0.7, 0.88, 1.75));
+      enchIsle.add(block(0.18, 0.14, 0.18, [0xffe28b, 0xdac6ec, 0xfff0bd][i % 3], -1.6 + i * 0.7, 1.08, 1.75));
+    }
+    this.label('Enchanted Ground', ENCHANTED.x, ENCHANTED.z, 5.4);
+
+    // ---------- Beulah Land (in sight of the City) ----------
     const beuIsle = this.island(BEULAH.x, BEULAH.z, 4.2, 0x9ed67e);
     // Lush gardens and a layered River match Chapter XV itself; the City is
     // reserved for the next island so Beulah has its own visual identity.
@@ -1082,6 +1105,7 @@ export class WorldMap {
     if (Math.abs(this.progress - this.forkT) < 0.025) return 'fork';
     if (this.progress > this.celestialT - 0.015) return 'celestial';
     if (Math.abs(this.progress - this.beulahT) < 0.015) return 'beulah';
+    if (Math.abs(this.progress - this.enchantedT) < 0.015) return 'enchanted';
     if (Math.abs(this.progress - this.mountainT) < 0.015) return 'mountain';
     if (Math.abs(this.progress - this.castleT) < 0.015) return 'castle';
     if (Math.abs(this.progress - this.lucreT) < 0.015) return 'lucre';
@@ -1113,8 +1137,10 @@ export class WorldMap {
         // the road past the Gate opens only once the Gate chapter is done
         const maxP = this.beulahDone
           ? this.celestialT + 0.01
-          : this.mountainDone
+          : this.enchantedDone
           ? this.beulahT + 0.01
+          : this.mountainDone
+          ? this.enchantedT + 0.01
           : this.castleDone
           ? this.mountainT + 0.01
           : this.lucreDone

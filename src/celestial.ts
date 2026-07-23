@@ -101,8 +101,12 @@ export class CelestialScene {
   private darkDoor: THREE.Group | null = null;
   private darkGlow: THREE.Mesh | null = null;
   private gatewayEmbers: THREE.Mesh[] = [];
+  private gatewaySmoke: THREE.Mesh[] = [];
+  private gatewaySmokeT = -1;
   private ignoranceSweat: THREE.Mesh[] = [];
   private ignoranceAfraid = false;
+  private ignoranceNoteTimer = 0;
+  private ignoranceNotes: Array<{ group: THREE.Group; life: number }> = [];
 
   // scripted walking jobs (epilogue + gate walk-through)
   private walkJobs: WalkJob[] = [];
@@ -204,6 +208,17 @@ export class CelestialScene {
       sweat.userData.side = side;
       this.ignorance.head.add(sweat);
       this.ignoranceSweat.push(sweat);
+    }
+    // Cheerful voxel notes trail his confident approach to the gate. They stop
+    // once the attendants' questions expose his fear.
+    for (let i = 0; i < 10; i++) {
+      const note = new THREE.Group();
+      note.add(block(0.09, 0.38, 0.09, 0x9b668c, 0, 0.18, 0));
+      note.add(block(0.22, 0.16, 0.12, 0x9b668c, -0.08, 0, 0));
+      note.add(block(0.22, 0.09, 0.1, 0x9b668c, 0.08, 0.38, 0));
+      note.visible = false;
+      this.scene.add(note);
+      this.ignoranceNotes.push({ group: note, life: 1 });
     }
 
     // radiant lighting — brightens further as the pilgrims ascend
@@ -722,16 +737,19 @@ export class CelestialScene {
 
     // A compact continuation of Chapter XV's Beulah Land: the same green
     // meadow, flower colours, layered river, pale road, and golden far shore.
-    const meadow = new THREE.Mesh(new THREE.PlaneGeometry(42, 44), mat(0x9ed67e));
+    // Oversize the meadow beyond every epilogue camera angle. The earlier
+    // compact patch exposed the Celestial scene's yellow base at the top and
+    // left edges when the camera pulled back to follow Ignorance.
+    const meadow = new THREE.Mesh(new THREE.PlaneGeometry(100, 110), mat(0x9ed67e));
     meadow.rotation.x = -Math.PI / 2;
     // Keep the Beulah turf above Chapter XVI's large base plane. At the same
     // height the depth buffer alternates between both surfaces and flickers.
-    meadow.position.set(d.x - 14, 0.035, d.z);
+    meadow.position.set(d.x - 14, 0.03, d.z);
     meadow.receiveShadow = true;
     s.add(meadow);
-    const farShore = new THREE.Mesh(new THREE.PlaneGeometry(46, 44), mat(0xe8d69a));
+    const farShore = new THREE.Mesh(new THREE.PlaneGeometry(80, 110), mat(0xe8d69a));
     farShore.rotation.x = -Math.PI / 2;
-    farShore.position.set(d.x + 19, 0.04, d.z);
+    farShore.position.set(d.x + 32, 0.04, d.z);
     farShore.receiveShadow = true;
     s.add(farShore);
 
@@ -751,20 +769,20 @@ export class CelestialScene {
     addPlankWalk(d.x + 3, d.x + 28, [0xe8cf94, 0xf0dca9, 0xdcbf83]);
 
     for (const bx of [d.x - 5, d.x + 3]) {
-      const bank = new THREE.Mesh(new THREE.PlaneGeometry(1.4, 44), mat(0xcfeaf2));
+      const bank = new THREE.Mesh(new THREE.PlaneGeometry(1.4, 110), mat(0xcfeaf2));
       bank.rotation.x = -Math.PI / 2;
       bank.position.set(bx, 0.1, d.z);
       s.add(bank);
     }
-    const shallows = new THREE.Mesh(new THREE.PlaneGeometry(8, 44), mat(0x7cc3e6));
+    const shallows = new THREE.Mesh(new THREE.PlaneGeometry(8, 110), mat(0x7cc3e6));
     shallows.rotation.x = -Math.PI / 2;
     shallows.position.set(d.x - 1, 0.12, d.z);
     s.add(shallows);
-    const mid = new THREE.Mesh(new THREE.PlaneGeometry(5.8, 44), mat(0x3f6bb8));
+    const mid = new THREE.Mesh(new THREE.PlaneGeometry(5.8, 110), mat(0x3f6bb8));
     mid.rotation.x = -Math.PI / 2;
     mid.position.set(d.x - 1, 0.14, d.z);
     s.add(mid);
-    const deep = new THREE.Mesh(new THREE.PlaneGeometry(2.8, 44), mat(0x243a86));
+    const deep = new THREE.Mesh(new THREE.PlaneGeometry(2.8, 110), mat(0x243a86));
     deep.rotation.x = -Math.PI / 2;
     deep.position.set(d.x - 1, 0.16, d.z);
     s.add(deep);
@@ -778,7 +796,7 @@ export class CelestialScene {
     shimmer.rotation.x = -Math.PI / 2;
     shimmer.position.set(d.x - 1, 0.2, d.z);
     s.add(shimmer);
-    for (let i = 0; i < 24; i++) {
+    for (let i = 0; i < 54; i++) {
       const glint = new THREE.Mesh(
         new THREE.BoxGeometry(0.6 + (i % 4) * 0.25, 0.035, 0.12),
         new THREE.MeshBasicMaterial({
@@ -786,7 +804,7 @@ export class CelestialScene {
           transparent: true, opacity: 0.4, depthWrite: false,
         }),
       );
-      glint.position.set(rng(d.x - 4.4, d.x + 2.4), 0.23, rng(-20, 20));
+      glint.position.set(rng(d.x - 4.4, d.x + 2.4), 0.23, rng(-52, 52));
       s.add(glint);
     }
 
@@ -902,6 +920,28 @@ export class CelestialScene {
       dd.add(ember);
       this.gatewayEmbers.push(ember);
     }
+    for (let i = 0; i < 14; i++) {
+      const smoke = new THREE.Mesh(
+        new THREE.BoxGeometry(1.0 + (i % 3) * 0.34, 0.8 + (i % 2) * 0.28, 0.9),
+        new THREE.MeshLambertMaterial({
+          color: i % 3 === 0 ? 0x74676d : 0x918388,
+          transparent: true, opacity: 0,
+        }),
+      );
+      // Sit in front of the doorway rather than behind its stone frame, then
+      // spread broadly enough to remain readable from the epilogue camera.
+      smoke.position.set(
+        (i % 5 - 2) * 0.58,
+        0.65 + (i % 3) * 0.52,
+        -1.15 + Math.floor(i / 5) * 0.22,
+      );
+      smoke.userData.baseX = smoke.position.x;
+      smoke.userData.baseY = smoke.position.y;
+      smoke.userData.phase = i * 0.61;
+      smoke.visible = false;
+      dd.add(smoke);
+      this.gatewaySmoke.push(smoke);
+    }
     this.darkGlow = glow;
     dd.position.set(d.x + 13.4, 0, d.z + 8.2);
     dd.rotation.y = -0.28;
@@ -910,6 +950,11 @@ export class CelestialScene {
   }
 
   // ---------------------------------------------------------------- API
+  debugIgnorance(): void {
+    this.walkJobs = [];
+    this.beginIgnorance();
+  }
+
   moveFactor(): number {
     switch (this.phase) {
       case 'ascent': return 0.9;  // a climb, but a joyful one
@@ -1108,6 +1153,11 @@ export class CelestialScene {
   private beginIgnorance(): void {
     this.phase = 'ignorance';
     this.ignoranceAfraid = false;
+    this.ignoranceNoteTimer = 0;
+    for (const note of this.ignoranceNotes) {
+      note.life = 1;
+      note.group.visible = false;
+    }
     for (const sweat of this.ignoranceSweat) sweat.visible = false;
     if (this.cb.setMusic) this.cb.setMusic('cross');
     this.cb.setObjective('📖 …but the story has one more traveller');
@@ -1127,6 +1177,7 @@ export class CelestialScene {
       { speaker: '', text: 'The story returns to Beulah Land one last time. Ignorance reaches the same flowers, the same River, and the same golden shore.' },
       { speaker: 'Ignorance', text: 'I have come a very long way. Surely that proves I deserve a place in the City.' },
       { speaker: '', text: 'Christian and Hopeful crossed in fear and learned to trust the King. Ignorance still trusts only himself. A ferryman named Vain-hope carries him across without asking for the King’s promise.' },
+      { speaker: '', text: 'Certain that the gate must open for him, Ignorance hums a cheerful tune and strolls toward it.' },
     ], () => {
       // he crosses the river far too easily, never once looking down
       this.walkJobs.push({
@@ -1181,12 +1232,17 @@ export class CelestialScene {
   }
 
   private ignoranceTheDoor(): void {
+    this.gatewaySmokeT = 0;
+    this.ignorance.root.userData.throwStart = this.ignorance.root.position.clone();
+    for (const smoke of this.gatewaySmoke) smoke.visible = true;
     this.cb.playScript([
       { speaker: '', text: 'The black doorway opens. Ember light climbs the stone arch while the music of the City grows distant.' },
       { speaker: '', text: 'Ignorance came close enough to see the gates of heaven, but he would not enter by the King’s way or trust the King’s mercy.' },
       { speaker: '', text: 'The dark door closes behind him, and Beulah Land becomes quiet once more.' },
     ], () => {
       this.ignoranceAfraid = false;
+      this.gatewaySmokeT = -1;
+      for (const smoke of this.gatewaySmoke) smoke.visible = false;
       for (const sweat of this.ignoranceSweat) sweat.visible = false;
       this.ignorance.root.visible = false;
       for (const a of this.ignAttendants) a.root.visible = false;
@@ -1292,6 +1348,39 @@ export class CelestialScene {
       if (this.phase === 'plaza' || this.phase === 'through') wp.y = wp.x > GATE_X ? HILL_H : this.groundY(wp.x);
       job.parts.root.rotation.y = Math.atan2(dx, dz);
       animateBear(job.parts, t, true);
+      if (job.parts === this.ignorance && !this.ignoranceAfraid) {
+        this.ignoranceNoteTimer -= dt;
+        if (this.ignoranceNoteTimer <= 0) {
+          this.ignoranceNoteTimer = 0.34;
+          const note = this.ignoranceNotes.find((n) => n.life >= 1);
+          if (note) {
+            note.life = 0;
+            note.group.visible = true;
+            const rear = new THREE.Vector3(-dx / dist, 0, -dz / dist);
+            note.group.position.set(
+              wp.x + rear.x * 0.8,
+              1.35,
+              wp.z + rear.z * 0.8 + (Math.random() - 0.5) * 0.45,
+            );
+            note.group.scale.setScalar(0.8);
+          }
+        }
+      }
+    }
+    for (const note of this.ignoranceNotes) {
+      if (note.life >= 1) continue;
+      note.life = Math.min(1, note.life + dt * 0.78);
+      note.group.position.y += dt * 0.72;
+      note.group.position.x -= dt * 0.08;
+      note.group.scale.setScalar(0.8 + note.life * 0.45);
+      note.group.traverse((obj) => {
+        if (obj instanceof THREE.Mesh) {
+          const material = obj.material as THREE.MeshLambertMaterial;
+          material.transparent = true;
+          material.opacity = 1 - note.life;
+        }
+      });
+      if (note.life >= 1) note.group.visible = false;
     }
 
     // ---- ambient animation: rays, banners, saints, sparkles ----
@@ -1343,6 +1432,28 @@ export class CelestialScene {
           (ember.material as THREE.MeshBasicMaterial).opacity =
             0.35 + Math.abs(Math.sin(t * 3 + phase)) * 0.55;
         }
+      }
+    }
+    if (this.gatewaySmokeT >= 0) {
+      this.gatewaySmokeT += dt;
+      for (const smoke of this.gatewaySmoke) {
+        const phase = smoke.userData.phase as number;
+        const cycle = (this.gatewaySmokeT * 0.65 + phase) % 2.2;
+        smoke.position.x = (smoke.userData.baseX as number) + Math.sin(t * 1.4 + phase) * 0.28;
+        smoke.position.y = (smoke.userData.baseY as number) + cycle * 2.55;
+        smoke.scale.setScalar(0.9 + cycle * 0.5);
+        (smoke.material as THREE.MeshLambertMaterial).opacity =
+          Math.sin((cycle / 2.2) * Math.PI) * 0.82;
+      }
+      const start = this.ignorance.root.userData.throwStart as THREE.Vector3 | undefined;
+      if (start && this.gatewaySmokeT < 1.05) {
+        const u = THREE.MathUtils.smoothstep(this.gatewaySmokeT, 0, 1.05);
+        this.ignorance.root.position.set(
+          THREE.MathUtils.lerp(start.x, IGN.x + 13.4, u),
+          start.y + Math.sin(u * Math.PI) * 0.7,
+          THREE.MathUtils.lerp(start.z, IGN.z + 8.55, u),
+        );
+        this.ignorance.root.rotation.x = -u * 0.92;
       }
     }
     if (this.rewardShineT > 0) {

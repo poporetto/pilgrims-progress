@@ -3,6 +3,7 @@ import { PALETTE } from './palette';
 import { makeBear, animateBear, block, mat } from './bear';
 import { buildWorld, WALL, Interactable } from './world';
 import { createNPCs, NPC, QuestState, DialogueLine } from './npcs';
+import { EnchantedScene } from './enchanted';
 import { Music } from './music';
 import { WorldMap } from './worldmap';
 import { SloughScene } from './slough';
@@ -176,6 +177,28 @@ const titleChristian = makeBear({
 titleChristian.root.rotation.y = Math.PI / 2;
 titleJourneyScene.add(titleChristian.root);
 
+// The title road quietly previews the friendships formed across the story.
+// One companion follows at a time, and both travellers fully clear the frame
+// before the next pair begins the long walk.
+const titlePliable = makeBear({
+  species: 'rabbit', fur: 0xf3ead9,
+  outfit: 'shirt', outfitColor: 0xffd6a5, scale: 1.02,
+});
+const titleFaithful = makeBear({
+  species: 'sheep', fur: 0xf3efe4,
+  outfit: 'shirt', outfitColor: 0xa8c4a2, scale: 1.04,
+});
+const titleHopeful = makeBear({
+  species: 'dog', fur: 0xd9b088,
+  outfit: 'shirt', outfitColor: 0x7fb8a2, scale: 1.04,
+});
+const titleCompanions = [titlePliable, titleFaithful, titleHopeful];
+for (const companion of titleCompanions) {
+  companion.root.rotation.y = Math.PI / 2;
+  companion.root.visible = false;
+  titleJourneyScene.add(companion.root);
+}
+
 // Christian's actual voxel face fills the small title medallion.
 const titleFaceCanvas = document.getElementById('title-face-canvas') as HTMLCanvasElement;
 const titleFaceRenderer = new THREE.WebGLRenderer({
@@ -279,6 +302,7 @@ const quest: QuestState = {
   lucreDone: false,
   castleDone: false,
   mountainDone: false,
+  enchantedDone: false,
   beulahDone: false,
   celestialDone: false,
 };
@@ -288,7 +312,7 @@ const worldMap = new WorldMap(window.innerWidth / window.innerHeight);
 let mode:
   | 'village' | 'map' | 'slough' | 'morality' | 'wicket' | 'cross'
   | 'highway' | 'hill' | 'palace' | 'valley' | 'shadow' | 'vanity' | 'lucre' | 'castle'
-  | 'mountain' | 'beulah' | 'celestial' = 'village';
+  | 'mountain' | 'enchanted' | 'beulah' | 'celestial' = 'village';
 
 // ---------------------------------------------------------------- UI refs
 
@@ -389,6 +413,8 @@ function mapParty(): Array<'pliable' | 'hopeful'> {
 
 function goToMap(): void {
   mode = 'map';
+  sleepUI.classList.remove('show');
+  renderer.domElement.style.filter = '';
   document.getElementById('sword-btn')?.classList.remove('show');
   music.setStyle('map');
   ui.promptKey.style.display = 'none';
@@ -396,8 +422,10 @@ function goToMap(): void {
     ? '🗺 The pilgrimage is finished — Christian is home in the Celestial City 👑'
     : quest.beulahDone
     ? '🗺 Across the River — the angels wait to lead you up to the Celestial City ✨'
+    : quest.enchantedDone
+    ? '🗺 The Enchanted Ground is behind you — beyond lies Beulah Land, and the River'
     : quest.mountainDone
-    ? '🗺 The Delectable Mountains are behind you — beyond lies Beulah Land, and the River'
+    ? '🗺 Leave the mountains carefully — the dreamy Enchanted Ground lies ahead'
     : quest.castleDone
     ? '🗺 Doubting Castle is behind you — bright mountains rise ahead: a place of rest'
     : quest.lucreDone
@@ -699,6 +727,8 @@ function enterPalace(revisit: boolean): void {
 
 // ---------- Chapter IX: the Valley of Humiliation & Apollyon ----------
 const battleUI = document.getElementById('battle-ui')!;
+const sleepUI = document.getElementById('sleep-ui')!;
+const sleepFill = document.querySelector('#sleep-ui .sleep-fill')! as HTMLElement;
 const swordBtn = document.getElementById('sword-btn')! as HTMLButtonElement;
 const battleFillChr = document.querySelector('#battle-ui .brow.chr .bfill')! as HTMLElement;
 const battleFillApo = document.querySelector('#battle-ui .brow.apo .bfill')! as HTMLElement;
@@ -1124,7 +1154,58 @@ function enterMountain(revisit: boolean): void {
   camTarget.copy(mountainActors.christian.root.position);
 }
 
-// ---------- Chapter XV: Beulah Land (the finale) ----------
+// ---------- Chapter XV: the Enchanted Ground ----------
+const enchanted = new EnchantedScene({
+  playScript,
+  showChoice,
+  setObjective,
+  setSleep: (value, show) => {
+    sleepUI.classList.toggle('show', show);
+    sleepFill.style.width = `${THREE.MathUtils.clamp(value, 0, 100)}%`;
+  },
+  setDream: (amount) => {
+    const a = THREE.MathUtils.clamp(amount, 0, 1);
+    // The final stretch of drowsiness falls away rapidly into darkness so
+    // reaching zero wakefulness reads as a true blackout, not just soft blur.
+    const blackout = THREE.MathUtils.smoothstep(a, 0.78, 1);
+    const brightness = (1 - a * 0.18) * (1 - blackout * 0.94);
+    renderer.domElement.style.filter =
+      `blur(${(a * 3.2).toFixed(2)}px) saturate(${(1 - a * 0.45).toFixed(2)}) brightness(${brightness.toFixed(2)})`;
+  },
+  onExit: () => goToMap(),
+  blipSound: () => music.blip(),
+  setMusic: (style) => music.setStyle(style),
+  onComplete: () => {
+    quest.enchantedDone = true;
+    showEnding(
+      '🌾 Chapter XV Complete',
+      'The Enchanted Ground',
+      'Christian and Hopeful tested every voice against the King’s directions. They escaped '
+      + 'the Flatterer’s net, refused Atheist’s hopeless road, and kept one another awake '
+      + 'through the dreaming fields. Ignorance still trusted his own goodness, but the '
+      + 'pilgrims trusted the King and walked together toward the light.',
+      () => {
+        worldMap.mountainDone = true;
+        worldMap.enchantedDone = true;
+        worldMap.start(mapParty());
+        worldMap.road = 'main';
+        worldMap.progress = worldMap.enchantedT;
+        goToMap();
+      },
+    );
+  },
+});
+let enchantedActors: { christian: import('./bear').BearParts; hopeful: import('./bear').BearParts } | null = null;
+
+function enterEnchanted(revisit: boolean): void {
+  mode = 'enchanted';
+  ui.prompt.style.display = 'none';
+  ui.talkBtn.style.display = 'none';
+  enchantedActors = enchanted.enter(revisit);
+  camTarget.copy(enchantedActors.christian.root.position);
+}
+
+// ---------- Chapter XVI: Beulah Land ----------
 const beulah = new BeulahScene({
   playScript,
   setObjective,
@@ -1136,7 +1217,7 @@ const beulah = new BeulahScene({
     quest.beulahDone = true;
     showEnding(
       '✨ Across the River',
-      'Chapter XV — Beulah Land',
+      'Chapter XVI — Beulah Land',
       'In the golden country of Beulah, in sight of the shining City, Christian and '
       + 'Hopeful came at last to the deep River of death, where no bridge is and every '
       + 'pilgrim must cross. Christian sank, and old fears and sins rose about him like '
@@ -1159,6 +1240,7 @@ const beulah = new BeulahScene({
         worldMap.lucreDone = true;
         worldMap.castleDone = true;
         worldMap.mountainDone = true;
+        worldMap.enchantedDone = true;
         worldMap.beulahDone = true;
         worldMap.start(mapParty());
         worldMap.road = 'main';
@@ -1178,7 +1260,7 @@ function enterBeulah(revisit: boolean): void {
   camTarget.copy(beulahActors.christian.root.position);
 }
 
-// ---------- Chapter XVI: the Celestial City (the true finale) ----------
+// ---------- Chapter XVII: the Celestial City (the true finale) ----------
 const celestial = new CelestialScene({
   playScript,
   setObjective,
@@ -1295,6 +1377,47 @@ let dialogueOpen = false;
 let dialogueNPC: NPC | null = null;
 let scriptDone: (() => void) | null = null;
 
+// Mrs. Bramble's honey-bun is a real voxel prop, passed from her paw into
+// Christian's rather than existing only in the dialogue.
+const honeyBun = new THREE.Group();
+honeyBun.add(block(0.44, 0.22, 0.32, 0xd89545, 0, 0, 0));
+honeyBun.add(block(0.34, 0.08, 0.27, 0xf0b85f, 0, 0.13, 0));
+honeyBun.add(block(0.07, 0.04, 0.22, 0xffd77d, -0.1, 0.18, 0));
+honeyBun.add(block(0.07, 0.04, 0.22, 0xffd77d, 0.1, 0.18, 0));
+honeyBun.visible = false;
+scene.add(honeyBun);
+let bunHandoffActive = false;
+let bunHandoffPlayed = false;
+let bunHandoffTime = 0;
+
+function beginBunHandoff(): void {
+  if (bunHandoffPlayed) return;
+  bunHandoffPlayed = true;
+  bunHandoffActive = true;
+  bunHandoffTime = 0;
+  honeyBun.visible = true;
+}
+
+function updateBunHandoff(dt: number): void {
+  if (!bunHandoffActive) return;
+  const baker = npcs.find((npc) => npc.id === 'baker');
+  if (!baker) return;
+  bunHandoffTime += dt;
+  const from = baker.parts.root.position.clone().add(new THREE.Vector3(0, 1.15, 0));
+  const to = christian.root.position.clone().add(new THREE.Vector3(0, 1.05, 0));
+  const u = THREE.MathUtils.smoothstep(bunHandoffTime, 0.12, 1.05);
+  honeyBun.position.lerpVectors(from, to, u);
+  honeyBun.position.y += Math.sin(u * Math.PI) * 0.22;
+  baker.parts.armR.rotation.x = -Math.sin(Math.min(1, bunHandoffTime / 0.5)) * 1.05;
+  christian.armL.rotation.x = -Math.sin(Math.min(1, Math.max(0, bunHandoffTime - 0.45) / 0.5)) * 0.9;
+  if (bunHandoffTime >= 1.65) {
+    bunHandoffActive = false;
+    honeyBun.visible = false;
+    baker.parts.armR.rotation.x = 0;
+    christian.armL.rotation.x = 0;
+  }
+}
+
 // scripted cutscene dialogue (no NPC attached)
 function playScript(lines: DialogueLine[], onDone?: () => void): void {
   dialogueNPC = null;
@@ -1316,6 +1439,7 @@ function openDialogue(npc: NPC): void {
   ui.dialogue.style.display = 'block';
   ui.prompt.style.display = 'none';
   ui.talkBtn.style.display = 'none';
+  if (npc.id === 'baker') bunHandoffPlayed = false;
   showLine();
   // NPC turns to face Christian
   const dx = christian.root.position.x - npc.parts.root.position.x;
@@ -1330,9 +1454,16 @@ function showLine(): void {
   // Christian's speech gets a warm brown bubble; narration (empty speaker) is neutral
   ui.dialogue.classList.toggle('christian', line.speaker === 'Christian');
   ui.dialogue.classList.toggle('narration', line.speaker === '');
+  if (
+    dialogueNPC?.id === 'baker'
+    && line.speaker === 'Mrs. Bramble'
+    && line.text.startsWith('Here, take a honey-bun')
+  ) beginBunHandoff();
 }
 
 function advanceDialogue(): void {
+  // Let the visible handoff finish before the final line can be dismissed.
+  if (bunHandoffActive) return;
   music.blip();
   dialogueIndex++;
   if (dialogueIndex < dialogueLines.length) {
@@ -1402,6 +1533,7 @@ window.addEventListener('keydown', (e) => {
     }
     else if (mode === 'valley') valley.tryAttack();
     else if (mode === 'lucre') lucre.tryTouchPillar();
+    else if (mode === 'enchanted') enchanted.tryWakeAction();
     else if (mode === 'beulah') { if (beulah.nearAngel()) beulah.talkAngel(); }
     else if (mode === 'celestial') { if (celestial.nearSaint()) celestial.talkSaint(); }
   }
@@ -1423,6 +1555,7 @@ function tryEnterFromMap(): void {
   else if (spot === 'lucre') enterLucre(quest.lucreDone);
   else if (spot === 'castle') enterCastle(quest.castleDone);
   else if (spot === 'mountain') enterMountain(quest.mountainDone);
+  else if (spot === 'enchanted') enterEnchanted(quest.enchantedDone);
   else if (spot === 'beulah') enterBeulah(quest.beulahDone);
   else if (spot === 'celestial') enterCelestial(quest.celestialDone);
 }
@@ -1504,12 +1637,14 @@ function debugJumpToWorldMap(): void {
   worldMap.lucreDone = quest.lucreDone;
   worldMap.castleDone = quest.castleDone;
   worldMap.mountainDone = quest.mountainDone;
+  worldMap.enchantedDone = quest.enchantedDone;
   worldMap.beulahDone = quest.beulahDone;
   worldMap.celestialDone = quest.celestialDone;
 
   // Place Christian at the latest completed landmark, ready to continue east.
   worldMap.progress = quest.celestialDone ? worldMap.celestialT
     : quest.beulahDone ? worldMap.beulahT
+    : quest.enchantedDone ? worldMap.enchantedT
     : quest.mountainDone ? worldMap.mountainT
     : quest.castleDone ? worldMap.castleT
     : quest.lucreDone ? worldMap.lucreT
@@ -1552,9 +1687,13 @@ ui.debugPanel.addEventListener('click', (e) => {
   // flags agree with wherever we're jumping to — otherwise a later visit to
   // the map can snap Christian's progress back to an earlier chapter
   // each jump implies every earlier chapter is behind us
-  const ORDER = ['village', 'slough', 'morality', 'wicket-approach', 'cross', 'highway', 'hill', 'palace', 'valley', 'shadow', 'vanity', 'lucre', 'castle', 'mountain', 'beulah', 'celestial'];
+  const ORDER = ['village', 'slough', 'morality', 'wicket-approach', 'cross', 'highway', 'hill', 'palace', 'valley', 'shadow', 'vanity', 'lucre', 'castle', 'mountain', 'enchanted', 'beulah', 'celestial'];
   const rank = ORDER.indexOf(
-    jump === 'wicket-highway' || jump === 'interpreter' ? 'wicket-approach' : jump === 'map' ? 'village' : jump,
+    jump === 'wicket-highway' || jump === 'interpreter'
+      ? 'wicket-approach'
+      : jump === 'ignorance-epilogue'
+      ? 'celestial'
+      : jump === 'map' ? 'village' : jump,
   );
   if (rank >= 2) worldMap.sloughDone = true;
   if (rank >= 3) worldMap.moralityDone = true;
@@ -1569,7 +1708,8 @@ ui.debugPanel.addEventListener('click', (e) => {
   if (rank >= 12) { worldMap.lucreDone = true; quest.lucreDone = true; }
   if (rank >= 13) { worldMap.castleDone = true; quest.castleDone = true; }
   if (rank >= 14) { worldMap.mountainDone = true; quest.mountainDone = true; }
-  if (rank >= 15) { worldMap.beulahDone = true; quest.beulahDone = true; }
+  if (rank >= 15) { worldMap.enchantedDone = true; quest.enchantedDone = true; }
+  if (rank >= 16) { worldMap.beulahDone = true; quest.beulahDone = true; }
   if (jump === 'village') enterVillage();
   else if (jump === 'slough') enterSlough(false);
   else if (jump === 'morality') enterMorality(false);
@@ -1586,8 +1726,14 @@ ui.debugPanel.addEventListener('click', (e) => {
   else if (jump === 'lucre') enterLucre(false);
   else if (jump === 'castle') enterCastle(false);
   else if (jump === 'mountain') enterMountain(false);
+  else if (jump === 'enchanted') enterEnchanted(false);
   else if (jump === 'beulah') enterBeulah(false);
   else if (jump === 'celestial') enterCelestial(false);
+  else if (jump === 'ignorance-epilogue') {
+    enterCelestial(false);
+    celestial.debugIgnorance();
+    camTarget.copy(celestial.focus().position);
+  }
   else if (jump === 'map') debugJumpToWorldMap();
 });
 
@@ -1653,6 +1799,7 @@ ui.talkBtn.addEventListener('click', () => {
   }
   else if (mode === 'valley') valley.tryAttack();
   else if (mode === 'lucre') lucre.tryTouchPillar();
+  else if (mode === 'enchanted') enchanted.tryWakeAction();
   else if (mode === 'beulah') { if (beulah.nearAngel()) beulah.talkAngel(); }
   else if (mode === 'celestial') { if (celestial.nearSaint()) celestial.talkSaint(); }
 });
@@ -2073,12 +2220,28 @@ function tick(): void {
   const t = clock.elapsedTime;
 
   if (!started) {
-    // A slow, unhurried eastward walk. Once Christian leaves the right edge he
-    // begins again beyond the left, suggesting a road much longer than one view.
-    const journeyP = (t % 18) / 18;
-    titleChristian.root.position.set(-12.5 + journeyP * 25, 0, 0);
+    // Three repeating crossings: Pliable, then Faithful, then Hopeful. Each
+    // eighteen-second walk is followed by a short empty-road breath so the
+    // preceding companion is unmistakably off-screen before the next appears.
+    const titleLegLength = 20;
+    const titleLeg = Math.floor((t % (titleLegLength * titleCompanions.length)) / titleLegLength);
+    const titleLegTime = t % titleLegLength;
+    const titleWalking = titleLegTime < 18;
+    const journeyP = Math.min(titleLegTime / 18, 1);
+    const titleX = -14.5 + journeyP * 34;
+    titleChristian.root.visible = titleWalking;
+    titleChristian.root.position.set(titleX, 0, 0);
     titleChristian.root.rotation.y = Math.PI / 2;
-    animateBear(titleChristian, t * 0.62, true);
+    animateBear(titleChristian, t * 0.62, titleWalking);
+    for (let i = 0; i < titleCompanions.length; i++) {
+      const companion = titleCompanions[i];
+      companion.root.visible = titleWalking && i === titleLeg;
+      if (i === titleLeg) {
+        companion.root.position.set(titleX - 2.37, 0, 0.55);
+        companion.root.rotation.y = Math.PI / 2;
+        animateBear(companion, t * 0.62 + i * 0.8, titleWalking);
+      }
+    }
     titleJourneyRenderer.render(titleJourneyScene, titleJourneyCamera);
     titleFaceHead.rotation.z = Math.sin(t * 0.7) * 0.025;
     titleFaceRenderer.render(titleFaceScene, titleFaceCamera);
@@ -2119,6 +2282,7 @@ function tick(): void {
     if (spot === 'lucre' && !quest.lucreDone) { enterLucre(false); return; }
     if (spot === 'castle' && !quest.castleDone) { enterCastle(false); return; }
     if (spot === 'mountain' && !quest.mountainDone) { enterMountain(false); return; }
+    if (spot === 'enchanted' && !quest.enchantedDone) { enterEnchanted(false); return; }
     if (spot === 'beulah' && !quest.beulahDone) { enterBeulah(false); return; }
     if (spot === 'celestial' && !quest.celestialDone) { enterCelestial(false); return; }
 
@@ -2183,6 +2347,10 @@ function tick(): void {
       ui.promptWho.textContent = quest.mountainDone
         ? '⛰ Rest again in the Delectable Mountains'
         : '⛰ Climb into the bright Delectable Mountains';
+    } else if (spot === 'enchanted') {
+      ui.promptWho.textContent = quest.enchantedDone
+        ? '🌾 Walk the Enchanted Ground again'
+        : '🌾 Enter the dreamy Enchanted Ground';
     } else if (spot === 'beulah') {
       ui.promptWho.textContent = quest.beulahDone
         ? '✨ Return to Beulah Land'
@@ -2740,6 +2908,49 @@ function tick(): void {
     return;
   }
 
+  if (mode === 'enchanted' && enchantedActors) {
+    const ec = enchantedActors.christian;
+    let mx = 0;
+    let mz = 0;
+    if (keys.has('KeyW') || keys.has('ArrowUp')) mz -= 1;
+    if (keys.has('KeyS') || keys.has('ArrowDown')) mz += 1;
+    if (keys.has('KeyA') || keys.has('ArrowLeft')) mx -= 1;
+    if (keys.has('KeyD') || keys.has('ArrowRight')) mx += 1;
+    mx += joy.x;
+    mz += joy.y;
+    const len = Math.hypot(mx, mz);
+    const factor = enchanted.moveFactor();
+    const moving = len > 0.15 && !dialogueOpen && !endingOpen && factor > 0;
+    if (moving) {
+      mx /= Math.max(len, 1);
+      mz /= Math.max(len, 1);
+      ec.root.position.x += mx * SPEED * factor * dt;
+      ec.root.position.z += mz * SPEED * factor * dt;
+      ec.root.rotation.y = lerpAngle(ec.root.rotation.y, Math.atan2(mx, mz), 12 * dt);
+    }
+    enchanted.afterMove();
+    enchanted.update(dt, t, moving);
+
+    if (enchanted.canWake() && !dialogueOpen && !endingOpen) {
+      ui.prompt.style.display = 'block';
+      ui.promptKey.style.display = isTouch ? 'none' : 'inline-block';
+      ui.promptWho.textContent = 'Encourage Hopeful, remember Scripture, or sing together';
+      if (isTouch) {
+        ui.talkBtn.textContent = 'Stay Awake';
+        ui.talkBtn.style.display = 'block';
+      }
+    } else {
+      ui.prompt.style.display = 'none';
+      if (isTouch && !dialogueOpen) ui.talkBtn.style.display = 'none';
+    }
+
+    camTarget.lerp(ec.root.position, Math.min(4 * dt, 1));
+    camera.position.copy(camTarget).add(camOffset);
+    camera.lookAt(camTarget.x, camTarget.y + 1.4, camTarget.z);
+    renderer.render(enchanted.scene, camera);
+    return;
+  }
+
   if (mode === 'beulah' && beulahActors) {
     // ---- Beulah Land mode (outdoor, standard camera) ----
     const bc = beulahActors.christian;
@@ -2838,6 +3049,7 @@ function tick(): void {
   if (started) {
     updatePlayer(dt, t);
     updateNPCs(dt, t);
+    updateBunHandoff(dt);
 
     // interact prompt
     nearestNPC = dialogueOpen ? null : findNearestNPC();

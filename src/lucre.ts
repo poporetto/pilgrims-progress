@@ -325,14 +325,30 @@ export class LucreScene {
     // wide gown (feminine silhouette)
     pillar.add(block(1.3, 1.5, 0.9, salt, 0, 0.95, 0));
     pillar.add(block(0.6, 0.75, 0.62, salt, 0, 2.1, 0)); // bodice
-    // cat head with pointed ears, turned back
+    // cat head with pointed ears, muzzle and whiskers, turned back
     const catHead = new THREE.Group();
     catHead.add(block(0.5, 0.46, 0.42, salt, 0, 0, 0));
     catHead.add(block(0.2, 0.24, 0.14, salt, -0.2, 0.3, 0)); // left ear
     catHead.add(block(0.2, 0.24, 0.14, salt, 0.2, 0.3, 0));  // right ear
+    catHead.add(block(0.1, 0.1, 0.1, 0xdcd6ca, -0.2, 0.32, 0.02)); // inner ears
+    catHead.add(block(0.1, 0.1, 0.1, 0xdcd6ca, 0.2, 0.32, 0.02));
+    catHead.add(block(0.22, 0.16, 0.14, salt, 0, -0.08, 0.26)); // muzzle
+    catHead.add(block(0.08, 0.06, 0.06, 0xd8d2c6, 0, -0.02, 0.34)); // nose
+    catHead.add(block(0.3, 0.03, 0.03, 0xe0dacd, -0.3, -0.06, 0.24)); // whiskers
+    catHead.add(block(0.3, 0.03, 0.03, 0xe0dacd, 0.3, -0.06, 0.24));
     catHead.rotation.y = -Math.PI * 0.45; // looking back westward
     catHead.position.set(0, 2.63, 0);
     pillar.add(catHead);
+    // a long cat tail curling out from the gown, frozen mid-swish
+    const tailBase = block(0.16, 0.16, 0.5, salt, 0.5, 0.55, -0.6);
+    tailBase.rotation.x = 0.4;
+    pillar.add(tailBase);
+    const tailMid = block(0.14, 0.55, 0.14, salt, 0.56, 0.95, -0.86);
+    tailMid.rotation.z = -0.25;
+    pillar.add(tailMid);
+    pillar.add(block(0.16, 0.2, 0.16, 0xe0dacd, 0.62, 1.28, -0.9)); // pale tail tip
+    // a slight waist between gown and bodice for the feminine silhouette
+    pillar.add(block(0.52, 0.22, 0.5, 0xe8e4dc, 0, 1.78, 0)); // sash
     // right arm down
     pillar.add(block(0.2, 0.55, 0.2, salt, 0.42, 2.0, 0));
     // left arm raised up in alarm

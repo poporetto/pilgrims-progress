@@ -463,6 +463,25 @@
 
     /* the battle HUD can run with Christian's bar alone */
     #battle-ui.solo .brow.apo { display: none; }
+    #sleep-ui {
+      position: fixed; top: 142px; left: 50%; transform: translateX(-50%);
+      z-index: 12; display: none; width: min(340px, 76vw);
+      padding: 9px 14px 11px; border: 3px solid #ddc99a; border-radius: 18px;
+      background: rgba(255, 250, 224, .92); color: #66597b;
+      box-shadow: 0 5px 0 rgba(102, 89, 123, .22);
+      font-family: Georgia, 'Times New Roman', serif; text-align: center;
+    }
+    #sleep-ui.show { display: block; }
+    #sleep-ui .sleep-label { font-weight: 700; letter-spacing: .04em; margin-bottom: 5px; }
+    #sleep-ui .sleep-track {
+      height: 13px; overflow: hidden; border: 2px solid #aa9cbd;
+      border-radius: 9px; background: #fffdf3;
+    }
+    #sleep-ui .sleep-fill {
+      height: 100%; width: 0; border-radius: 6px;
+      background: linear-gradient(90deg, #e6c963, #c4a9dc 72%, #8877a3);
+      transition: width .18s ease;
+    }
 
     /* ---------- battle HUD (Apollyon fight) ---------- */
     #battle-ui {
@@ -595,7 +614,7 @@
     #finale.end #finale-scroll { opacity: 0; transition: opacity 1.0s ease; }
     #finale.end #finale-end { opacity: 1; }
   </style>
-  <script type="module" crossorigin src="./assets/index-B6Pqu7lx.js"></script>
+  <script type="module" crossorigin src="./assets/index-CLWSjuu_.js"></script>
 </head>
 <body>
   <div id="app"></div>
@@ -621,8 +640,10 @@
     <button data-jump="lucre">XII · Hill Lucre</button>
     <button data-jump="castle">XIII · Doubting Castle</button>
     <button data-jump="mountain">XIV · Delectable Mountains</button>
-    <button data-jump="beulah">XV · Beulah Land</button>
-    <button data-jump="celestial">XVI · The Celestial City</button>
+    <button data-jump="enchanted">XV · Enchanted Ground</button>
+    <button data-jump="beulah">XVI · Beulah Land</button>
+    <button data-jump="celestial">XVII · The Celestial City</button>
+    <button data-jump="ignorance-epilogue">XVII · Ignorance in Beulah</button>
     <div class="label">Or</div>
     <button data-jump="map">World Map</button>
   </div>
@@ -637,6 +658,10 @@
       <span class="bname">🐉 Apollyon</span>
       <div class="btrack"><div class="bfill" style="width:100%"></div></div>
     </div>
+  </div>
+  <div id="sleep-ui" aria-live="polite">
+    <div class="sleep-label">Stay Awake</div>
+    <div class="sleep-track"><div class="sleep-fill"></div></div>
   </div>
   <button id="sword-btn" aria-label="Swing the Sword of the Spirit">
     <span class="blade-icon">⚔</span>
