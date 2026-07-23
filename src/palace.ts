@@ -71,6 +71,8 @@ export class PalaceScene {
   private watchful: BearParts;
   private women: BearParts[] = []; // Discretion, Prudence, Piety, Charity
   private womenHome: THREE.Vector3[] = [];
+  // Solid furniture/columns in the hall (world coords, axis-aligned boxes).
+  private hallColliders: Array<{ x: number; z: number; hx: number; hz: number }> = [];
   private armorStep = -1;
   private armorWalkT = 0;
   private lions: Lion[] = [];
@@ -81,6 +83,7 @@ export class PalaceScene {
   private shining: ShiningLight | null = null;
   private revisit = false;
   private built = false;
+  private pilgrimDetailsAdded = false; // finishing plates added exactly once
 
   constructor(cb: PalaceCallbacks) {
     this.cb = cb;
@@ -149,6 +152,32 @@ export class PalaceScene {
         outfit: 'dress', outfitColor: dressC, scale: 1.02,
       });
       this.women.push(w);
+    }
+  }
+
+  // The shared finishing plates (breastplate face, belt, pauldrons, greaves)
+  // belong with the breastplate — added once so they never double up.
+  private ensurePilgrimDetails(): void {
+    if (this.pilgrimDetailsAdded) return;
+    this.pilgrimDetailsAdded = true;
+    addPilgrimArmorDetails(this.christian);
+  }
+
+  // Push Christian out of any solid hall furniture/column (inflated AABB,
+  // resolved along the axis of least penetration).
+  private resolveHallColliders(p: THREE.Vector3): void {
+    const PR = 0.55; // Christian's body radius
+    for (const c of this.hallColliders) {
+      const minX = c.x - c.hx - PR, maxX = c.x + c.hx + PR;
+      const minZ = c.z - c.hz - PR, maxZ = c.z + c.hz + PR;
+      if (p.x <= minX || p.x >= maxX || p.z <= minZ || p.z >= maxZ) continue;
+      const overL = p.x - minX, overR = maxX - p.x;
+      const overD = p.z - minZ, overU = maxZ - p.z;
+      const m = Math.min(overL, overR, overD, overU);
+      if (m === overL) p.x = minX;
+      else if (m === overR) p.x = maxX;
+      else if (m === overD) p.z = minZ;
+      else p.z = maxZ;
     }
   }
 
@@ -261,8 +290,10 @@ export class PalaceScene {
 
     // ---------- Palace Beautiful: a white palace glowing in the dusk ----------
     const palace = new THREE.Group();
-    const WHITE = 0xfaf8f2;
-    const TRIM = 0xe8e2d2;
+    // Warm white (a hint of cream/peach) rather than a cold paper white, while
+    // staying firmly in the pastel range.
+    const WHITE = 0xfbf5e9;
+    const TRIM = 0xf0e8d6;
     const GOLD = PALETTE.robeGold;
     const STONE = 0xd8d0c4;
 
@@ -406,9 +437,9 @@ export class PalaceScene {
 
     // ---------- the great hall (interior, reached by fade) ----------
     const hall = new THREE.Group();
-    const WALL = 0xf2ead8;
+    const WALL = 0xf6efe0;  // warm white interior walls
     const WOOD = PALETTE.woodDark;
-    const CREAM = 0xe8ddc9;
+    const CREAM = 0xeee4d3; // warm white floor
 
     // floor + walls — NO closed ceiling (the camera looks down into the hall
     // dollhouse-style; a ceiling/roof beams would hide the whole interior)
@@ -536,15 +567,32 @@ export class PalaceScene {
       hall.add(block(0.55, 0.7, 0.35, 0xcfd6dd, ax, 0.75, -9.0)); // breastplate form
     }
 
-    // ascending stair at the east end — treads rise toward the roof door (north)
+    // Ascending stair moved flush to the RIGHT (east) wall so it clears the
+    // centre of the hall. A clean flight of solid voxel steps rises toward the
+    // roof door at the north end, each step a full box up from the floor.
+    const STAIR_X = 19.4;
     for (let i = 0; i < 6; i++) {
-      hall.add(block(2.2, 0.14, 1.0, 0xdfd4bc, 17.5, 0.07 + i * 0.14, 1.2 + i * 0.55));
+      const h = 0.28 * (i + 1);
+      hall.add(block(2.2, h, 0.9, 0xdfd4bc, STAIR_X, h / 2, 1.2 + i * 0.9));
     }
-    hall.add(block(2.6, 2.4, 1.4, WOOD, 17.5, 1.2, 4.8));             // roof door frame
-    hall.add(block(1.8, 1.8, 0.14, 0x4a4440, 17.5, 1.9, 4.85));   // closed door
+    hall.add(block(2.4, 0.22, 1.2, 0xe6ddc8, STAIR_X, 1.75, 1.2 + 6 * 0.9)); // top landing
+    hall.add(block(2.6, 2.4, 1.4, WOOD, STAIR_X, 1.95, 1.2 + 6 * 0.9 + 0.9));  // roof door frame
+    hall.add(block(1.8, 1.8, 0.14, 0x4a4440, STAIR_X, 2.6, 1.2 + 6 * 0.9 + 0.95)); // closed door
 
     hall.position.copy(HALL);
     s.add(hall);
+    // Solid obstacles so Christian can't walk through the columns or tables.
+    // Positions mirror the local layout above, offset into world coords.
+    this.hallColliders = [];
+    for (let i = 0; i < 5; i++) {
+      const cx = -1 + i * 5;
+      for (const z of [-6.5, 6.5]) {
+        this.hallColliders.push({ x: HALL.x + cx, z, hx: 0.45, hz: 0.45 }); // columns
+      }
+    }
+    this.hallColliders.push({ x: HALL.x + 8, z: 1.5, hx: 2.75, hz: 1.1 });   // welcome table
+    this.hallColliders.push({ x: HALL.x + 1.4, z: -6.35, hx: 1.7, hz: 0.85 }); // records desk
+    this.hallColliders.push({ x: HALL.x + 12, z: -7.5, hx: 2.5, hz: 1.2 });  // treasure table
   const hallLight = new THREE.PointLight(0xffd99e, 3.6, 58);
   hallLight.position.set(HALL.x + 8, 5, 0);
   s.add(hallLight);
@@ -595,33 +643,47 @@ export class PalaceScene {
       roof.add(block(0.14, 0.28, 0.14, PALETTE.flowerPink, 3.4 + i * 0.35, 0.42, -4.5 + (i % 2) * 0.3));
     }
 
-    // the telescope on a tripod, angled east toward the Celestial City
+    // The telescope: the same well-made Perspective Glass used on the
+    // Delectable Mountains — a stone plinth, a splayed tripod, and a banded
+    // brass barrel with rings, eyepiece and a glowing lens, angled up east
+    // toward the far Celestial City.
     const scope = new THREE.Group();
-    scope.add(block(0.12, 1.4, 0.12, PALETTE.woodDark, -0.3, 0.7, -0.3));
-    scope.add(block(0.12, 1.4, 0.12, PALETTE.woodDark, 0.3, 0.7, -0.3));
-    scope.add(block(0.12, 1.4, 0.12, PALETTE.woodDark, 0, 0.7, 0.42));
-    scope.add(block(0.38, 0.14, 0.38, PALETTE.woodDark, 0, 1.38, 0));
-    const tube = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.22, 2.0, 12), mat(0xb08a3a));
-    tube.rotation.z = -Math.PI / 3;
-    tube.position.set(0.5, 1.95, 0);
-    scope.add(tube);
-    const eye = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.14, 0.28, 10), mat(0x8a6f52));
-    eye.rotation.z = -Math.PI / 3;
-    eye.position.set(-0.14, 1.28, 0);
-    scope.add(eye);
-    const obj = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.2, 0.18, 12), mat(0xcfd6dd));
-    obj.rotation.z = -Math.PI / 3;
-    obj.position.set(1.14, 2.6, 0);
-    scope.add(obj);
+    const BRASS = 0xcaa24a, BRASS_DK = 0x9a7a34, SWOOD = 0x5a4636;
+    scope.add(block(1.5, 0.3, 1.5, 0x9aa886, 0, 0.15, 0));   // stone plinth
+    scope.add(block(1.15, 0.16, 1.15, 0x8a9876, 0, 0.36, 0));
+    for (const a of [0, 2.1, 4.2]) {
+      const lx = Math.cos(a) * 0.45, lz = Math.sin(a) * 0.45;
+      const leg = block(0.12, 1.7, 0.12, SWOOD, lx, 1.05, lz);
+      leg.rotation.z = Math.cos(a) * 0.24;
+      leg.rotation.x = Math.sin(a) * 0.24;
+      scope.add(leg);
+      scope.add(block(0.18, 0.11, 0.18, 0x40342a, lx * 1.7, 0.11, lz * 1.7)); // foot
+    }
+    scope.add(block(0.38, 0.38, 0.38, BRASS_DK, 0, 1.85, 0)); // yoke/mount
+    const barrel = new THREE.Group();
+    barrel.add(block(0.34, 1.8, 0.34, BRASS, 0, 0, 0));          // main tube
+    barrel.add(block(0.42, 0.13, 0.42, BRASS_DK, 0, 0.5, 0));    // ring
+    barrel.add(block(0.42, 0.13, 0.42, BRASS_DK, 0, -0.05, 0));  // ring
+    barrel.add(block(0.28, 0.46, 0.28, BRASS_DK, 0, -1.08, 0));  // eyepiece
+    barrel.add(block(0.44, 0.18, 0.44, BRASS, 0, 0.95, 0));      // objective housing
+    const lens = block(0.4, 0.11, 0.4, 0x9fe0f0, 0, 1.08, 0);   // glass
+    (lens.material as THREE.MeshLambertMaterial).emissive = new THREE.Color(0x9fe0f0);
+    (lens.material as THREE.MeshLambertMaterial).emissiveIntensity = 0.35;
+    barrel.add(lens);
+    barrel.position.set(0.1, 2.2, 0);
+    barrel.rotation.z = -Math.PI / 3.2; // tilt up toward the east
+    scope.add(barrel);
     scope.position.set(2, 0, 0);
     roof.add(scope);
 
     // bench for stargazing beside the telescope
     roof.add(block(2.2, 0.45, 0.8, PALETTE.woodDark, -1, 0.23, 2.5));
 
-    // descending stair at the WEST end — treads drop toward the hatch (walk west to go down)
-    for (let i = 0; i < 6; i++) {
-      roof.add(block(1.8, 0.12, 1.2, 0xdfd4bc, -2.0 - i * 0.9, 0.55 - i * 0.08, 0));
+    // Descending stair at the WEST end — a clean flight of solid voxel steps
+    // stepping DOWN toward the open trapdoor (walk west to go down).
+    for (let i = 0; i < 5; i++) {
+      const h = 0.9 - i * 0.18;
+      roof.add(block(1.0, h, 1.8, 0xdfd4bc, -2.6 - i * 0.95, h / 2, 0));
     }
     // trapdoor surround and open hatch leaning aside
     roof.add(block(2.6, 0.16, 1.8, 0xe8e2d2, -7.2, 0.08, 0));
@@ -699,6 +761,7 @@ export class PalaceScene {
     if (revisit) {
       this.phase = 'done';
       this.setArmorVisible(true);
+      this.ensurePilgrimDetails();
       this.christian.root.position.set(-27, 0, 0);
       this.cb.setObjective('🏰 Palace Beautiful glows in the dusk — the lions still guard the way');
     } else {
@@ -721,7 +784,7 @@ export class PalaceScene {
     if (interior) {
       if (p.x < 140) {
         // the hall
-        p.x = THREE.MathUtils.clamp(p.x, HALL.x - 4, HALL.x + 16.5);
+        p.x = THREE.MathUtils.clamp(p.x, HALL.x - 4, HALL.x + 18.5);
         p.z = THREE.MathUtils.clamp(p.z, -8.6, 8.6);
         p.y = 0.1;
         // women are solid obstacles
@@ -735,6 +798,8 @@ export class PalaceScene {
             p.z = wp.z + (dz / d) * 1.4;
           }
         }
+        // ...and so are the columns, welcome table, records desk and treasures
+        this.resolveHallColliders(p);
       } else {
         // the rooftop
         p.x = THREE.MathUtils.clamp(p.x, ROOF.x - 7, ROOF.x + 7);
@@ -819,7 +884,7 @@ export class PalaceScene {
       return;
     }
 
-    if (this.phase === 'stairs' && p.distanceTo(new THREE.Vector3(HALL.x + 17.5, 0.1, 3.6)) < 2.6) {
+    if (this.phase === 'stairs' && p.distanceTo(new THREE.Vector3(HALL.x + 19.4, 0.1, 3.9)) < 3.0) {
       this.phase = 'roof';
       this.cb.fade?.(() => {
         this.christian.root.position.set(ROOF.x - 2, ROOF.y, 0);
@@ -952,7 +1017,12 @@ export class PalaceScene {
       },
       {
         line: [{ speaker: 'Prudence', text: 'The breastplate of righteousness. Its goodness comes from the King, not from you. Wear it over your heart.' }],
-        give: () => { this.armorPieces.breastplate.visible = true; },
+        give: () => {
+          this.armorPieces.breastplate.visible = true;
+          // The finishing plates belong to the breastplate, so they appear now
+          // rather than only once the final sword is handed over.
+          this.ensurePilgrimDetails();
+        },
       },
       {
         line: [{ speaker: 'Piety', text: 'The shield of faith. Hold it up when the enemy sends burning lies at you, and trust the King\'s promises.' }],
@@ -979,9 +1049,9 @@ export class PalaceScene {
   }
 
   private runFarewell(): void {
-    // The finishing plates appear once the final piece has been bestowed, then
-    // carry forward unchanged through every subsequent chapter.
-    addPilgrimArmorDetails(this.christian);
+    // Safety net: if the breastplate step somehow did not add them, ensure the
+    // finishing plates are present before Christian leaves fully armed.
+    this.ensurePilgrimDetails();
     this.cb.playScript([
       { speaker: '', text: 'Christian stands arrayed head to paw in the whole armor of God, the morning light bright on the steel.' },
       { speaker: 'Christian', text: 'I hardly know myself. …Thank you. All of you. For the table, and the tales, and the glimpse from the roof — and for this.' },

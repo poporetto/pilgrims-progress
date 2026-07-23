@@ -1078,6 +1078,20 @@ export class WicketGateScene {
       p.z = THREE.MathUtils.clamp(p.z, -HOUSE_HALF + 0.8, HOUSE_HALF - 0.8);
       p.x = THREE.MathUtils.clamp(p.x, IX - 2, HOUSE_EXIT_X + 3);
 
+      // Walk up to any of the House's characters — during the tour AND
+      // afterwards on the way out — and they will speak. Uses proximity
+      // hysteresis so each one can be revisited as often as Christian likes.
+      for (const nt of this.npcTalks) {
+        const near = p.distanceTo(nt.parts.root.position) < nt.radius;
+        if (near && !nt.talked) {
+          nt.talked = true;
+          this.cb.playScript(nt.lines);
+          return;
+        } else if (!near) {
+          nt.talked = false;
+        }
+      }
+
       if (this.phase === 'house') {
         // walk up to the Interpreter before moving on, and he'll greet you
         if (
@@ -1089,14 +1103,6 @@ export class WicketGateScene {
             { speaker: 'Interpreter', text: 'Take your time, Christian. Walk on when you\'re ready, and I\'ll show you all that\'s here to see.' },
           ]);
           return;
-        }
-        // walk up to any of the House's characters, and they'll speak
-        for (const t of this.npcTalks) {
-          if (!t.talked && p.distanceTo(t.parts.root.position) < t.radius) {
-            t.talked = true;
-            this.cb.playScript(t.lines);
-            return;
-          }
         }
         if (this.stationIndex < STATIONS.length && p.x > STATIONS[this.stationIndex] - 2) {
           const idx = this.stationIndex;
@@ -1201,7 +1207,10 @@ export class WicketGateScene {
     }
     if (p.x > GATE_X + 1) {
       const nearCottage = Math.abs(p.x - COTTAGE_X) < 4;
-      p.z = THREE.MathUtils.clamp(p.z, nearCottage ? -6.5 : -1.6, 1.6);
+      // The cottage body sits at z ≈ -6.5 (front wall near z = -4.5). Stop
+      // Christian in front of it so he can reach the door but never walks
+      // through the house; the door greeting triggers well before this wall.
+      p.z = THREE.MathUtils.clamp(p.z, nearCottage ? -4.0 : -1.6, 1.6);
     }
     p.x = THREE.MathUtils.clamp(p.x, -62, HIGHWAY_END + 3);
 
@@ -1353,6 +1362,22 @@ export class WicketGateScene {
       p.z + 1.5 + Math.random() * 3.5,
     );
     a.g.visible = true;
+  }
+
+  // Move a character root toward a ground target, turning to face the way it
+  // walks. Returns true once it has effectively arrived.
+  private stepToward(
+    root: THREE.Object3D, tx: number, tz: number, dt: number, speed: number,
+  ): boolean {
+    const dx = tx - root.position.x;
+    const dz = tz - root.position.z;
+    const d = Math.hypot(dx, dz);
+    if (d < 0.08) { root.position.set(tx, root.position.y, tz); return true; }
+    const step = Math.min(speed * dt, d);
+    root.position.x += (dx / d) * step;
+    root.position.z += (dz / d) * step;
+    root.rotation.y = Math.atan2(dx, dz);
+    return false;
   }
 
   update(dt: number, t: number, moving: boolean): void {
@@ -1650,16 +1675,21 @@ export class WicketGateScene {
     if (this.phase === 'volley') {
       this.volleyT += dt;
       this.arrowTimer -= dt;
-      if (this.arrowTimer <= 0 && this.volleyT < 2.0) {
+      if (this.arrowTimer <= 0 && this.volleyT < 1.6) {
         this.arrowTimer = 0.22;
         this.fireArrow();
       }
-      if (this.volleyT > 2.4) {
+      if (this.volleyT > 1.6) {
+        // Goodwill has Christian by the paw: rather than snapping to safety,
+        // both hurry in together behind the wall while the last arrows fall.
+        const cArrived = this.stepToward(this.christian.root, GATE_X + 2.4, 1.3, dt, 5.5);
+        const gArrived = this.stepToward(this.goodwill.root, GATE_X + 3.6, -1.7, dt, 5.5);
+        animateBear(this.christian, t, !cArrived);
+        animateBear(this.goodwill, t + 0.7, !gArrived);
+        if (cArrived && gArrived) {
         // safely through — the two stand apart, face to face behind the wall
         this.phase = 'inside';
-        this.christian.root.position.set(GATE_X + 2.4, 0, 1.3);
         this.christian.root.rotation.y = Math.PI; // faces north, toward the lion
-        this.goodwill.root.position.set(GATE_X + 3.6, 0, -1.7);
         this.goodwill.root.rotation.y = 0; // faces south, toward Christian
         this.cb.setObjective('🚪 Safe behind the Gate');
         this.cb.blipSound();
@@ -1681,6 +1711,7 @@ export class WicketGateScene {
           if (this.lightBeam) this.lightBeam.visible = true;
           this.cb.setObjective('✨ Walk the straight and narrow way, toward the light');
         });
+        }
       }
     }
 

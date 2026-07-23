@@ -434,7 +434,15 @@ export class HillScene {
 
     if (this.phase === 'walk' && p.x > FORK_X - 3.5) {
       this.phase = 'fork';
-      // let them remain where the follower logic placed them (no snap)
+      // let them remain where the follower logic placed them (no snap), but
+      // turn everyone to face one another so the exchange reads face-to-face.
+      const fp = this.formalist.root.position;
+      const hp = this.hypocrisy.root.position;
+      const cp = this.christian.root.position;
+      this.christian.root.rotation.y =
+        Math.atan2((fp.x + hp.x) / 2 - cp.x, (fp.z + hp.z) / 2 - cp.z);
+      this.formalist.root.rotation.y = Math.atan2(cp.x - fp.x, cp.z - fp.z);
+      this.hypocrisy.root.rotation.y = Math.atan2(cp.x - hp.x, cp.z - hp.z);
       this.cb.playScript([
         { speaker: '', text: 'At the foot of the hill the road divides in three: a steep path straight up, marked with the King\'s golden sign — and two easy paths curving round the bottom, one to the left, one to the right.' },
         { speaker: 'Formalist', text: 'Straight UP? In this coat? Gentlemen take the level road. The left way — "Danger", is it? — merely a name. It must wind round and meet you on the far side.' },

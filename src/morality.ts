@@ -46,6 +46,7 @@ export class MoralityScene {
   private emberTimer = 0;
   private evangelistT = 0;
   private wwLeaving = false;
+  private evangelistNear = false; // hysteresis for talking to Evangelist on the way back
 
   constructor(cb: MoralityCallbacks) {
     this.cb = cb;
@@ -364,10 +365,29 @@ export class MoralityScene {
         this.phase = 'evangelist';
         this.evangelistT = 0;
         this.evangelist.root.visible = true;
-        this.evangelist.root.position.set(p.x - 14, 0, -2.5);
+        // Spawn well off the west edge of the camera so he is clearly seen
+        // running the whole way up the road rather than popping into frame.
+        this.evangelist.root.position.set(p.x - 22, 0, -2.5);
         this.cb.setObjective('👣 Someone hurries up the road behind you…');
       });
       return;
+    }
+
+    // On the way back Christian can stop and speak with Evangelist again.
+    if (this.phase === 'return' && this.evangelist.root.visible) {
+      const ep = this.evangelist.root.position;
+      const near = Math.hypot(p.x - ep.x, p.z - ep.z) < 2.8;
+      if (near && !this.evangelistNear) {
+        this.evangelistNear = true;
+        this.christian.root.rotation.y = ep.x > p.x ? -Math.PI / 2 : Math.PI / 2;
+        this.cb.playScript([
+          { speaker: 'Evangelist', text: 'Good — you have turned around. Keep your eyes on the true road now, Christian.' },
+          { speaker: 'Christian', text: 'I will. No more shortcuts, no more smooth-talking strangers.' },
+          { speaker: 'Evangelist', text: 'The Wicket Gate is still west and waiting. Go, and be of good courage.' },
+        ]);
+      } else if (!near) {
+        this.evangelistNear = false;
+      }
     }
 
     if (this.phase === 'return' && p.x < -26.5) {
@@ -442,6 +462,12 @@ export class MoralityScene {
         });
       }
     } else if (this.evangelist.root.visible) {
+      // Keep Evangelist turned toward Christian while they speak on the road.
+      const ep = this.evangelist.root.position;
+      const cp = this.christian.root.position;
+      const dx = cp.x - ep.x;
+      const dz = cp.z - ep.z;
+      if (Math.hypot(dx, dz) > 0.05) this.evangelist.root.rotation.y = Math.atan2(dx, dz);
       animateBear(this.evangelist, t + 0.8, false);
     }
 

@@ -23,7 +23,7 @@ interface ValleyCallbacks {
   onExit: () => void;
   rumbleSound: () => void;
   blipSound: () => void;
-  setMusic?: (style: 'sinai' | 'cross') => void;
+  setMusic?: (style: 'sinai' | 'cross' | 'battle') => void;
   battleUI: (show: boolean) => void;
   setHP: (christian: number, apollyon: number) => void;
 }
@@ -667,6 +667,7 @@ export class ValleyScene {
       this.phase = 'battle';
       this.turn = 'player';
       this.cb.battleUI(true);
+      this.cb.setMusic?.('battle'); // driving battle music for the duel
       this.cb.setHP(this.chp, this.ahp);
       this.cb.setObjective('⚔ BATTLE! Press E to swing your sword!');
     });
@@ -741,6 +742,7 @@ export class ValleyScene {
   private beginDefeat(): void {
     this.phase = 'defeated';
     this.fleeT = 0;
+    this.cb.setMusic?.('sinai'); // the battle is won — the driving music ends
     // He may remain visible briefly for the flight animation, but his grounded
     // shadow must vanish the instant he is beaten.
     this.apollyon.traverse((object) => {

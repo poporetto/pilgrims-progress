@@ -70,6 +70,7 @@ export class LucreScene {
   private chp = 100;
   private poisoned = false;
   private pillarTouched = false;
+  private demasNear = false; // hysteresis for re-talking to Demas after the event
   private pillar: THREE.Group | null = null;
   private pillarGlow: THREE.Mesh | null = null;
   private mineGlow: THREE.Mesh | null = null;
@@ -247,6 +248,23 @@ export class LucreScene {
     glow.position.set(0, 1.0, 2.45);
     hill.add(glow);
     this.mineGlow = glow;
+    // A proper timber cave door frames the mine mouth: posts, a heavy lintel,
+    // and two plank doors standing ajar in welcome (that's how Demas likes it).
+    const DOORWOOD = 0x5e4a38;
+    hill.add(block(0.34, 2.6, 0.5, DOORWOOD, -1.25, 1.3, 2.4));  // left post
+    hill.add(block(0.34, 2.6, 0.5, DOORWOOD, 1.25, 1.3, 2.4));   // right post
+    hill.add(block(3.0, 0.4, 0.6, DOORWOOD, 0, 2.7, 2.4));       // lintel
+    hill.add(block(2.6, 0.3, 0.55, 0x4a3a2c, 0, 3.0, 2.35));     // cap beam
+    for (const side of [-1, 1]) {
+      const leaf = new THREE.Group();
+      leaf.position.set(side * 1.05, 0, 2.62);
+      const panel = block(1.0, 2.2, 0.12, 0x6b573f, side * -0.5, 1.1, 0);
+      leaf.add(panel);
+      leaf.add(block(1.02, 0.14, 0.14, 0x4a3a2c, side * -0.5, 1.7, 0.04)); // cross brace
+      leaf.add(block(1.02, 0.14, 0.14, 0x4a3a2c, side * -0.5, 0.55, 0.04));
+      leaf.rotation.y = side * 0.85; // swung open
+      hill.add(leaf);
+    }
     hill.position.set(DEMAS_X, 0, -7.5);
     s.add(hill);
     // Demas at his post beside the road
@@ -487,6 +505,26 @@ export class LucreScene {
       }
     }
 
+    // After the mine episode Demas still mans his post — walk back up to him
+    // and he will gladly taunt the pilgrims again.
+    const demasDone = this.revisit || this.phase === 'toPillar' ||
+      this.phase === 'pillar' || this.phase === 'final' || this.phase === 'done';
+    if (demasDone && this.demas.root.visible) {
+      const dp = this.demas.root.position;
+      const near = Math.hypot(p.x - dp.x, p.z - dp.z) < 2.6;
+      if (near && !this.demasNear) {
+        this.demasNear = true;
+        this.demas.root.rotation.y = Math.atan2(p.x - dp.x, p.z - dp.z);
+        this.christian.root.rotation.y = Math.atan2(dp.x - p.x, dp.z - p.z);
+        this.cb.playScript([
+          { speaker: 'Demas', text: 'Changed your minds, saints? The silver is still down there… and so is everyone who ever went to fetch it. HA!' },
+          { speaker: 'Christian', text: 'We keep to the King\'s road, Demas. Nothing that glitters here can pay what it costs.' },
+        ]);
+      } else if (!near) {
+        this.demasNear = false;
+      }
+    }
+
     if (this.revisit || this.phase === 'done') {
       if (p.x < WEST_EDGE || p.x > LIGHT_X) this.cb.onExit();
       return;
@@ -522,6 +560,10 @@ export class LucreScene {
 
     if (this.phase === 'toHill' && p.x > DEMAS_X - 5) {
       this.phase = 'demas';
+      // Demas turns from his post to face Christian, and Christian faces him.
+      const dp = this.demas.root.position;
+      this.demas.root.rotation.y = Math.atan2(p.x - dp.x, p.z - dp.z);
+      this.christian.root.rotation.y = Math.atan2(dp.x - p.x, dp.z - p.z);
       this.cb.playScript([
         { speaker: '', text: 'Beside the road rises a jagged, glittering hill — LUCRE — and at a glowing mine-mouth stands a silver-suited fox, beckoning with both paws.' },
         { speaker: 'Demas', text: 'Ho, pilgrims! Turn aside, turn aside! A silver mine, not sixty paces off your road! Dig for a MOMENT and be rich for a LIFETIME — thousands have done it!' },

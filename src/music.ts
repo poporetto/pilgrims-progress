@@ -4,7 +4,7 @@
 //   map     — adventurous but mellow travelling tune (arpeggios + shaker)
 //   slough  — slow minor murk (low pad, sparse notes, water drips)
 
-export type MusicStyle = 'village' | 'map' | 'slough' | 'sinai' | 'gate' | 'interpreter' | 'cross' | 'fair' | 'celestial';
+export type MusicStyle = 'village' | 'map' | 'slough' | 'sinai' | 'gate' | 'interpreter' | 'cross' | 'fair' | 'celestial' | 'battle';
 
 interface StyleDef {
   bpm: number;
@@ -115,6 +115,17 @@ const STYLES: Record<MusicStyle, StyleDef> = {
       [98.0, 196.0, 246.94, 392.0],
     ],
     scale: [523.25, 659.25, 783.99, 1046.5, 1318.5, 1568.0], // high C-major bells
+  },
+  battle: {
+    bpm: 134,
+    // Am – F – Dm – E : dark, driving, and urgent — the duel with Apollyon.
+    chords: [
+      [110.0, 130.81, 164.81, 220.0],
+      [87.31, 130.81, 174.61, 220.0],
+      [73.42, 110.0, 146.83, 220.0],
+      [82.41, 103.83, 164.81, 207.65],
+    ],
+    scale: [220.0, 246.94, 261.63, 311.13, 349.23, 415.30],
   },
 };
 
@@ -401,6 +412,21 @@ export class Music {
       }
       this.bass(t0, chord[0] / 2, 0.11, 1.2);
       this.bass(t0 + barLen / 2, chord[1] / 2, 0.07, 1.0);
+    } else if (this.style === 'battle') {
+      // battle: urgent and driving — a pounding eighth-note bass pulse,
+      // insistent offbeat shakers, and sharp syncopated minor stabs.
+      this.pad(t0, chord, barLen, 0.03, 'sine');
+      for (let i = 0; i < 8; i++) {
+        this.bass(t0 + i * eighth, chord[0] / 2, 0.09, 0.26);
+      }
+      for (const beat of [1, 3, 5, 7]) this.shaker(t0 + beat * eighth, 0.03);
+      const stab = [0, 2, 3, 2];
+      for (let i = 0; i < 4; i++) {
+        this.pluck(t0 + i * (barLen / 4) + eighth * 0.5, chord[stab[i]], 0.08, 0.35);
+      }
+      if (bar % 2 === 1) {
+        this.pluck(t0 + eighth * 6, def.scale[bar % def.scale.length] * 2, 0.05, 0.5);
+      }
     } else {
       // sinai: gentle plucks over minor chords — a pretty road with a shadow on it
       this.pad(t0, chord, barLen, 0.05, 'sine');

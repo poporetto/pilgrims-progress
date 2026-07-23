@@ -364,7 +364,16 @@ export class HighwayScene {
 
   private runDebate(): void {
     this.phase = 'debate';
-    this.christian.root.rotation.y = -Math.PI * 0.25; // faces the pair
+    // Turn Christian to face the two who just dropped over the wall, and turn
+    // them toward him, so the whole exchange reads clearly face-to-face.
+    const fp = this.formalist.root.position;
+    const hp = this.hypocrisy.root.position;
+    const cp = this.christian.root.position;
+    const midX = (fp.x + hp.x) / 2;
+    const midZ = (fp.z + hp.z) / 2;
+    this.christian.root.rotation.y = Math.atan2(midX - cp.x, midZ - cp.z);
+    this.formalist.root.rotation.y = Math.atan2(cp.x - fp.x, cp.z - fp.z);
+    this.hypocrisy.root.rotation.y = Math.atan2(cp.x - hp.x, cp.z - hp.z);
     this.cb.playScript([
       { speaker: '', text: 'Two travellers come scrambling over the wall and drop onto the road, dusting themselves off as though nothing could be more ordinary.' },
       { speaker: 'Christian', text: 'Whoa—! Where did you two come from? And why over the WALL?' },

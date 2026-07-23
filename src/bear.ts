@@ -301,10 +301,15 @@ export function makeBear(opts: CharacterOptions = {}): BearParts {
     body.add(block(0.68, 0.22, 0.1, belly, 0, 0.66, bodyD / 2 + 0.08));
     body.add(block(0.54, 0.2, 0.11, belly, 0, 0.43, bodyD / 2 + 0.09));
     body.add(block(0.4, 0.18, 0.12, belly, 0, 0.22, bodyD / 2 + 0.1));
-    for (const side of [-1, 1]) {
-      const wing = side < 0 ? armL : armR;
-      wing.add(block(0.34, 0.18, 0.39, fur, 0, -0.13, 0));
-      wing.add(block(0.28, 0.16, 0.41, belly, 0, -0.32, 0.02));
+    // Bare-armed owls get feathered wings. When an owl wears a robe or shirt
+    // the sleeve fully covers these feathers, and the coplanar overlap made the
+    // arm flicker (z-fighting), so we skip them for clothed owls.
+    if ((opts.outfit ?? 'none') === 'none') {
+      for (const side of [-1, 1]) {
+        const wing = side < 0 ? armL : armR;
+        wing.add(block(0.34, 0.18, 0.39, fur, 0, -0.13, 0));
+        wing.add(block(0.28, 0.16, 0.41, belly, 0, -0.32, 0.02));
+      }
     }
   } else if (species === 'sheep') {
     // a fluffy wool cap over the crown (kept clear of the head's faces)

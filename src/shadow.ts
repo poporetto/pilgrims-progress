@@ -68,6 +68,31 @@ export class ShadowScene {
   private ditchWarned = false;
   private noiseTimer = 3;
   private storyFigures: BearParts[] = [];
+  private figureNear = [false, false, false, false, false]; // proximity hysteresis
+  // Each memory figure can be spoken to; unlocked once Christian reaches its
+  // alcove (its own story phase). Order matches storyFigures.
+  private figureUnlock = [0, 1, 1, 2, 3]; // index into the story phase order
+  private figureLines: DialogueLine[][] = [
+    [ // Wanton
+      { speaker: 'Wanton', text: 'Leaving so soon, little pilgrim? The road is long and cold — and I know a much warmer way, just a step off the path…' },
+      { speaker: 'Christian', text: 'I have somewhere better to be. Good day, madam.' },
+    ],
+    [ // Adam the First
+      { speaker: 'Adam the First', text: 'Come and work my estate, young one. My three daughters will keep you in comfort all your days — why toil for a City you cannot even see?' },
+      { speaker: 'Christian', text: 'Your wages are paid in the end with death. I will keep to my King.' },
+    ],
+    [ // Moses
+      { speaker: 'Moses', text: 'The Law shows every crack in you, and offers no mercy — for it has none to give. Only One with pierced hands may bid me stop.' },
+    ],
+    [ // Discontent
+      { speaker: 'Discontent', text: 'Why lower yourself to this dreary valley? Your old friends back home would blush to see you here.' },
+      { speaker: 'Christian', text: 'Before honour comes humility. Those friends never truly loved me.' },
+    ],
+    [ // Shame
+      { speaker: 'Shame', text: '*a friendly smirk* Religion is unmanly, friend. The clever people laugh at it — a tender conscience will embarrass you at every party in town.' },
+      { speaker: 'Christian', text: 'The world\'s laughter ends quickly. The King\'s "well done" lasts forever.' },
+    ],
+  ];
   private splashes: Array<{ mesh: THREE.Mesh; m: THREE.MeshBasicMaterial; life: number; vx: number; vz: number }> = [];
   private shining: ShiningLight | null = null;
   private meetingDialogueStarted = false;
@@ -386,6 +411,10 @@ export class ShadowScene {
       p.x = THREE.MathUtils.clamp(p.x, HOUSE.x - 4, HOUSE.x + 24);
       p.z = THREE.MathUtils.clamp(p.z, -6.6, 6.6);
       p.y = 0.1;
+      // Let Christian speak to a memory figure directly. Fires before the
+      // story trigger (which then narrates once he lingers), and can be
+      // repeated whenever he walks back up to a figure.
+      if (this.figureTalks(p)) return;
       this.storyTriggers(p);
       return;
     }
@@ -515,8 +544,10 @@ export class ShadowScene {
       this.cb.fade?.(() => {
         this.christian.root.position.set(HOUSE.x - 2.5, 0.1, -1);
         this.christian.root.rotation.y = Math.PI / 2;
-        this.faithful.root.position.set(HOUSE.x - 2.5, 0.1, 1.5);
-        this.faithful.root.rotation.y = Math.PI / 2;
+        // Faithful stands right beside Christian (at his follow-rest offset so
+        // the follower doesn't immediately drag him off) and turns to face him.
+        this.faithful.root.position.set(HOUSE.x - 4.5, 0.1, 0.2);
+        this.facePilgrimsTowardEachOther();
         this.cb.setMusic?.('interpreter');
       });
       this.phase = 'story1';
@@ -528,6 +559,30 @@ export class ShadowScene {
         });
       }, 700);
     });
+  }
+
+  // Speak to a memory figure if Christian is standing beside one. Returns true
+  // when a line was played (so the caller can skip the story trigger).
+  private figureTalks(p: THREE.Vector3): boolean {
+    const order = ['story1', 'story2', 'story3', 'story4', 'return'];
+    const cur = order.indexOf(this.phase);
+    if (cur < 0) return false; // only inside the living memory
+    for (let i = 0; i < this.storyFigures.length; i++) {
+      const fp = this.storyFigures[i].root.position;
+      const near = Math.hypot(p.x - fp.x, p.z - fp.z) < 2.4;
+      if (near && !this.figureNear[i]) {
+        this.figureNear[i] = true;
+        if (cur >= this.figureUnlock[i]) {
+          this.christian.root.rotation.y = Math.atan2(fp.x - p.x, fp.z - p.z);
+          this.storyFigures[i].root.rotation.y = Math.atan2(p.x - fp.x, p.z - fp.z);
+          this.cb.playScript(this.figureLines[i]);
+          return true;
+        }
+      } else if (!near) {
+        this.figureNear[i] = false;
+      }
+    }
+    return false;
   }
 
   private storyTriggers(p: THREE.Vector3): void {

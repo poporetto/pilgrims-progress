@@ -375,6 +375,27 @@ export class VanityScene {
     stake.position.set(-6.5, 0, -3.5);
     court.add(stake);
     this.stake = stake;
+
+    // Christian's jail cage, on the right against the east wall. In Vanity Fair
+    // both pilgrims were caged; here Christian is held behind bars while
+    // Faithful is put on trial.
+    const cage = new THREE.Group();
+    const BAR = 0x353139;
+    const cw = 2.4, cd = 2.4, chh = 2.7;
+    cage.add(block(cw, 0.12, cd, 0x6a5a4a, 0, 0.06, 0)); // floor plate
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+      cage.add(block(0.16, chh, 0.16, BAR, sx * cw / 2, chh / 2, sz * cd / 2)); // corner posts
+    }
+    for (let i = -2; i <= 2; i++) {
+      cage.add(block(0.07, chh, 0.07, BAR, i * (cw / 5), chh / 2, -cd / 2)); // back bars
+      cage.add(block(0.07, chh, 0.07, BAR, i * (cw / 5), chh / 2, cd / 2));  // front bars
+      cage.add(block(0.07, chh, 0.07, BAR, -cw / 2, chh / 2, i * (cd / 5))); // left bars
+      cage.add(block(0.07, chh, 0.07, BAR, cw / 2, chh / 2, i * (cd / 5)));  // right bars
+    }
+    cage.add(block(cw + 0.18, 0.14, cd + 0.18, BAR, 0, chh, 0)); // top frame
+    cage.position.set(10, 0, 3.5);
+    court.add(cage);
+
     court.position.copy(COURT);
     s.add(court);
     // green ground under and around the courtroom, so the blue sky no longer
@@ -593,10 +614,14 @@ export class VanityScene {
         { speaker: '', text: 'Blows, fists, torn cloaks. The two pilgrims are beaten, bound, and dragged before the judgment seat of Vanity Fair.' },
       ], () => {
         this.cb.fade?.(() => {
-          // Christian watches from the right of the room; Faithful stands in the
-          // dock on the LEFT (world −x), where he is later burned at the stake
-          this.christian.root.position.set(COURT.x + 4, 0, COURT.z + 4);
-          this.christian.root.rotation.y = 0;
+          // Christian is held in the jail cage on the right of the room, facing
+          // the bench; Faithful stands in the dock on the LEFT (world −x),
+          // where he is later burned at the stake.
+          this.christian.root.position.set(COURT.x + 10, 0, COURT.z + 3.5);
+          this.christian.root.rotation.y = Math.atan2(
+            this.judge.root.position.x - (COURT.x + 10),
+            this.judge.root.position.z - (COURT.z + 3.5),
+          );
           this.faithful.root.position.set(COURT.x - 5, 1.15, COURT.z - 1);
           this.faithful.root.rotation.y = Math.PI;
           this.cb.setMusic?.('sinai');
