@@ -501,6 +501,84 @@ export class CastleScene {
       s.add(this.makeRock(rng(0.7, 1.2), rng(0.4, 0.8), rng(0.6, 1.0), 0x7a6e62, px, pz));
     }
 
+    // The highway is long, so a single flat plane reads as unfinished. Layer
+    // irregular worn stones and little gravel seams over it; all are shallow
+    // visual details and do not change Christian's walkable collision lane.
+    const roadTones = [0xc9b993, 0xb9aa89, 0xd8c8a3, 0xa99d84];
+    for (let i = 0; i < 58; i++) {
+      const x = rng(WEST_EDGE - 1, LIGHT_X + 1);
+      const z = rng(-1.55, 1.55);
+      const stone = block(
+        rng(0.38, 1.15), rng(0.025, 0.055), rng(0.22, 0.62),
+        roadTones[i % roadTones.length], x, 0.035, z,
+      );
+      stone.rotation.y = rng(-0.3, 0.3);
+      stone.castShadow = false;
+      s.add(stone);
+    }
+    // Broken cobbles gently define the shoulders without fencing the road in.
+    for (const side of [-1, 1]) {
+      for (let x = WEST_EDGE; x <= LIGHT_X; x += 2.6) {
+        if (Math.random() < 0.22) continue;
+        const cobble = this.makeRock(
+          rng(0.34, 0.58), rng(0.12, 0.25), rng(0.3, 0.52),
+          roadTones[Math.floor(rng(0, roadTones.length))],
+          x + rng(-0.35, 0.35), side * rng(2.0, 2.28),
+        );
+        cobble.castShadow = false;
+        s.add(cobble);
+      }
+    }
+
+    // Dress the pale-green world beyond Bypath Meadow too. Patchwork turf,
+    // voxel grasses, and small flower groups give the open land a cute,
+    // lived-in storybook quality while keeping the centre highway clear.
+    const fieldGreens = [0xa9c681, 0x9fbe78, 0xbdd399, 0x95b875];
+    for (let i = 0; i < 52; i++) {
+      const x = rng(WEST_EDGE - 5, LIGHT_X + 7);
+      const z = (Math.random() < 0.5 ? -1 : 1) * rng(3.1, 17);
+      // Leave the authored meadow and Doubting Castle silhouette untouched.
+      if (x > FORK_X - 2 && x < SLEEP_X + 11 && z > 2.3 && z < 11) continue;
+      if (x > 5 && x < 20 && z < -3 && z > -13) continue;
+      const turf = block(rng(1.2, 3.4), 0.025, rng(0.8, 2.2),
+        fieldGreens[i % fieldGreens.length], x, 0.018, z);
+      turf.rotation.y = rng(-0.3, 0.3);
+      turf.castShadow = false;
+      s.add(turf);
+      const blades = 2 + (i % 3);
+      for (let b = 0; b < blades; b++) {
+        s.add(block(
+          0.08, rng(0.26, 0.52), 0.08,
+          b % 2 ? 0x789f59 : 0x88ad63,
+          x + rng(-0.8, 0.8), rng(0.14, 0.24), z + rng(-0.5, 0.5),
+        ));
+      }
+    }
+    const fieldFlowers = [0xf4c2d4, 0xffefa8, 0xc9dfff, 0xe6cff5];
+    for (let i = 0; i < 16; i++) {
+      const x = rng(WEST_EDGE - 2, LIGHT_X + 4);
+      const z = (Math.random() < 0.5 ? -1 : 1) * rng(3.4, 12);
+      if (x > FORK_X - 2 && x < SLEEP_X + 11 && z > 2.3) continue;
+      for (let f = 0; f < 3; f++) {
+        const fx = x + f * 0.28 + rng(-0.12, 0.12);
+        const fz = z + (f % 2) * 0.25;
+        s.add(block(0.06, 0.3, 0.06, 0x6d9f54, fx, 0.15, fz));
+        s.add(block(0.18, 0.14, 0.18, fieldFlowers[(i + f) % fieldFlowers.length], fx, 0.35, fz));
+      }
+    }
+    // A few low shrubs, chopped logs, and stumps break up the largest empty
+    // stretches but stay well beyond the player's narrow movement bands.
+    for (const [x, z] of [[-28, -7], [-19, 8], [-8, -9], [34, 8], [48, -8], [62, 7]] as const) {
+      s.add(block(1.25, 0.58, 1.0, 0x89ae68, x, 0.29, z));
+      s.add(block(0.75, 0.42, 0.72, 0x9bc078, x + 0.42, 0.62, z - 0.12));
+    }
+    for (const [x, z, rot] of [[-23, 6.8, 0.25], [39, -6.7, -0.3], [58, 8.4, 0.18]] as const) {
+      const log = block(1.8, 0.42, 0.48, 0x9a7653, x, 0.28, z);
+      log.rotation.y = rot;
+      s.add(log);
+      s.add(block(0.12, 0.5, 0.55, 0xc7a477, x - 0.86, 0.28, z));
+    }
+
     // ---- Bypath Meadow (z ≈ MEADOW_Z, x: FORK_X to SLEEP_X+8) ----
     const meadow = new THREE.Mesh(
       new THREE.PlaneGeometry(SLEEP_X - FORK_X + 12, 7),

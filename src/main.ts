@@ -1284,6 +1284,69 @@ function debugEnsureStarted(): void {
   setTimeout(() => (ui.titleScreen.style.display = 'none'), 400);
 }
 
+function debugJumpToWorldMap(): void {
+  // A debug jump can happen during any overlay or locked minigame. Clear all
+  // of them so none remains above the map or keeps consuming touch input.
+  dialogueOpen = false;
+  dialogueNPC = null;
+  scriptDone = null;
+  endingOpen = false;
+  cutscene = false;
+  choiceCb = null;
+  choiceBox.classList.remove('open');
+  keyGameOpen = false;
+  keyDragActive = false;
+  keyGameBox.classList.remove('open');
+  battleUI.classList.remove('show', 'solo');
+  ui.dialogue.style.display = 'none';
+  ui.ending.style.display = 'none';
+  ui.prompt.style.display = 'none';
+  ui.talkBtn.style.display = 'none';
+  const finale = document.getElementById('finale');
+  finale?.classList.remove('show', 'reveal', 'end');
+
+  // Mirror the real story state into the map. Previously the debug button
+  // could enter map mode with stale locks and leave Christian unable to move.
+  worldMap.sloughDone = quest.sloughComplete;
+  worldMap.moralityDone = quest.moralityDone;
+  worldMap.wicketDone = quest.wicketDone;
+  worldMap.crossDone = quest.crossDone;
+  worldMap.highwayDone = quest.highwayDone;
+  worldMap.hillDone = quest.hillDone;
+  worldMap.palaceDone = quest.palaceDone;
+  worldMap.valleyDone = quest.valleyDone;
+  worldMap.shadowDone = quest.shadowDone;
+  worldMap.vanityDone = quest.vanityDone;
+  worldMap.lucreDone = quest.lucreDone;
+  worldMap.castleDone = quest.castleDone;
+  worldMap.mountainDone = quest.mountainDone;
+  worldMap.beulahDone = quest.beulahDone;
+  worldMap.celestialDone = quest.celestialDone;
+
+  // Place Christian at the latest completed landmark, ready to continue east.
+  worldMap.progress = quest.celestialDone ? worldMap.celestialT
+    : quest.beulahDone ? worldMap.beulahT
+    : quest.mountainDone ? worldMap.mountainT
+    : quest.castleDone ? worldMap.castleT
+    : quest.lucreDone ? worldMap.lucreT
+    : quest.vanityDone ? worldMap.vanityT
+    : quest.shadowDone ? worldMap.shadowT
+    : quest.valleyDone ? worldMap.valleyT
+    : quest.palaceDone ? worldMap.palaceT
+    : quest.hillDone ? worldMap.hillT
+    : quest.highwayDone ? worldMap.highwayT
+    : quest.crossDone ? worldMap.crossT
+    : quest.wicketDone ? worldMap.beyondT
+    : quest.moralityDone ? worldMap.forkT
+    : quest.sloughComplete ? worldMap.sloughT
+    : worldMap.cityT;
+  worldMap.road = 'main';
+  worldMap.branchP = 0;
+  worldMap.justDiverted = false;
+  worldMap.start(mapParty());
+  goToMap();
+}
+
 ui.debugBtn.addEventListener('click', () => {
   ui.debugPanel.classList.toggle('open');
 });
@@ -1341,7 +1404,7 @@ ui.debugPanel.addEventListener('click', (e) => {
   else if (jump === 'mountain') enterMountain(false);
   else if (jump === 'beulah') enterBeulah(false);
   else if (jump === 'celestial') enterCelestial(false);
-  else if (jump === 'map') { worldMap.start(mapParty()); worldMap.road = 'main'; goToMap(); }
+  else if (jump === 'map') debugJumpToWorldMap();
 });
 
 // touch joystick

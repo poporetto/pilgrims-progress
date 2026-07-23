@@ -12,10 +12,18 @@
       --accent2: #a9d8f0;
     }
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    html, body { width: 100%; height: 100%; overflow: hidden; background: #cfe8ff; }
+    html, body {
+      width: 100%; height: 100%; overflow: hidden; background: #cfe8ff;
+      touch-action: none; overscroll-behavior: none; -webkit-text-size-adjust: 100%;
+    }
     body { font-family: "Trebuchet MS", "Comic Sans MS", system-ui, sans-serif; color: var(--ink); }
-    #app { position: fixed; inset: 0; }
-    canvas { display: block; }
+    #app { position: fixed; inset: 0; touch-action: none; }
+    canvas { display: block; touch-action: none; }
+    /* Rapid taps must remain button presses, never browser double-tap zooms. */
+    button, #dialogue, #debug-panel, #choice, .screen {
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+    }
 
     /* ---------- HUD ---------- */
     #objective {

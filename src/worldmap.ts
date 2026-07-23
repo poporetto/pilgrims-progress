@@ -331,16 +331,25 @@ export class WorldMap {
     }
 
     // pastel sea with animated sparkles
-    const sea = new THREE.Mesh(new THREE.BoxGeometry(240, 1, 160), mat(PALETTE.water));
-    sea.position.y = -1.6;
+    // Extend well beyond the final island in every direction. The earlier sea
+    // ended almost exactly beneath the Celestial City, exposing an empty edge
+    // as the camera panned through the final chapters.
+    const sea = new THREE.Mesh(new THREE.BoxGeometry(380, 1, 190), mat(PALETTE.water));
+    sea.position.set(45, -1.6, 0);
     sea.receiveShadow = true;
     s.add(sea);
-    for (let i = 0; i < 40; i++) {
+    // Broad pastel bands give the enlarged ocean gentle voxel depth.
+    for (const [z, color] of [[-28, 0x9dd6ed], [25, 0xb1e0f1]] as const) {
+      const band = block(380, 0.04, 24, color, 45, -1.07, z);
+      band.castShadow = false;
+      s.add(band);
+    }
+    for (let i = 0; i < 110; i++) {
       const w = new THREE.Mesh(
         new THREE.BoxGeometry(0.5 + Math.random() * 0.9, 0.06, 0.16),
         new THREE.MeshBasicMaterial({ color: 0xe4f3fc, transparent: true, opacity: 0.8 }),
       );
-      w.position.set((Math.random() - 0.5) * 60, -1.02, (Math.random() - 0.5) * 34);
+      w.position.set(-65 + Math.random() * 235, -1.02, (Math.random() - 0.5) * 70);
       w.castShadow = false;
       s.add(w);
       this.sparkles.push(w);
@@ -612,18 +621,28 @@ export class WorldMap {
 
     // ---------- the Hill Lucre ----------
     const lucIsle = this.island(LUCRE.x, LUCRE.z, 4.0, 0x9ecf8c);
-    // the jagged silver hill with its glowing mine mouth
-    lucIsle.add(block(2.6, 1.4, 2.0, 0x9aa4b2, -0.6, 1.2, -0.8));
-    lucIsle.add(block(1.6, 1.4, 1.4, 0x8a94a2, 0.4, 2.2, -1.0));
-    lucIsle.add(block(0.9, 1.0, 0.9, 0xaab4c2, -0.2, 3.0, -0.9));
+    // Plain of Ease in front, with a stepped silver hill rising sharply behind.
+    lucIsle.add(block(3.8, 0.12, 1.5, 0x86c6e6, -0.4, 0.64, 1.8));
+    lucIsle.add(block(2.8, 0.08, 0.8, 0xb9e2f0, -0.4, 0.72, 1.8));
+    lucIsle.add(block(3.4, 0.7, 2.7, 0x9aa4b2, -0.55, 0.95, -0.9));
+    lucIsle.add(block(2.5, 0.75, 2.1, 0x8995a5, -0.25, 1.67, -1.0));
+    lucIsle.add(block(1.65, 0.78, 1.5, 0xaab7c7, 0.05, 2.42, -1.05));
+    lucIsle.add(block(0.85, 0.7, 0.85, 0xc3ced8, -0.1, 3.12, -1.0));
+    // Blocky silver seams make the temptation visible from map scale.
+    lucIsle.add(block(0.18, 1.2, 0.12, 0xe8f3f6, -1.05, 1.75, 0.48));
+    lucIsle.add(block(0.16, 0.85, 0.12, 0xd7edf2, 0.62, 2.4, -0.25));
     const mineGlow = new THREE.Mesh(
       new THREE.BoxGeometry(0.7, 0.8, 0.12),
       new THREE.MeshBasicMaterial({ color: 0xb8e8c9 }),
     );
     mineGlow.position.set(-0.6, 0.95, 0.25);
     lucIsle.add(mineGlow);
-    // the paved way passing safely by, and the little pillar of salt
-    lucIsle.add(block(3.4, 0.1, 0.9, 0xd9c9a8, 0.4, 0.62, 1.3));
+    // the King's road passes safely between the water and the mine.
+    for (let i = 0; i < 7; i++) {
+      lucIsle.add(block(0.48, 0.1, 0.72, i % 2 ? 0xd9c9a8 : 0xe5d6b7,
+        -1.45 + i * 0.5, 0.66, 0.85 + Math.sin(i) * 0.12));
+    }
+    // Lot's wife: the little pillar of salt at the roadside.
     lucIsle.add(block(0.3, 0.8, 0.3, 0xf4f0e8, 2.2, 1.0, 0.7));
     lucIsle.add(block(0.24, 0.24, 0.2, 0xf4f0e8, 2.24, 1.5, 0.7));
     lucIsle.add(this.miniTree(-2.6, 1.8, true));
@@ -631,15 +650,26 @@ export class WorldMap {
 
     // ---------- Doubting Castle island ----------
     const castleIsle = this.island(CASTLE.x, CASTLE.z, 4.0, 0x9ecf8c);
-    // dark stone towers — the castle looming on the island
+    // The rough King's Highway and the inviting green Bypath split visibly.
+    for (let i = 0; i < 7; i++) {
+      castleIsle.add(block(0.48, 0.1, 0.64, i % 2 ? 0xb0a18a : 0xc3b395,
+        -1.6 + i * 0.52, 0.65, 1.45));
+      castleIsle.add(block(0.5, 0.08, 0.5, 0x79c266,
+        -1.45 + i * 0.48, 0.65, 0.78 - i * 0.2));
+    }
+    // dark stone towers — the castle looming beyond the pleasant meadow
     const castleC = 0x4a4250;
-    castleIsle.add(block(1.4, 3.2, 1.4, castleC,  0.8, 2.2, -0.6));  // main tower
-    castleIsle.add(block(1.4, 2.6, 1.4, castleC, -0.8, 2.0, -0.5));  // second tower
-    castleIsle.add(block(2.4, 0.6, 1.2, 0x3a3248, 0.0, 3.6, -0.6));  // battlements
-    castleIsle.add(block(0.5, 0.5, 0.5, castleC,  0.8, 4.0, -0.6));  // crenellation
-    castleIsle.add(block(0.5, 0.5, 0.5, castleC, -0.8, 3.6, -0.5));
-    // rocky highway path through
-    castleIsle.add(block(4.0, 0.1, 0.8, 0x9e8e76, 0.0, 0.62, 1.2));  // road stripe
+    castleIsle.add(block(2.7, 1.7, 1.55, 0x595166, 0, 1.45, -1.05));
+    castleIsle.add(block(1.15, 2.9, 1.15, castleC,  1.0, 2.0, -1.05));
+    castleIsle.add(block(1.15, 2.6, 1.15, castleC, -1.0, 1.85, -1.05));
+    for (const tx of [-1.15, -0.38, 0.38, 1.15]) {
+      castleIsle.add(block(0.36, 0.45, 0.42, 0x3a3248, tx, 2.55, -0.98));
+    }
+    // Tiny barred gate and violet windows.
+    castleIsle.add(block(0.58, 0.9, 0.12, 0x201b25, 0, 1.05, -0.22));
+    for (const side of [-1, 1]) {
+      castleIsle.add(block(0.18, 0.42, 0.08, 0xa58bb5, side * 0.82, 1.9, -0.45));
+    }
     // small warning sign post
     castleIsle.add(block(0.1, 0.7, 0.1, 0x7a5c38, -1.4, 0.97, 1.2));
     castleIsle.add(block(0.8, 0.2, 0.08, 0xfff8ef, -1.4, 1.4, 1.2));
@@ -647,39 +677,62 @@ export class WorldMap {
 
     // ---------- Delectable Mountains island ----------
     const mtnIsle = this.island(MOUNTAIN.x, MOUNTAIN.z, 4.2, 0x8fd06a);
-    // bright green peaks
-    mtnIsle.add(block(1.4, 3.0, 1.4, 0x7bc258, -0.9, 2.0, -0.6));
-    mtnIsle.add(block(1.2, 2.4, 1.2, 0x86c862,  0.9, 1.7, -0.4));
-    mtnIsle.add(block(1.0, 3.6, 1.0, 0x74b850,  0.1, 2.4, -1.1));
-    // snowy/bright caps
-    mtnIsle.add(block(0.7, 0.5, 0.7, 0xffffff,  0.1, 4.3, -1.1));
-    mtnIsle.add(block(0.6, 0.4, 0.6, 0xfff4d0, -0.9, 3.6, -0.6));
-    // a tiny fruit tree and a blue lake
+    // Animal-Crossing-like grassy terraces with warm rock faces, matching the
+    // chapter's climb rather than generic needle-shaped mountains.
+    mtnIsle.add(block(4.4, 0.65, 3.2, 0xb7a287, 0, 0.88, -0.55));
+    mtnIsle.add(block(4.0, 0.32, 2.9, 0x83c665, 0, 1.34, -0.55));
+    mtnIsle.add(block(3.0, 0.65, 2.1, 0xa9957d, 0.25, 1.72, -0.8));
+    mtnIsle.add(block(2.7, 0.3, 1.9, 0x91d172, 0.25, 2.18, -0.8));
+    mtnIsle.add(block(1.6, 0.62, 1.2, 0x9b8974, 0.2, 2.55, -0.95));
+    mtnIsle.add(block(1.4, 0.28, 1.05, 0xa0db83, 0.2, 2.98, -0.95));
+    // Tiny lookout path climbing across the terraces.
+    for (let i = 0; i < 5; i++) {
+      mtnIsle.add(block(0.45, 0.09, 0.38, 0xeed9b4,
+        -1.1 + i * 0.5, 1.42 + i * 0.38, 0.55 - i * 0.35));
+    }
+    // a tiny fruit tree, blue lake, and shepherd's crook
     mtnIsle.add(this.miniTree(1.9, 0.6, false));
     mtnIsle.add(block(1.6, 0.08, 1.0, 0x8fd0ea, -1.6, 0.6, 1.2)); // lake
-    // road stripe through
-    mtnIsle.add(block(4.0, 0.1, 0.8, 0xeed9b4, 0.0, 0.62, 1.4));
+    mtnIsle.add(block(0.1, 1.1, 0.1, 0x8d6848, 2.65, 1.15, 0.55));
+    mtnIsle.add(block(0.5, 0.1, 0.1, 0x8d6848, 2.43, 1.67, 0.55));
     this.label('Delectable Mountains', MOUNTAIN.x, MOUNTAIN.z, 5.4);
 
     // ---------- Beulah Land island (the finale, in sight of the City) ----------
     const beuIsle = this.island(BEULAH.x, BEULAH.z, 4.2, 0x9ed67e);
-    // a golden river and the shining Celestial City beyond it
-    beuIsle.add(block(4.2, 0.08, 1.6, 0x86c6e6, 0.4, 0.6, 0.3));       // river
-    beuIsle.add(block(1.6, 0.09, 1.6, 0x2a3f8a, 0.4, 0.62, 0.3));      // deep centre
-    const cityC = 0xffe08a;
-    for (const [cx, ch, cz] of [[-0.4, 2.4, -1.4], [0.4, 3.0, -1.5], [1.2, 2.0, -1.3]] as const) {
-      const tw = block(0.7, ch, 0.7, cityC, cx, 0.6 + ch / 2, cz);
-      const m = tw.material as THREE.MeshLambertMaterial;
-      m.emissive = new THREE.Color(0xffd76a); m.emissiveIntensity = 0.7;
-      beuIsle.add(tw);
+    // Lush gardens and a layered River match Chapter XV itself; the City is
+    // reserved for the next island so Beulah has its own visual identity.
+    beuIsle.add(block(4.8, 0.08, 1.8, 0x9ddcf0, 0.2, 0.63, 0.15));
+    beuIsle.add(block(3.2, 0.09, 1.45, 0x69b8df, 0.2, 0.67, 0.15));
+    beuIsle.add(block(1.45, 0.1, 1.25, 0x355da4, 0.2, 0.71, 0.15));
+    // Divided wooden planks lead toward the crossing.
+    for (let i = 0; i < 6; i++) {
+      beuIsle.add(block(0.48, 0.13, 0.72, i % 2 ? 0xd9b98b : 0xcda878,
+        -2.3 + i * 0.48, 0.72, 1.15 + Math.sin(i * 0.8) * 0.12));
     }
-    // little blossoms in the meadow
-    beuIsle.add(block(0.18, 0.3, 0.18, 0xffb3c6, -1.8, 0.75, 1.2));
-    beuIsle.add(block(0.18, 0.3, 0.18, 0xfff0a0, -1.2, 0.75, 1.6));
+    // Orchard and flower garden.
+    beuIsle.add(this.miniTree(-2.45, -1.25, true));
+    beuIsle.add(this.miniTree(2.35, -1.45, true));
+    for (let i = 0; i < 9; i++) {
+      const fx = -2.2 + (i % 5) * 1.05;
+      const fz = -0.95 + Math.floor(i / 5) * 0.45;
+      beuIsle.add(block(0.08, 0.28, 0.08, 0x69a95b, fx, 0.76, fz));
+      beuIsle.add(block(0.2, 0.16, 0.2, [0xffb3c6, 0xfff0a0, 0xcbdcff][i % 3], fx, 0.96, fz));
+    }
+    // Two tiny white-robed angels wait in one row on the far bank.
+    for (const z of [-0.62, 0.72]) {
+      beuIsle.add(block(0.42, 0.72, 0.35, 0xfffcf4, 2.65, 1.02, z));
+      beuIsle.add(block(0.35, 0.35, 0.35, 0xf1d0b0, 2.65, 1.55, z));
+      beuIsle.add(block(0.12, 0.58, 0.38, 0xfff7df, 2.45, 1.2, z));
+    }
     this.label('Beulah Land', BEULAH.x, BEULAH.z, 5.4);
 
     // ---------- the Celestial City island (journey's end) ----------
     const celIsle = this.island(CELESTIAL.x, CELESTIAL.z, 4.4, 0xf0d894);
+    // A stepped shining hill leads clearly upward into the Pearl Gates.
+    for (let i = 0; i < 6; i++) {
+      celIsle.add(block(0.72, 0.18 + i * 0.04, 1.25,
+        i % 2 ? 0xffe5a3 : 0xffefbf, -2.45 + i * 0.65, 0.69 + i * 0.13, 1.35 - i * 0.18));
+    }
     // shining golden towers with pearl-white caps, glowing
     const gold = 0xffe08a;
     for (const [cx, ch, cz] of [
@@ -694,33 +747,125 @@ export class WorldMap {
       (cap.material as THREE.MeshLambertMaterial).emissiveIntensity = 0.6;
       celIsle.add(cap);
     }
-    // the pearl gates at the front
+    // the pearl gates at the front, with pillars, pearls, and an arch.
     for (const side of [-1, 1]) {
-      celIsle.add(block(0.4, 2.4, 0.4, 0xfdf8f0, side * 0.9, 1.8, 1.3));
+      celIsle.add(block(0.52, 2.55, 0.52, 0xfdf8f0, side * 0.9, 1.87, 1.3));
+      celIsle.add(block(0.68, 0.28, 0.68, 0xffe7a0, side * 0.9, 3.25, 1.3));
+      for (let p = 0; p < 3; p++) {
+        celIsle.add(block(0.18, 0.18, 0.18, 0xffffff, side * 0.9, 1.05 + p * 0.62, 1.61));
+      }
     }
-    celIsle.add(block(2.4, 0.4, 0.4, 0xffe08a, 0, 3.0, 1.3));
+    celIsle.add(block(2.45, 0.42, 0.52, 0xffe08a, 0, 3.12, 1.3));
+    celIsle.add(block(1.15, 1.8, 0.18, 0xfff4d0, 0, 1.62, 1.52));
+    // A tiny radiant throne silhouette at the heart of the City.
+    const throne = block(0.72, 1.15, 0.62, 0xffcf62, 0.1, 1.35, -0.05);
+    const throneMat = throne.material as THREE.MeshLambertMaterial;
+    throneMat.emissive = new THREE.Color(0xffd76a);
+    throneMat.emissiveIntensity = 0.75;
+    celIsle.add(throne);
+    celIsle.add(block(1.1, 0.2, 0.82, 0xfff0a8, 0.1, 0.78, -0.05));
     this.label('The Celestial City', CELESTIAL.x, CELESTIAL.z, 5.6);
+
+    // ---------- tiny chapter keepsakes ----------
+    // These sit around the island edges so every stop has a readable story
+    // clue without crowding Christian's road through the middle.
+    const flowerPatch = (g: THREE.Group, color: number, x: number, z: number) => {
+      for (let i = 0; i < 3; i++) {
+        g.add(block(0.08, 0.28 + i * 0.04, 0.08, 0x72ad67, x + i * 0.24, 0.72, z + (i % 2) * 0.18));
+        g.add(block(0.18, 0.14, 0.18, i === 1 ? 0xfff0a8 : color,
+          x + i * 0.24, 0.91 + i * 0.02, z + (i % 2) * 0.18));
+      }
+    };
+    const pebblePatch = (g: THREE.Group, color: number, x: number, z: number) => {
+      g.add(block(0.42, 0.22, 0.34, color, x, 0.68, z));
+      g.add(block(0.28, 0.17, 0.38, color, x + 0.5, 0.65, z + 0.18));
+      g.add(block(0.2, 0.13, 0.22, color, x - 0.38, 0.64, z + 0.28));
+    };
+    flowerPatch(cod, PALETTE.flowerPink, -3.2, -1.0);
+    pebblePatch(slough, 0x756551, 2.6, 1.9);
+    flowerPatch(fork, PALETTE.flowerBlue, -1.1, 0.7);
+    flowerPatch(mor, 0xb8dca8, 2.4, -0.2);
+    flowerPatch(beyond, 0xd6e9ff, -2.5, -1.8);
+    flowerPatch(crossIsle, 0xfff0a0, -2.5, -1.2);
+    pebblePatch(hwy, 0xa89f92, -2.5, 1.8);
+    flowerPatch(hillIsle, 0xf4c2d4, 2.3, -1.8);
+    flowerPatch(palIsle, 0xe8d4f8, -2.7, 1.8);
+    pebblePatch(valIsle, 0x696d62, 2.4, 1.8);
+    pebblePatch(shIsle, 0x252a38, -2.5, 1.8);
+    flowerPatch(vanIsle, 0xff9ec4, -2.5, 1.7);
+    pebblePatch(lucIsle, 0xc2d6dd, 2.3, -1.8);
+    pebblePatch(castleIsle, 0x5f5664, 2.4, -1.8);
+    flowerPatch(mtnIsle, 0xfff0a0, 2.2, 1.8);
+    flowerPatch(beuIsle, 0xffb3c6, -2.8, -1.6);
+    flowerPatch(celIsle, 0xfff3b8, -2.7, 1.8);
+
+    // A few unmistakable miniature story objects.
+    // Slough bubbles and stepping stones.
+    for (let i = 0; i < 3; i++) {
+      slough.add(block(0.3, 0.07, 0.3, 0xb39a75, -0.65 + i * 0.65, 0.82, -0.15 + (i % 2) * 0.28));
+    }
+    // Two stone tablets beneath Mount Sinai.
+    mor.add(block(0.42, 0.62, 0.12, 0xd8d4ce, -2.5, 0.95, -1.2));
+    mor.add(block(0.42, 0.62, 0.12, 0xd8d4ce, -2.0, 0.95, -1.2));
+    // A rolled promise beside the Cross.
+    crossIsle.add(block(0.62, 0.12, 0.28, 0xfff5dc, 2.2, 0.72, -1.5));
+    crossIsle.add(block(0.12, 0.18, 0.34, PALETTE.robeGold, 2.5, 0.76, -1.5));
+    // Highway milestones.
+    for (const mx of [-2.5, 2.5]) {
+      hwy.add(block(0.3, 0.72, 0.3, 0xded7c9, mx, 0.96, 1.65));
+      hwy.add(block(0.4, 0.16, 0.4, 0xc4baa8, mx, 1.34, 1.65));
+    }
+    // Palace banners, the Valley's dropped sword, and Shadow's safe lantern.
+    for (const side of [-1, 1]) {
+      palIsle.add(block(0.08, 1.1, 0.08, PALETTE.woodDark, side * 2.35, 1.2, -1.3));
+      palIsle.add(block(0.42, 0.34, 0.06, side < 0 ? 0xf2b8cc : 0xb9d9f2, side * 2.15, 1.62, -1.3));
+    }
+    const sword = block(1.25, 0.1, 0.12, 0xd9e0e5, 1.45, 0.72, 1.55);
+    sword.rotation.y = -0.55;
+    valIsle.add(sword);
+    shIsle.add(block(0.1, 0.9, 0.1, PALETTE.woodDark, 0, 1.05, 1.5));
+    shIsle.add(block(0.3, 0.38, 0.3, 0xffe8a6, 0, 1.62, 1.5));
+    // Colourful market wares and silver gems.
+    for (let i = 0; i < 4; i++) {
+      vanIsle.add(block(0.24, 0.2, 0.24, gaudy[(i + 1) % gaudy.length], 1.1 + i * 0.36, 0.72, 1.55));
+      lucIsle.add(block(0.22, 0.22, 0.22, i % 2 ? 0xc9efff : 0xe7d7ff, -2.4 + i * 0.38, 0.75, 1.6));
+    }
+    // The Key of Promise outside Doubting Castle.
+    castleIsle.add(block(0.72, 0.1, 0.12, 0xffd66b, 2.15, 0.75, 1.65));
+    castleIsle.add(block(0.22, 0.28, 0.12, 0xffd66b, 2.52, 0.75, 1.65));
+    // One little sheep on the Delectable Mountains.
+    mtnIsle.add(block(0.62, 0.42, 0.42, 0xfffcf5, 2.45, 0.86, -1.25));
+    mtnIsle.add(block(0.32, 0.34, 0.3, 0xd2b08a, 2.78, 0.94, -1.25));
+    // Pearl stepping stones and welcoming banners at journey's end.
+    for (let i = 0; i < 4; i++) {
+      beuIsle.add(block(0.34, 0.08, 0.42, 0xf7e9ca, -0.6 + i * 0.42, 0.72, 0.3));
+    }
+    for (const side of [-1, 1]) {
+      celIsle.add(block(0.1, 1.45, 0.1, 0xc69a52, side * 2.35, 1.28, 0.65));
+      celIsle.add(block(0.55, 0.5, 0.08, side < 0 ? 0xf3c7dd : 0xc9dfff, side * 2.08, 1.82, 0.65));
+    }
 
     // ---------- both roads: stones on land, plank bridges over water ----------
     this.buildRoad(this.mainCurve, 86);
     this.buildRoad(this.branchCurve, 26);
 
-    // ---------- drifting clouds: soft, round and white ----------
-    const cloudMat = new THREE.MeshLambertMaterial({ color: 0xffffff, emissive: 0x777777 });
-    for (let i = 0; i < 6; i++) {
+    // ---------- drifting clouds: layered pastel voxel clusters ----------
+    const cloudColors = [0xffffff, 0xf7fbff, 0xe9f3ff];
+    for (let i = 0; i < 10; i++) {
       const c = new THREE.Group();
-      const puff = (r: number, px: number, py: number, pz: number) => {
-        const p = new THREE.Mesh(new THREE.SphereGeometry(r, 14, 10), cloudMat);
-        p.position.set(px, py, pz);
+      const puff = (w: number, h: number, d: number, px: number, py: number, pz: number, shade: number) => {
+        const p = block(w, h, d, cloudColors[shade], px, py, pz);
         p.castShadow = false;
         c.add(p);
       };
-      puff(0.85, 0, 0, 0);
-      puff(0.65, 0.95, 0.12, 0.1);
-      puff(0.6, -0.9, 0.08, -0.1);
-      puff(0.5, 0.35, 0.45, 0.12);
-      puff(0.45, -0.4, 0.4, -0.05);
-      c.position.set((Math.random() - 0.5) * 42, 5.5 + Math.random() * 3, -6 - Math.random() * 5);
+      puff(2.1, 0.65, 1.0, 0, 0, 0, 1);
+      puff(1.25, 0.75, 1.05, -1.25, 0.08, 0.04, 0);
+      puff(1.35, 0.9, 1.1, 1.15, 0.14, 0.02, 0);
+      puff(0.95, 0.75, 0.9, -0.38, 0.62, 0.02, 0);
+      puff(0.82, 0.58, 0.82, 0.55, 0.56, 0.08, 0);
+      puff(2.6, 0.22, 0.86, 0, -0.42, 0.05, 2);
+      c.scale.setScalar(0.8 + Math.random() * 0.55);
+      c.position.set(-28 + i * 17 + Math.random() * 5, 6.2 + Math.random() * 2.8, -7 - Math.random() * 5);
       this.clouds.push(c);
       s.add(c);
     }
@@ -951,7 +1096,10 @@ export class WorldMap {
     for (let i = 0; i < this.clouds.length; i++) {
       const c = this.clouds[i];
       c.position.x += dt * (0.2 + i * 0.06);
-      if (c.position.x > 30) c.position.x = -30;
+      // Recycle around the travelling camera so later chapter islands retain
+      // the same cheerful cloud layer as the beginning of the map.
+      if (c.position.x > this.camPan + 42) c.position.x = this.camPan - 42;
+      if (c.position.x < this.camPan - 46) c.position.x = this.camPan + 38;
     }
     // birds: launch one across the sky every so often
     this.birdTimer -= dt;
