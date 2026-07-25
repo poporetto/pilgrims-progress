@@ -337,6 +337,20 @@ const ui = {
   fade: document.getElementById('fade')! as HTMLElement,
 };
 
+// On narrow screens the round controls sit below the objective. Use the
+// objective's actual wrapped height so long instructions never collide with
+// them; ResizeObserver also reacts whenever chapter text changes its line count.
+function positionMobileHudControls(): void {
+  if (window.innerWidth > 700) {
+    document.documentElement.style.removeProperty('--mobile-controls-top');
+    return;
+  }
+  const objectiveBottom = ui.objective.getBoundingClientRect().bottom;
+  document.documentElement.style.setProperty('--mobile-controls-top', `${Math.ceil(objectiveBottom + 10)}px`);
+}
+new ResizeObserver(positionMobileHudControls).observe(ui.objective);
+requestAnimationFrame(positionMobileHudControls);
+
 // a brief screen fade to mask an instant scene cut (e.g. stepping through a
 // doorway into an interior built far away on the same axis)
 function fadeTransition(mid: () => void, holdMs = 420): void {
@@ -347,7 +361,11 @@ function fadeTransition(mid: () => void, holdMs = 420): void {
   }, holdMs);
 }
 
-const isTouch = window.matchMedia('(pointer: coarse)').matches;
+const isTouch =
+  window.matchMedia('(pointer: coarse)').matches
+  || navigator.maxTouchPoints > 0
+  || 'ontouchstart' in window;
+document.documentElement.classList.toggle('touch-device', isTouch);
 if (isTouch) {
   document.body.classList.add('touch');
   ui.promptKey.style.display = 'none';
@@ -1804,6 +1822,12 @@ ui.talkBtn.addEventListener('click', () => {
   else if (mode === 'celestial') { if (celestial.nearSaint()) celestial.talkSaint(); }
 });
 
+// The prompt itself is the largest and clearest touch target. Route it through
+// the existing action button so every chapter keeps exactly the same behavior.
+ui.prompt.addEventListener('click', () => {
+  if (isTouch && ui.prompt.style.display !== 'none') ui.talkBtn.click();
+});
+
 // Chapter IX has its own explicit combat control. It uses the same guarded
 // attack method as the keyboard, so rapid taps cannot skip the turn sequence.
 swordBtn.addEventListener('click', () => {
@@ -3087,6 +3111,7 @@ function tick(): void {
 }
 
 window.addEventListener('resize', () => {
+  positionMobileHudControls();
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   worldMap.resize(window.innerWidth / window.innerHeight);
