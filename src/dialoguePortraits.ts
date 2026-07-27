@@ -40,6 +40,8 @@ addPortraits(
   ],
 );
 
+portraitSlugs.set('Citizen', 'citizen');
+
 const aliases: Record<string, string> = {
   'Anna (cub)': 'Anna',
   'Elsie (cub)': 'Elsie',
@@ -48,7 +50,6 @@ const aliases: Record<string, string> = {
   'Angel': 'First Shining One',
   'Shining One': 'First Shining One',
   'Saints': 'Saint Bear',
-  'Citizen': 'Saint Bear',
 };
 
 export function getDialoguePortrait(speaker: string): string | null {
@@ -58,6 +59,6 @@ export function getDialoguePortrait(speaker: string): string | null {
   const url = new URL(`./portraits/${slug}.webp`, document.baseURI);
   // Public portrait filenames stay stable, so bump this whenever the atlas is
   // recut to prevent browsers from reusing an older, badly framed crop.
-  url.searchParams.set('v', '20260727-6');
+  url.searchParams.set('v', '20260727-10');
   return url.href;
 }

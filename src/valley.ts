@@ -588,6 +588,41 @@ export class ValleyScene {
     this.cb.blipSound();
   }
 
+  private poseSwordSwing(u: number): void {
+    // A three-part cut: draw the sword back across the shoulder, turn through
+    // the strike, then let its weight carry the paw low before recovering.
+    // smoothstep removes the robotic stop/start of the old sine-only motion.
+    const ease = (v: number) => v * v * (3 - 2 * v);
+    let armX: number;
+    let armZ: number;
+    let bodyPitch: number;
+    if (u < 0.3) {
+      const v = ease(u / 0.3);
+      armX = THREE.MathUtils.lerp(0, -0.72, v);
+      armZ = THREE.MathUtils.lerp(0, 0.52, v);
+      bodyPitch = THREE.MathUtils.lerp(0, -0.07, v);
+    } else if (u < 0.68) {
+      const v = ease((u - 0.3) / 0.38);
+      armX = THREE.MathUtils.lerp(-0.72, -2.65, v);
+      armZ = THREE.MathUtils.lerp(0.52, -0.28, v);
+      bodyPitch = THREE.MathUtils.lerp(-0.07, 0.13, v);
+    } else {
+      const v = ease((u - 0.68) / 0.32);
+      armX = THREE.MathUtils.lerp(-2.65, 0, v);
+      armZ = THREE.MathUtils.lerp(-0.28, 0, v);
+      bodyPitch = THREE.MathUtils.lerp(0.13, 0, v);
+    }
+    this.christian.armR.rotation.x = armX;
+    this.christian.armR.rotation.z = armZ;
+    this.christian.root.rotation.x = bodyPitch;
+  }
+
+  private resetSwordPose(): void {
+    this.christian.armR.rotation.x = 0;
+    this.christian.armR.rotation.z = 0;
+    this.christian.root.rotation.x = 0;
+  }
+
   // launch the blade ray from the sword toward Apollyon; playerHit() lands when
   // it arrives (see the ray-flight update in update())
   private launchBladeRay(damaging = true): void {
@@ -838,14 +873,14 @@ export class ValleyScene {
     // sequences. Its wave is visual only and cannot damage an unseen Apollyon.
     if (this.flourishT >= 0) {
       this.flourishT += dt;
-      const u = THREE.MathUtils.clamp(this.flourishT / 0.58, 0, 1);
-      this.christian.armR.rotation.x = -2.25 * Math.sin(u * Math.PI);
-      if (!this.flourishLaunched && u >= 0.42) {
+      const u = THREE.MathUtils.clamp(this.flourishT / 0.72, 0, 1);
+      this.poseSwordSwing(u);
+      if (!this.flourishLaunched && u >= 0.66) {
         this.flourishLaunched = true;
         this.launchBladeRay(false);
       }
       if (u >= 1) {
-        this.christian.armR.rotation.x = 0;
+        this.resetSwordPose();
         this.flourishT = -1;
       }
     }
@@ -854,17 +889,19 @@ export class ValleyScene {
     if (this.phase === 'anim' && this.animKind) {
       this.animT += dt;
       if (this.animKind === 'swing') {
-        const u = THREE.MathUtils.clamp(this.animT / 0.45, 0, 1);
-        this.christian.armR.rotation.x = -2.2 * Math.sin(u * Math.PI);
-        this.swingArc.visible = u > 0.1 && u < 0.9;
+        const u = THREE.MathUtils.clamp(this.animT / 0.72, 0, 1);
+        this.poseSwordSwing(u);
+        this.swingArc.visible = u > 0.28 && u < 0.82;
         this.swingArc.position.set(p.x + 1.4, 1.4, p.z);
-        this.swingArc.rotation.set(Math.PI / 2 - 0.4, 0, -u * 2.4);
-        (this.swingArc.material as THREE.MeshBasicMaterial).opacity = 0.7 * Math.sin(u * Math.PI);
+        const cut = THREE.MathUtils.clamp((u - 0.28) / 0.54, 0, 1);
+        this.swingArc.rotation.set(Math.PI / 2 - 0.4, 0, 0.45 - cut * 2.7);
+        (this.swingArc.material as THREE.MeshBasicMaterial).opacity =
+          0.75 * Math.sin(cut * Math.PI);
         (this.swingArc.material as THREE.MeshBasicMaterial).color.set(this.spiritSword ? 0x7ab8ff : 0xd8dee4);
         // (player-controlled position; no forced movement during swing)
-        if (this.animT >= 0.5) {
+        if (u >= 1) {
           this.swingArc.visible = false;
-          this.christian.armR.rotation.x = 0;
+          this.resetSwordPose();
           this.animKind = null;
           this.launchBladeRay(); // fling a blade ray; the hit lands when it reaches Apollyon
         }

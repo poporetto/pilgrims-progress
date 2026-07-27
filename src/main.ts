@@ -1940,7 +1940,8 @@ const HOUSE_CAM_OFFSET = new THREE.Vector3(0, 7.5, 7.5); // closer view inside t
 const DUNGEON_CAM_OFFSET = new THREE.Vector3(0, 6, -11); // camera looks from outside north wall inward
 const camTarget = new THREE.Vector3();
 const valleyBattleFocus = new THREE.Vector3();
-const mobileBattleCamOffset = camOffset.clone().multiplyScalar(1.75);
+const valleyCameraOffset = new THREE.Vector3();
+let valleyBattleZoom = 1;
 let playerMoving = false;
 
 // ---------- little white dust puffs at Christian's feet ----------
@@ -2746,7 +2747,16 @@ function tick(): void {
     const frameBattle = valley.battleCameraFocus(valleyBattleFocus);
     camTarget.lerp(frameBattle ? valleyBattleFocus : vc.root.position, Math.min(4 * dt, 1));
     const mobileBattle = frameBattle && window.innerWidth <= 700 && camera.aspect < 0.8;
-    camera.position.copy(camTarget).add(mobileBattle ? mobileBattleCamOffset : camOffset);
+    const targetBattleZoom = mobileBattle ? 1.75 : 1;
+    // Ease both into the wide duel framing and back into the normal follow
+    // camera after Apollyon is beaten—no sudden mobile camera jump.
+    valleyBattleZoom = THREE.MathUtils.lerp(
+      valleyBattleZoom,
+      targetBattleZoom,
+      1 - Math.exp(-dt * 2.8),
+    );
+    valleyCameraOffset.copy(camOffset).multiplyScalar(valleyBattleZoom);
+    camera.position.copy(camTarget).add(valleyCameraOffset);
     camera.lookAt(camTarget.x, camTarget.y + 1.4, camTarget.z);
     renderer.render(valley.scene, camera);
     return;
