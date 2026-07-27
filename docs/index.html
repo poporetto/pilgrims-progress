@@ -452,7 +452,11 @@
         width: calc(100vw - 20px - env(safe-area-inset-left) - env(safe-area-inset-right));
         bottom: calc(10px + env(safe-area-inset-bottom));
         max-height: calc(100dvh - 124px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
-        overflow-y: auto;
+        /* The portrait sits above the panel. Scrolling the outer dialogue
+           clips absolutely positioned content on mobile Safari, leaving only
+           a thin strip of the portrait visible. Keep the panel overflow open
+           and scroll just the dialogue copy when a line is unusually long. */
+        overflow: visible;
         padding: 13px 15px 22px;
       }
       #dialogue.has-portrait {
@@ -469,7 +473,12 @@
           0 0 0 3px var(--dialogue-border),
           0 4px 0 rgba(91, 74, 63, 0.14);
       }
-      #dialogue .text { font-size: clamp(14px, 4vw, 17px); min-height: 0; }
+      #dialogue .text {
+        font-size: clamp(14px, 4vw, 17px);
+        min-height: 0;
+        max-height: calc(100dvh - 230px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+        overflow-y: auto;
+      }
       #choice {
         width: calc(100vw - 20px - env(safe-area-inset-left) - env(safe-area-inset-right));
         bottom: calc(10px + env(safe-area-inset-bottom));
