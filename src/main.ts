@@ -22,6 +22,7 @@ import { MountainScene } from './mountain';
 import { BeulahScene } from './beulah';
 import { CelestialScene } from './celestial';
 import { makeAlpineMountain } from './alpine';
+import { getDialoguePortrait } from './dialoguePortraits';
 
 // ---------------------------------------------------------------- setup
 
@@ -322,6 +323,7 @@ const ui = {
   promptWho: document.querySelector('#prompt .who')! as HTMLElement,
   promptKey: document.querySelector('#prompt .key')! as HTMLElement,
   dialogue: document.getElementById('dialogue')!,
+  dialoguePortrait: document.querySelector('#dialogue .portrait')! as HTMLElement,
   dialogueName: document.querySelector('#dialogue .name')! as HTMLElement,
   dialogueText: document.querySelector('#dialogue .text')! as HTMLElement,
   musicBtn: document.getElementById('music-btn')! as HTMLButtonElement,
@@ -509,6 +511,7 @@ let sloughActors: { christian: import('./bear').BearParts; pliable: import('./be
 // ---------- Chapter III: Mr. Worldly Wiseman & Mount Sinai ----------
 const morality = new MoralityScene({
   playScript,
+  showChoice,
   setObjective,
   onExit: () => goToMap(),
   rumbleSound: () => music.rumble(),
@@ -1467,8 +1470,14 @@ function openDialogue(npc: NPC): void {
 
 function showLine(): void {
   const line = dialogueLines[dialogueIndex];
+  const portrait = getDialoguePortrait(line.speaker);
   ui.dialogueName.textContent = line.speaker;
   ui.dialogueText.textContent = line.text;
+  ui.dialogue.classList.toggle('has-portrait', portrait !== null);
+  ui.dialoguePortrait.style.display = portrait ? 'block' : 'none';
+  if (portrait) {
+    ui.dialoguePortrait.style.backgroundImage = `url("${portrait}")`;
+  }
   // Christian's speech gets a warm brown bubble; narration (empty speaker) is neutral
   ui.dialogue.classList.toggle('christian', line.speaker === 'Christian');
   ui.dialogue.classList.toggle('narration', line.speaker === '');
@@ -1529,6 +1538,7 @@ window.addEventListener('keydown', (e) => {
     else if (mode === 'map') tryEnterFromMap();
     else if (mode === 'village') tryTalk();
     else if (mode === 'slough') slough.talkToHelp();
+    else if (mode === 'morality') morality.talkEvangelist();
     else if (mode === 'hill') hill.tryPickScroll();
     else if (mode === 'cross') {
       if (cross.nearCross()) cross.talkCross();
@@ -1795,6 +1805,7 @@ ui.talkBtn.addEventListener('click', () => {
   else if (mode === 'map') tryEnterFromMap();
   else if (mode === 'village') tryTalk();
   else if (mode === 'slough') slough.talkToHelp();
+  else if (mode === 'morality') morality.talkEvangelist();
   else if (mode === 'hill') hill.tryPickScroll();
   else if (mode === 'cross') {
     if (cross.nearCross()) cross.talkCross();
@@ -2454,7 +2465,13 @@ function tick(): void {
     mz += joy.y;
     const len = Math.hypot(mx, mz);
     const factor = morality.moveFactor();
-    const moving = len > 0.15 && !dialogueOpen && !endingOpen && factor > 0;
+    const moralityChoiceOpen = choiceBox.classList.contains('open');
+    const moving =
+      len > 0.15
+      && !dialogueOpen
+      && !endingOpen
+      && !moralityChoiceOpen
+      && factor > 0;
     if (moving) {
       mx /= Math.max(len, 1);
       mz /= Math.max(len, 1);
@@ -2464,6 +2481,19 @@ function tick(): void {
     }
     morality.afterMove();
     morality.update(dt, t, moving);
+
+    if (morality.nearEvangelist() && !dialogueOpen && !endingOpen) {
+      ui.prompt.style.display = 'block';
+      ui.promptKey.style.display = isTouch ? 'none' : 'inline-block';
+      ui.promptWho.textContent = 'Speak with Evangelist';
+      if (isTouch) {
+        ui.talkBtn.textContent = 'Talk';
+        ui.talkBtn.style.display = 'block';
+      }
+    } else {
+      ui.prompt.style.display = 'none';
+      if (isTouch && !dialogueOpen) ui.talkBtn.style.display = 'none';
+    }
 
     camTarget.lerp(mc.root.position, Math.min(4 * dt, 1));
     camera.position.copy(camTarget).add(camOffset);

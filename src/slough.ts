@@ -48,6 +48,8 @@ export class SloughScene {
   private splashes: Array<{ mesh: THREE.Mesh; m: THREE.MeshBasicMaterial; life: number; vx: number; vz: number }> = [];
   private splashTimer = 0;
   private rescueT = 0;
+  private footprints: THREE.Mesh[] = [];
+  private footprintTimer = 0;
   private helpTalkCount = 0;
   private built = false;
   private lightBeam: THREE.Group | null = null;
@@ -210,6 +212,13 @@ export class SloughScene {
       s.add(mesh);
       this.splashes.push({ mesh, m, life: 1, vx: 0, vz: 0 });
     }
+    for (let i = 0; i < 22; i++) {
+      const footprint = block(0.28, 0.025, 0.42, 0x6f5a42);
+      footprint.visible = false;
+      footprint.castShadow = false;
+      s.add(footprint);
+      this.footprints.push(footprint);
+    }
 
     // a warning sign by the west path
     const sign = new THREE.Group();
@@ -275,6 +284,8 @@ export class SloughScene {
     this.phase = 'walk';
     this.sink = 0;
     this.struggle = 0;
+    this.footprintTimer = 0;
+    for (const footprint of this.footprints) footprint.visible = false;
     if (this.pliable) {
       this.scene.remove(this.pliable.root);
       this.pliable = null;
@@ -549,6 +560,16 @@ export class SloughScene {
         pp.y = 0;
         this.pliable.root.rotation.y = -Math.PI / 2;
         animateBear(this.pliable, t * 1.5, true);
+        this.footprintTimer -= dt;
+        if (this.footprintTimer <= 0) {
+          this.footprintTimer = 0.13;
+          const print = this.footprints.find((mesh) => !mesh.visible);
+          if (print) {
+            print.visible = true;
+            print.position.set(pp.x + 0.35, 0.04, pp.z + (this.footprints.indexOf(print) % 2 ? 0.2 : -0.2));
+            print.rotation.y = Math.PI / 2;
+          }
+        }
         if (pp.x < -30) {
           this.scene.remove(this.pliable.root);
           this.pliable = null;

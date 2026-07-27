@@ -14,13 +14,14 @@ import { DialogueLine } from './npcs';
 
 interface MoralityCallbacks {
   playScript: (lines: DialogueLine[], onDone?: () => void) => void;
+  showChoice: (a: string, b: string, cb: (pick: 0 | 1) => void) => void;
   setObjective: (text: string) => void;
   onComplete: () => void;
   onExit: () => void; // leaving on a revisit
   rumbleSound: () => void;
 }
 
-type Phase = 'walk' | 'diverted' | 'quaking' | 'evangelist' | 'rebuke' | 'return' | 'done';
+type Phase = 'walk' | 'diverted' | 'lawTest' | 'quaking' | 'evangelist' | 'rebuke' | 'wisemanAfter' | 'return' | 'done';
 
 const WW_X = -7;        // where Worldly Wiseman waits by the road
 const SINAI_TRIGGER = 6.5; // walking past here brings the mountain's wrath
@@ -46,7 +47,9 @@ export class MoralityScene {
   private emberTimer = 0;
   private evangelistT = 0;
   private wwLeaving = false;
-  private evangelistNear = false; // hysteresis for talking to Evangelist on the way back
+  private wwApproaching = false;
+  private lawTable = new THREE.Group();
+  private returnTalked = false;
 
   constructor(cb: MoralityCallbacks) {
     this.cb = cb;
@@ -69,6 +72,13 @@ export class MoralityScene {
       species: 'bear', fur: 0xa89a8c, outfit: 'robe',
       outfitColor: PALETTE.robeWhite, scale: 1.15,
     });
+    this.lawTable.add(block(0.58, 0.78, 0.16, 0xb8b5ad, -0.31, 0, 0));
+    this.lawTable.add(block(0.58, 0.78, 0.16, 0xa8a59e, 0.31, 0, 0));
+    this.lawTable.add(block(0.35, 0.06, 0.03, 0x716d67, -0.31, 0.15, 0.1));
+    this.lawTable.add(block(0.35, 0.06, 0.03, 0x716d67, 0.31, -0.02, 0.1));
+    this.lawTable.position.set(0, 0.55, -0.68);
+    this.lawTable.visible = false;
+    this.christian.body.add(this.lawTable);
   }
 
   // ------------------------------------------------------------ build
@@ -152,6 +162,27 @@ export class MoralityScene {
     roadSign.add(westArrow);
     roadSign.position.set(WW_X - 2.7, 0, 3.35);
     s.add(roadSign);
+
+    // The false road is deliberately comfortable: clipped hedges, benches
+    // and warm lamps make Wiseman's advice look safer than the true way.
+    for (let i = 0; i < 6; i++) {
+      const x = -3 + i * 2.0;
+      for (const side of [-1, 1]) {
+        s.add(block(1.45, 0.55, 0.52, i % 2 ? 0x86ad7d : 0x94ba86, x, 0.28, side * 3.25));
+      }
+    }
+    for (const x of [-1.5, 3.2]) {
+      s.add(block(1.8, 0.16, 0.62, 0xb68c5d, x, 0.68, 4.4));
+      s.add(block(0.16, 0.72, 0.16, 0x806044, x - 0.65, 0.36, 4.4));
+      s.add(block(0.16, 0.72, 0.16, 0x806044, x + 0.65, 0.36, 4.4));
+    }
+    for (const x of [-4.5, 1.0, 5.5]) {
+      s.add(block(0.13, 1.5, 0.13, 0x62594f, x, 0.75, -3.8));
+      const lamp = block(0.38, 0.42, 0.38, 0xffe7a0, x, 1.58, -3.8);
+      (lamp.material as THREE.MeshLambertMaterial).emissive = new THREE.Color(0xffcf69);
+      (lamp.material as THREE.MeshLambertMaterial).emissiveIntensity = 0.45;
+      s.add(lamp);
+    }
 
     // friendly trees on the west half only — the east grows bare
     for (const [tx, tz, blossom] of [
@@ -300,11 +331,15 @@ export class MoralityScene {
     this.revisit = revisit;
     this.quake = 0;
     this.wwLeaving = false;
-    this.wiseman.root.position.set(WW_X, 0, 2.85);
+    this.returnTalked = false;
+    this.wwApproaching = !revisit;
+    this.wiseman.root.position.set(WW_X + 6, 0, 2.85);
     this.wiseman.root.rotation.y = -Math.PI / 2;
     // revisits spawn clear of the western exit threshold
     this.christian.root.position.set(revisit ? -24 : -27, 0, 0);
     this.christian.root.rotation.y = Math.PI / 2;
+    this.christian.root.rotation.z = 0;
+    this.lawTable.visible = false;
     this.scene.add(this.christian.root);
     if (revisit) {
       this.phase = 'done';
@@ -321,7 +356,34 @@ export class MoralityScene {
   }
 
   moveFactor(): number {
-    return (this.phase === 'quaking' || this.phase === 'evangelist' || this.phase === 'rebuke') ? 0 : 1;
+    return (
+      this.phase === 'lawTest'
+      || this.phase === 'quaking'
+      || this.phase === 'evangelist'
+      || this.phase === 'rebuke'
+      || this.phase === 'wisemanAfter'
+    ) ? 0 : 1;
+  }
+
+  nearEvangelist(): boolean {
+    if (this.phase !== 'return' || !this.evangelist.root.visible || this.returnTalked) return false;
+    const p = this.christian.root.position;
+    const ep = this.evangelist.root.position;
+    return Math.hypot(p.x - ep.x, p.z - ep.z) < 3.1;
+  }
+
+  talkEvangelist(): void {
+    if (!this.nearEvangelist()) return;
+    this.returnTalked = true;
+    const p = this.christian.root.position;
+    const ep = this.evangelist.root.position;
+    this.evangelist.root.rotation.y = Math.atan2(p.x - ep.x, p.z - ep.z);
+    this.christian.root.rotation.y = Math.atan2(ep.x - p.x, ep.z - p.z);
+    this.cb.playScript([
+      { speaker: 'Evangelist', text: 'Good—you have turned around. Keep your eyes on the true road now, Christian.' },
+      { speaker: 'Christian', text: 'I will. No more shortcuts, and no more trusting a pleasant road simply because it looks easy.' },
+      { speaker: 'Evangelist', text: 'The Wicket Gate is still west and waiting. Go, and be of good courage.' },
+    ]);
   }
 
   afterMove(): void {
@@ -337,7 +399,7 @@ export class MoralityScene {
     }
 
     // he hails Christian from across the field — there is no slipping past
-    if (this.phase === 'walk' && p.x > WW_X - 3) {
+    if (this.phase === 'walk' && p.x > WW_X - 3 && !this.wwApproaching) {
       this.phase = 'diverted'; // parked during the script
       this.cb.playScript([
         { speaker: 'Worldly Wiseman', text: 'Hello there! You must be Christian from the City of Destruction — the bear with the famous burden!' },
@@ -349,45 +411,64 @@ export class MoralityScene {
         { speaker: 'Christian', text: 'No mud… a house for my family… Sir, that sounds very sensible indeed. Which way did you say?' },
         { speaker: 'Worldly Wiseman', text: 'Straight on, past that tall hill. First door on the left! Do give Mr. Legality my regards.' },
       ], () => {
-        this.cb.setObjective('🏘 Follow the pleasant path east, toward the village of Morality');
+        this.cb.showChoice(
+          '📜 Keep looking for the Wicket Gate',
+          '🏡 Try Wiseman’s easier solution',
+          (pick) => {
+            const response: DialogueLine[] = pick === 0 ? [
+              { speaker: 'Christian', text: 'Evangelist told me to find the Wicket Gate. I should not leave that direction.' },
+              { speaker: 'Worldly Wiseman', text: 'Of course—but must a good direction be miserable? Legality can remove the burden first. Then you may visit any gate you please.' },
+              { speaker: 'Christian', text: 'Remove it first… I suppose that would make the journey safer.' },
+            ] : [
+              { speaker: 'Christian', text: 'A safe home and an easier burden sound wonderful. I will try your road.' },
+              { speaker: 'Worldly Wiseman', text: 'A sensible choice! Smooth stones, respectable neighbours, and no muddy surprises.' },
+            ];
+            this.cb.playScript(response, () => {
+              this.cb.setObjective('🏘 Follow the pleasant path east, toward the village of Morality');
+            });
+          },
+        );
       });
       return;
     }
 
     if (this.phase === 'diverted' && p.x > SINAI_TRIGGER) {
-      this.phase = 'quaking';
+      this.phase = 'lawTest';
+      this.lawTable.visible = true;
       this.quake = 1;
       this.cb.rumbleSound();
       this.cb.playScript([
-        { speaker: 'Christian', text: 'The hill… it hangs right OVER the road! And — fire! Fire is flashing from its sides!' },
-        { speaker: 'Christian', text: 'It groans like thunder above me. One more step and it will surely fall… and this burden feels heavier than it has ever been. What have I done?' },
+        { speaker: '', text: 'At the foot of Sinai, a stone sign promises: “Lift your burden by obeying every law perfectly.”' },
+        { speaker: 'Christian', text: 'Perfectly? Perhaps if I try harder than I ever have before…' },
       ], () => {
-        this.phase = 'evangelist';
-        this.evangelistT = 0;
-        this.evangelist.root.visible = true;
-        // Spawn well off the west edge of the camera so he is clearly seen
-        // running the whole way up the road rather than popping into frame.
-        this.evangelist.root.position.set(p.x - 22, 0, -2.5);
-        this.cb.setObjective('👣 Someone hurries up the road behind you…');
+        this.cb.showChoice(
+          '⚖ I have always done what is right',
+          '💭 I know that I have failed',
+          (pick) => {
+            this.cb.playScript(pick === 0 ? [
+              { speaker: 'Christian', text: 'I have tried to be good. Surely that must be enough.' },
+              { speaker: '', text: 'The stone tablets grow heavier. One forgotten wrong is enough to make Christian’s answer fall apart.' },
+            ] : [
+              { speaker: 'Christian', text: 'No. I have not loved perfectly, spoken perfectly, or obeyed perfectly. I cannot free myself this way.' },
+              { speaker: '', text: 'The Law shows Christian the truth about his burden—but it cannot take the burden away.' },
+            ], () => {
+              this.phase = 'quaking';
+              this.cb.rumbleSound();
+              this.cb.playScript([
+                { speaker: 'Christian', text: 'The mountain hangs right OVER the road—and fire is flashing from its sides!' },
+                { speaker: 'Christian', text: 'It shows me everything I have done wrong, but it cannot lift this burden. What have I done?' },
+              ], () => {
+                this.phase = 'evangelist';
+                this.evangelistT = 0;
+                this.evangelist.root.visible = true;
+                this.evangelist.root.position.set(p.x - 22, 0, -2.5);
+                this.cb.setObjective('👣 A warm light is hurrying up the road behind you…');
+              });
+            });
+          },
+        );
       });
       return;
-    }
-
-    // On the way back Christian can stop and speak with Evangelist again.
-    if (this.phase === 'return' && this.evangelist.root.visible) {
-      const ep = this.evangelist.root.position;
-      const near = Math.hypot(p.x - ep.x, p.z - ep.z) < 2.8;
-      if (near && !this.evangelistNear) {
-        this.evangelistNear = true;
-        this.christian.root.rotation.y = ep.x > p.x ? -Math.PI / 2 : Math.PI / 2;
-        this.cb.playScript([
-          { speaker: 'Evangelist', text: 'Good — you have turned around. Keep your eyes on the true road now, Christian.' },
-          { speaker: 'Christian', text: 'I will. No more shortcuts, no more smooth-talking strangers.' },
-          { speaker: 'Evangelist', text: 'The Wicket Gate is still west and waiting. Go, and be of good courage.' },
-        ]);
-      } else if (!near) {
-        this.evangelistNear = false;
-      }
     }
 
     if (this.phase === 'return' && p.x < -26.5) {
@@ -424,6 +505,15 @@ export class MoralityScene {
         this.wiseman.root.rotation.y = Math.PI / 2;
         animateBear(this.wiseman, t, true);
         if (this.wiseman.root.position.x > 24) this.wiseman.root.visible = false;
+      } else if (this.wwApproaching) {
+        const dx = WW_X - this.wiseman.root.position.x;
+        this.wiseman.root.position.x += Math.sign(dx) * Math.min(Math.abs(dx), dt * 3.8);
+        this.wiseman.root.rotation.y = -Math.PI / 2;
+        animateBear(this.wiseman, t + 1.3, true);
+        if (Math.abs(dx) < 0.08) {
+          this.wiseman.root.position.x = WW_X;
+          this.wwApproaching = false;
+        }
       } else {
         animateBear(this.wiseman, t + 1.3, false);
       }
@@ -456,9 +546,10 @@ export class MoralityScene {
           { speaker: 'Evangelist', text: 'There is. The way you left is exactly where you left it. Go back to the true road, Christian — on to the Wicket Gate — and don\'t leave it again.' },
           { speaker: 'Christian', text: 'I\'ll go back at once. Thank you, Evangelist… again.' },
         ], () => {
-          this.phase = 'return';
-          this.wwLeaving = true; // exposed — he scurries home to Morality
-          this.cb.setObjective('↩ Return west, back to the true way');
+          this.phase = 'wisemanAfter';
+          this.lawTable.visible = false;
+          this.christian.root.rotation.z = 0;
+          this.cb.setObjective('🎩 Mr. Worldly Wiseman is coming back to answer Christian…');
         });
       }
     } else if (this.evangelist.root.visible) {
@@ -471,14 +562,60 @@ export class MoralityScene {
       animateBear(this.evangelist, t + 0.8, false);
     }
 
+    // Once Evangelist has explained the danger, Wiseman returns long enough
+    // for Christian to challenge his false promise before hurrying away.
+    if (this.phase === 'wisemanAfter') {
+      const wp = this.wiseman.root.position;
+      const cp = this.christian.root.position;
+      const targetX = cp.x - 3.1;
+      const targetZ = cp.z + 0.7;
+      const dx = targetX - wp.x;
+      const dz = targetZ - wp.z;
+      const d = Math.hypot(dx, dz);
+      if (d > 0.2) {
+        wp.x += (dx / d) * dt * 5.2;
+        wp.z += (dz / d) * dt * 5.2;
+        this.wiseman.root.rotation.y = Math.atan2(dx, dz);
+        animateBear(this.wiseman, t + 1.3, true);
+      } else {
+        this.phase = 'rebuke';
+        this.wiseman.root.rotation.y = Math.atan2(cp.x - wp.x, cp.z - wp.z);
+        this.christian.root.rotation.y = Math.atan2(wp.x - cp.x, wp.z - cp.z);
+        this.cb.playScript([
+          { speaker: 'Christian', text: 'Mr. Worldly Wiseman, your easy road led me beneath a mountain that could crush me!' },
+          { speaker: 'Worldly Wiseman', text: 'Now, now—perhaps you simply did not try hard enough. Respectable people manage very well in Morality.' },
+          { speaker: 'Christian', text: 'That is not true. The Law showed me what was wrong, but it could not remove my burden.' },
+          { speaker: 'Evangelist', text: 'An easy-looking road is still the wrong road when it leads away from the King’s direction.' },
+          { speaker: 'Worldly Wiseman', text: 'Well! If you are determined to take the difficult way, I cannot stop you.' },
+          { speaker: 'Christian', text: 'I am returning to the Wicket Gate. I will trust the King’s promise, not another shortcut.' },
+        ], () => {
+          this.phase = 'return';
+          this.wwLeaving = true;
+          this.cb.setObjective('↩ Return west, back to the true way');
+        });
+      }
+    }
+
     // ---------- Mount Sinai: fire, thunder, and trembling ----------
     const ph: Phase = this.phase;
     this.quake = Math.max(0, this.quake - dt * 0.25);
-    const menace = ph === 'quaking' || ph === 'evangelist' ? 1 : 0.35;
+    const approach = THREE.MathUtils.clamp((this.christian.root.position.x + 4) / 11, 0, 1);
+    const menace = ph === 'lawTest' || ph === 'quaking' || ph === 'evangelist'
+      ? 1
+      : 0.25 + approach * 0.45;
+    const sky = new THREE.Color(0xd4dfe4).lerp(new THREE.Color(0x8f9099), approach * 0.7);
+    this.scene.background = sky;
+    if (this.scene.fog instanceof THREE.Fog) this.scene.fog.color.copy(sky);
     if (this.mountain) {
       const q = this.quake * 0.09;
       this.mountain.position.x = 14 + (Math.random() - 0.5) * q;
       this.mountain.position.z = -2 + (Math.random() - 0.5) * q;
+      const mountainScale = 0.84 + approach * 0.2;
+      this.mountain.scale.setScalar(mountainScale);
+    }
+    if (ph === 'lawTest' || ph === 'quaking') {
+      this.christian.root.rotation.z = -0.12 - Math.sin(t * 4) * 0.025;
+      this.lawTable.rotation.z = Math.sin(t * 3.2) * 0.04;
     }
     for (let i = 0; i < this.fireSeams.length; i++) {
       const seam = this.fireSeams[i];
