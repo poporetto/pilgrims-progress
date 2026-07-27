@@ -308,7 +308,11 @@ export class WorldMap {
     this.built = true;
     const s = this.scene;
     s.background = new THREE.Color(0xd3ecff);
-    s.fog = new THREE.Fog(0xd3ecff, 36, 100);
+    // Portrait phones previously looked washed out because their extra-distant
+    // map camera sat deep inside the desktop fog range. Keep the atmosphere in
+    // the distance without laying a pale veil across the continent.
+    const narrowMap = this.camera.aspect < 0.8;
+    s.fog = new THREE.Fog(0xd3ecff, narrowMap ? 72 : 36, narrowMap ? 160 : 100);
 
     s.add(new THREE.HemisphereLight(0xf2f9ff, 0xcde4f2, 1.3));
     const sun = new THREE.DirectionalLight(PALETTE.sun, 1.7);
@@ -1088,11 +1092,17 @@ export class WorldMap {
 
   resize(aspect: number): void {
     this.camera.aspect = aspect;
-    // pull back on narrow screens so the classic islands stay in frame — the
-    // newer islands to the east are reached by PANNING, not by zooming out
-    const z = THREE.MathUtils.clamp(48 / aspect - 1, 24, 58);
+    // On portrait screens follow a closer section of the journey rather than
+    // shrinking the entire continent into the narrow width. Eastward progress
+    // is already handled by camera panning.
+    const z = THREE.MathUtils.clamp(38 / aspect - 1, 24, 42);
     this.camera.position.set(5.0 + this.camPan, z * 0.78, z + 2.2);
     this.camera.lookAt(5.0 + this.camPan, 0.4, 1.4);
+    if (this.scene.fog instanceof THREE.Fog) {
+      const narrowMap = aspect < 0.8;
+      this.scene.fog.near = narrowMap ? 72 : 36;
+      this.scene.fog.far = narrowMap ? 160 : 100;
+    }
     this.camera.updateProjectionMatrix();
   }
 

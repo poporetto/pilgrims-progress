@@ -1939,6 +1939,8 @@ const camOffset = new THREE.Vector3(0, 13, 13);
 const HOUSE_CAM_OFFSET = new THREE.Vector3(0, 7.5, 7.5); // closer view inside the Interpreter's House
 const DUNGEON_CAM_OFFSET = new THREE.Vector3(0, 6, -11); // camera looks from outside north wall inward
 const camTarget = new THREE.Vector3();
+const valleyBattleFocus = new THREE.Vector3();
+const mobileBattleCamOffset = camOffset.clone().multiplyScalar(1.75);
 let playerMoving = false;
 
 // ---------- little white dust puffs at Christian's feet ----------
@@ -2741,8 +2743,10 @@ function tick(): void {
       ui.talkBtn.style.display = 'none';
     }
 
-    camTarget.lerp(vc.root.position, Math.min(4 * dt, 1));
-    camera.position.copy(camTarget).add(camOffset);
+    const frameBattle = valley.battleCameraFocus(valleyBattleFocus);
+    camTarget.lerp(frameBattle ? valleyBattleFocus : vc.root.position, Math.min(4 * dt, 1));
+    const mobileBattle = frameBattle && window.innerWidth <= 700 && camera.aspect < 0.8;
+    camera.position.copy(camTarget).add(mobileBattle ? mobileBattleCamOffset : camOffset);
     camera.lookAt(camTarget.x, camTarget.y + 1.4, camTarget.z);
     renderer.render(valley.scene, camera);
     return;

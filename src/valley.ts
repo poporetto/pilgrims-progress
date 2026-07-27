@@ -553,6 +553,20 @@ export class ValleyScene {
     return this.phase === 'battle' && this.turn === 'player';
   }
 
+  battleCameraFocus(target: THREE.Vector3): boolean {
+    const active = this.phase === 'confront'
+      || this.phase === 'battle'
+      || this.phase === 'anim'
+      || this.phase === 'fallen';
+    if (!active || !this.apollyon.visible) return false;
+
+    // Frame the duel around its midpoint instead of following Christian alone.
+    // This is especially important on portrait phones, whose horizontal field
+    // of view is too narrow to include Apollyon from the normal follow camera.
+    target.copy(this.christian.root.position).lerp(this.apollyon.position, 0.5);
+    return true;
+  }
+
   tryAttack(): void {
     if (!this.canAttack()) return;
     this.turn = 'busy';
