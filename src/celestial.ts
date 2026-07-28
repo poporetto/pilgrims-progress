@@ -1087,7 +1087,7 @@ export class CelestialScene {
       { speaker: 'King’s Attendant', text: 'Then show us the certificates you received after your burdens fell away at the Cross.' },
       { speaker: '', text: 'Christian and Hopeful lift their sealed scrolls. Golden light pours from the King’s seals as the attendants read their names.' },
       { speaker: 'King’s Attendant', text: 'These promises are true. Your names are written here, and the King has been waiting for you.' },
-      { speaker: 'Voices beyond the gate', text: 'Welcome them! Let the trumpets sound! Open the gates, so the righteous nation that keeps faith may enter!' },
+      { speaker: 'Voices beyond the gate', text: 'Welcome them! Sound the trumpets! Open the gates for everyone who trusts the King and keeps faith!' },
     ], () => {
       if (this.scrollChr) this.scrollChr.visible = false;
       if (this.scrollHop) this.scrollHop.visible = false;
@@ -1193,7 +1193,7 @@ export class CelestialScene {
     this.ignorance.root.rotation.y = Math.PI / 2;
     this.cb.playScript([
       { speaker: '', text: 'Ignorance steps onto the golden shore and confidently knocks at the gate.' },
-      { speaker: 'King’s Attendant', text: 'Where did you begin your pilgrimage, and what certificate do you carry for the King?' },
+      { speaker: 'King’s Attendant', text: 'Where did your journey begin, and what sealed scroll do you carry for the King?' },
       { speaker: 'Ignorance', text: 'I walked beside pilgrims and spoke about good things. I have always believed I was good enough.' },
       { speaker: 'King’s Attendant', text: 'But did you enter through the Wicket Gate? Did you receive the King’s promise at the Cross?' },
       { speaker: 'Ignorance', text: 'No. I chose my own way. Surely my good opinion of myself is enough.' },

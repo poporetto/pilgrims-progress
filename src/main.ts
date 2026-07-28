@@ -22,7 +22,7 @@ import { MountainScene } from './mountain';
 import { BeulahScene } from './beulah';
 import { CelestialScene } from './celestial';
 import { makeAlpineMountain } from './alpine';
-import { getDialoguePortrait } from './dialoguePortraits';
+import { getDialogueCharacterNames, getDialoguePortrait } from './dialoguePortraits';
 
 // ---------------------------------------------------------------- setup
 
@@ -1512,11 +1512,39 @@ function openDialogue(npc: NPC): void {
   npc.parts.root.rotation.y = Math.atan2(dx, dz);
 }
 
+const dialogueCharacterNames = getDialogueCharacterNames();
+const dialogueNamePattern = new RegExp(
+  `(^|[^A-Za-z])(${dialogueCharacterNames
+    .map((name) => name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+    .join('|')})(?=$|[^A-Za-z])`,
+  'g',
+);
+
+function renderDialogueText(text: string): void {
+  ui.dialogueText.replaceChildren();
+  let cursor = 0;
+  for (const match of text.matchAll(dialogueNamePattern)) {
+    const prefix = match[1];
+    const name = match[2];
+    const nameStart = (match.index ?? 0) + prefix.length;
+    if (nameStart > cursor) {
+      ui.dialogueText.append(document.createTextNode(text.slice(cursor, nameStart)));
+    }
+    const strong = document.createElement('strong');
+    strong.textContent = name;
+    ui.dialogueText.append(strong);
+    cursor = nameStart + name.length;
+  }
+  if (cursor < text.length) {
+    ui.dialogueText.append(document.createTextNode(text.slice(cursor)));
+  }
+}
+
 function showLine(): void {
   const line = dialogueLines[dialogueIndex];
   const portrait = getDialoguePortrait(line.speaker);
   ui.dialogueName.textContent = line.speaker;
-  ui.dialogueText.textContent = line.text;
+  renderDialogueText(line.text);
   ui.dialogue.classList.toggle('has-portrait', portrait !== null);
   ui.dialoguePortrait.style.display = portrait ? 'block' : 'none';
   if (portrait) {

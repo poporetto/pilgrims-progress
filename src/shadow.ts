@@ -78,8 +78,8 @@ export class ShadowScene {
       { speaker: 'Christian', text: 'I have somewhere better to be. Good day, madam.' },
     ],
     [ // Adam the First
-      { speaker: 'Adam the First', text: 'Come and work my estate, young one. My three daughters will keep you in comfort all your days — why toil for a City you cannot even see?' },
-      { speaker: 'Christian', text: 'Your wages are paid in the end with death. I will keep to my King.' },
+      { speaker: 'Adam the First', text: 'Come and work on my land, young one. My three daughters will keep you comfortable all your life. Why work so hard for a City you cannot even see?' },
+      { speaker: 'Christian', text: 'Following you leads to death in the end. I will stay with my King.' },
     ],
     [ // Moses
       { speaker: 'Moses', text: 'The Law shows every crack in you, and offers no mercy — for it has none to give. Only One with pierced hands may bid me stop.' },
@@ -467,7 +467,7 @@ export class ShadowScene {
       this.phase = 'dark';
       this.cb.playScript([
         { speaker: '', text: 'The darkness closes around him like deep water. The path is only one step wide, with a bottomless ditch on the left and deep mud on the right. His little light barely reaches beyond his paws.' },
-        { speaker: 'Christian', text: '"Yea, though I walk through the valley of the shadow of death…" Keep saying it, Christian. Keep walking.' },
+        { speaker: 'Christian', text: '"Even when I walk through the darkest valley, I will not be afraid…" Keep saying it, Christian. Keep walking.' },
       ], () => {
         this.cb.setObjective('🌑 One stride wide — ditch on the left, mire on the right. Walk the line.');
       });
@@ -601,10 +601,10 @@ export class ShadowScene {
       this.phase = 'story3';
       this.facePilgrimsTowardEachOther();
       this.cb.playScript([
-        { speaker: 'Faithful', text: 'Then at the foot of the hill, an old man: ADAM THE FIRST, of the town of Deceit. Offered me his whole estate and his three daughters for wages — the Lust of the Flesh, the Lust of the Eyes, and the Pride of Life.' },
+        { speaker: 'Faithful', text: 'Then I met an old man at the foot of the hill: Adam the First, from the town of Deceit. He offered me all his land and his three daughters as payment—the Lust of the Flesh, the Lust of the Eyes, and the Pride of Life.' },
         { speaker: 'Faithful', text: 'I\'ll be honest — part of me wanted to follow her. The moment I began to turn, Moses rushed up behind me like the wind. He knocked me down and showed me how badly I had broken the law.' },
         { speaker: 'Christian', text: 'Moses?! But why?' },
-        { speaker: 'Faithful', text: 'Because that is all the Law can do, friend — it shows no mercy, because it HAS none to show. I\'d be lying there still, if One had not come by with holes in His paws and bidden him stop.' },
+        { speaker: 'Faithful', text: 'Because that is all the Law can do, friend—it shows no mercy because it HAS none to show. I would still be lying there if One with holes in His paws had not come and told him to stop.' },
       ], () => this.cb.setObjective('🚪 The third alcove — sour Discontent'));
       return;
     }

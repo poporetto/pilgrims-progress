@@ -550,7 +550,7 @@ export class LucreScene {
       this.phase = 'byends';
       this.cb.playScript([
         { speaker: '', text: 'They overtake a traveller in spotless, flamboyant gear — and, catching the sun at every step, a pair of gleaming SILVER SLIPPERS.' },
-        { speaker: 'By-ends', text: 'Well met, gentlemen! By-ends of Fair-speech, at your service — a pilgrim, like yourselves! Though I confess I differ from the stricter sort in two small points.' },
+        { speaker: 'By-ends', text: 'Hello, gentlemen! I am By-ends of Fair-speech—a pilgrim like you! But I disagree with strict pilgrims on two small points.' },
         { speaker: 'By-ends', text: 'First, I never struggle against popular opinion. Second, I am most enthusiastic about faith when it brings comfort, praise, and SUNSHINE. Surely we can travel together if you agree?' },
         { speaker: 'Hopeful', text: '*whispers* He wants the crown without the cross, doesn\'t he.' },
       ], () => {

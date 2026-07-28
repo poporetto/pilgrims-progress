@@ -103,7 +103,7 @@ const VIGNETTES: DialogueLine[][] = [
   [ // 5. the man in the iron cage
     { speaker: '', text: 'In a dim corner, a man sits caged behind bars of black iron, his head bowed low.' },
     { speaker: 'Christian', text: 'Friend, what brought you here?' },
-    { speaker: '', text: '(the caged man, hollow-voiced) I was once a strong believer, respected in my own eyes and the eyes of others. I stopped watching myself, and hardness followed hardness, sin upon sin, until I could no longer repent, though I wanted to.' },
+    { speaker: '', text: '(the caged man speaks sadly) I was once a strong believer, and others respected me. I stopped guarding my choices. One wrong choice followed another until my heart became so hard that I could no longer turn back, even though I wanted to.' },
     { speaker: '', text: 'Now I am locked in this cage I made for myself, and I cannot get out.' },
     { speaker: 'Interpreter', text: 'Let his suffering be a warning to you. Treat sin as harmless, drift away little by little, and you may wake one day to find the door already shut — from the inside.' },
     { speaker: 'Christian', text: '*shivering* A dreadful sight. God keep me watchful, and never so careless with sin as he was.' },
@@ -1701,7 +1701,7 @@ export class WicketGateScene {
           { speaker: 'Christian', text: 'I fell in the Slough of Despond, and my neighbour turned home. Then a smooth-tongued gentleman turned me aside to Mount Sinai, and I was nearly crushed. I am ashamed of it all, sir.' },
           { speaker: 'Goodwill', text: 'And yet you are HERE — muddy, singed, and standing at my Gate. That is the whole of what matters. This door was hung for the bruised and the muddy, or it was hung for no one.' },
           { speaker: 'Christian', text: 'Then… may I ask one thing more? This burden on my back. I have carried it so long. Can it be taken off here?' },
-          { speaker: 'Goodwill', text: 'Not here, dear pilgrim. Be patient a little longer. Ahead lies the place of deliverance — there it will loosen of itself, and fall from your back, and roll away where no one will ever find it.' },
+          { speaker: 'Goodwill', text: 'Not here, dear pilgrim. Be patient a little longer. The place of rescue is ahead. There, the burden will come loose, fall from your back, and roll away forever.' },
           { speaker: 'Goodwill', text: 'Look east. That is the King\'s Highway — straight and narrow, built by the King and His Son. Stay on it without wandering away, and you will not lose your way.' },
           { speaker: 'Christian', text: 'Straight and narrow. I will keep to it, Goodwill — I promise. My heart feels lighter already… though my back, I confess, does not.' },
           { speaker: 'Goodwill', text: '*a low, warm laugh, like summer thunder* It will, Christian. Sooner than you think. Now go — and grace go with you.' },

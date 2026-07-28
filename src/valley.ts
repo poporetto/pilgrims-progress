@@ -706,11 +706,11 @@ export class ValleyScene {
       { speaker: '', text: 'The peace shatters. Over the valley floor comes a monster the height of three houses — scaled like a fish, winged like a dragon, footed like a bear, and out of his lion\'s mouth roll fire and smoke.' },
       { speaker: 'Apollyon', text: 'Where did you come from, little pilgrim? And where do you think you are going?' },
       { speaker: 'Christian', text: 'I come from the City of Destruction, which is the place of all evil — and I am going to the City of Zion.' },
-      { speaker: 'Apollyon', text: 'Then you are MINE. I am the prince of that city — all who are born there are my subjects. Yet I am not angry. Turn back, serve me again, and what my country yields I will give you: riches. Honour. EASE.' },
-      { speaker: 'Christian', text: 'I have entered the service of another King. His wages, His servants, His country — I cannot go back on it.' },
+      { speaker: 'Apollyon', text: 'Then you are MINE. I rule that city, and everyone born there belongs to me. But I am not angry. Turn back and serve me again. I will give you riches, praise, and an EASY life.' },
+      { speaker: 'Christian', text: 'I serve another King now. I belong with Him, His people, and His country. I will not go back.' },
       { speaker: 'Apollyon', text: '*a smile full of teeth* Serve HIM? YOU? You nearly drowned in the Slough. You followed Worldly Wiseman\'s wrong road. You fell ASLEEP on the hill and lost His scroll. You shook with fear at two chained lions. Want me to keep going?' },
-      { speaker: 'Christian', text: '…All this is true. And you have left out more that you do not know. But the Prince I serve is merciful, and ready to forgive.' },
-      { speaker: 'Christian', text: 'I got these failings in YOUR country, Apollyon — they are the reason I left it. My Prince has pardoned every one.' },
+      { speaker: 'Christian', text: '…All this is true, and there are more failures you do not know about. But the Prince I serve is kind and ready to forgive.' },
+      { speaker: 'Christian', text: 'I learned these wrong ways in YOUR country, Apollyon. That is why I left. My Prince has forgiven every one.' },
       { speaker: 'Apollyon', text: 'Then hear me plainly, worm: I am an ENEMY to this Prince. I hate His person, His laws, and His people. Here I SWEAR IT — you go no further. HERE YOU DIE.' },
     ], () => {
       this.phase = 'battle';

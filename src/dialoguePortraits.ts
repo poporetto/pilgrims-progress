@@ -52,6 +52,60 @@ const aliases: Record<string, string> = {
   'Saints': 'Saint Bear',
 };
 
+const additionalStoryNames = [
+  'Mr. Hold-the-world',
+  'Mr. Money-love',
+  'Mr. Save-all',
+  'Mr. Legality',
+  'Civility',
+  'Beelzebub',
+  'Augustine',
+  'John Bunyan',
+  'Bunyan',
+  'City of Destruction',
+  'Celestial City',
+  'Slough of Despond',
+  'Wicket Gate',
+  'King’s Highway',
+  'King\'s Highway',
+  'Hill Difficulty',
+  'Palace Beautiful',
+  'Valley of Humiliation',
+  'Valley of the Shadow of Death',
+  'Vanity Fair',
+  'Hill Lucre',
+  'Doubting Castle',
+  'Delectable Mountains',
+  'Enchanted Ground',
+  'Beulah Land',
+  'Mount Sinai',
+  'Sinai',
+  'Morality',
+  'Fair-speech',
+  'Prating Row',
+  'Country of Conceit',
+  'Hill Error',
+  'Mount Caution',
+  'Lust of the Flesh',
+  'Lust of the Eyes',
+  'Pride of Life',
+  'God',
+  'Jesus',
+  'Christ',
+  'Lord',
+  'King',
+  'Prince',
+  'Devil',
+];
+
+export function getDialogueCharacterNames(): string[] {
+  return [...new Set([
+    ...portraitSlugs.keys(),
+    ...Object.keys(aliases),
+    ...additionalStoryNames,
+  ])].sort((a, b) => b.length - a.length);
+}
+
 export function getDialoguePortrait(speaker: string): string | null {
   const canonicalName = aliases[speaker] ?? speaker;
   const slug = portraitSlugs.get(canonicalName);
