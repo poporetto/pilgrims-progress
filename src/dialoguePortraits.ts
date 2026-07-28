@@ -59,6 +59,6 @@ export function getDialoguePortrait(speaker: string): string | null {
   const url = new URL(`./portraits/${slug}.webp`, document.baseURI);
   // Public portrait filenames stay stable, so bump this whenever the atlas is
   // recut to prevent browsers from reusing an older, badly framed crop.
-  url.searchParams.set('v', '20260727-10');
+  url.searchParams.set('v', '20260728-12');
   return url.href;
 }

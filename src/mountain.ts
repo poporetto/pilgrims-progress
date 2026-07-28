@@ -64,7 +64,6 @@ export class MountainScene {
   // the four shepherds, in fixed order: Knowledge, Experience, Watchful, Sincere
   private shepherds: BearParts[] = [];
   private shepherdNames = ['Knowledge', 'Experience', 'Watchful', 'Sincere'];
-  private shepherdNear = [false, false, false, false]; // talk hysteresis (depart)
   private shepherdLines: DialogueLine[][] = [
     [{ speaker: 'Knowledge', text: 'The road is short now, pilgrim. Keep the Word open every day — it is the only map that never lies.' }],
     [{ speaker: 'Experience', text: 'I have walked every valley you have walked. The King never once failed me — and He will not fail you.' }],
@@ -963,6 +962,41 @@ export class MountainScene {
     }
   }
 
+  private nearbyShepherdIndex(): number {
+    if (this.phase !== 'depart') return -1;
+    const p = this.christian.root.position;
+    let nearest = -1;
+    let nearestDistance = 2.2;
+    for (let i = 0; i < this.shepherds.length; i++) {
+      const sp = this.shepherds[i].root.position;
+      const distance = Math.hypot(p.x - sp.x, p.z - sp.z);
+      if (distance < nearestDistance) {
+        nearest = i;
+        nearestDistance = distance;
+      }
+    }
+    return nearest;
+  }
+
+  nearShepherd(): boolean {
+    return this.nearbyShepherdIndex() >= 0;
+  }
+
+  nearbyShepherdName(): string {
+    const index = this.nearbyShepherdIndex();
+    return index >= 0 ? this.shepherdNames[index] : 'a shepherd';
+  }
+
+  talkShepherd(): void {
+    const index = this.nearbyShepherdIndex();
+    if (index < 0) return;
+    const p = this.christian.root.position;
+    const sp = this.shepherds[index].root.position;
+    this.shepherds[index].root.rotation.y = Math.atan2(p.x - sp.x, p.z - sp.z);
+    this.christian.root.rotation.y = Math.atan2(sp.x - p.x, sp.z - p.z);
+    this.cb.playScript(this.shepherdLines[index]);
+  }
+
   afterMove(): void {
     const p = this.christian.root.position;
 
@@ -985,20 +1019,6 @@ export class MountainScene {
     } else if (this.phase === 'depart') {
       p.x = Math.max(WARNING_X - 2, Math.min(p.x, LIGHT_X - 0.5));
       p.z = Math.max(PATH_Z - LANE_HALF_WIDTH, Math.min(p.z, PATH_Z + LANE_HALF_WIDTH));
-      // each shepherd stands at the parting spot and can be spoken to again
-      for (let i = 0; i < this.shepherds.length; i++) {
-        const sp = this.shepherds[i].root.position;
-        const near = Math.hypot(p.x - sp.x, p.z - sp.z) < 2.2;
-        if (near && !this.shepherdNear[i]) {
-          this.shepherdNear[i] = true;
-          this.shepherds[i].root.rotation.y = Math.atan2(p.x - sp.x, p.z - sp.z);
-          this.christian.root.rotation.y = Math.atan2(sp.x - p.x, sp.z - p.z);
-          this.cb.playScript(this.shepherdLines[i]);
-          return;
-        } else if (!near) {
-          this.shepherdNear[i] = false;
-        }
-      }
       if (p.x >= LIGHT_X - 2) this.triggerExit();
     }
 

@@ -309,6 +309,11 @@ const quest: QuestState = {
 };
 
 const music = new Music();
+try {
+  music.enabled = window.localStorage.getItem('pilgrims-progress-sound') !== 'off';
+} catch {
+  // Storage can be unavailable in strict private browsing; sound still works.
+}
 const worldMap = new WorldMap(window.innerWidth / window.innerHeight);
 let mode:
   | 'village' | 'map' | 'slough' | 'morality' | 'wicket' | 'cross'
@@ -326,7 +331,10 @@ const ui = {
   dialoguePortrait: document.querySelector('#dialogue .portrait')! as HTMLElement,
   dialogueName: document.querySelector('#dialogue .name')! as HTMLElement,
   dialogueText: document.querySelector('#dialogue .text')! as HTMLElement,
-  musicBtn: document.getElementById('music-btn')! as HTMLButtonElement,
+  settingsBtn: document.getElementById('settings-btn')! as HTMLButtonElement,
+  settingsOverlay: document.getElementById('settings-overlay')! as HTMLElement,
+  settingsClose: document.getElementById('settings-close')! as HTMLButtonElement,
+  soundToggle: document.getElementById('sound-toggle')! as HTMLButtonElement,
   talkBtn: document.getElementById('talk-btn')! as HTMLButtonElement,
   joystick: document.getElementById('joystick')!,
   stick: document.querySelector('#joystick .stick')! as HTMLElement,
@@ -381,9 +389,45 @@ ui.startBtn.addEventListener('click', () => {
   setTimeout(() => (ui.titleScreen.style.display = 'none'), 900);
 });
 
-ui.musicBtn.addEventListener('click', () => {
+function updateSoundToggle(): void {
+  ui.soundToggle.setAttribute('aria-checked', String(music.enabled));
+  ui.soundToggle.setAttribute(
+    'aria-label',
+    `Music and sound ${music.enabled ? 'on' : 'off'}`,
+  );
+}
+
+function openSettings(): void {
+  ui.debugPanel.classList.remove('open');
+  ui.settingsOverlay.classList.add('open');
+  ui.settingsOverlay.setAttribute('aria-hidden', 'false');
+  ui.settingsClose.focus();
+}
+
+function closeSettings(): void {
+  ui.settingsOverlay.classList.remove('open');
+  ui.settingsOverlay.setAttribute('aria-hidden', 'true');
+  ui.settingsBtn.focus();
+}
+
+updateSoundToggle();
+ui.settingsBtn.addEventListener('click', openSettings);
+ui.settingsClose.addEventListener('click', closeSettings);
+ui.settingsOverlay.addEventListener('click', (event) => {
+  if (event.target === ui.settingsOverlay) closeSettings();
+});
+ui.soundToggle.addEventListener('click', () => {
   music.start();
-  ui.musicBtn.textContent = music.toggle() ? '🎵' : '🔇';
+  music.toggle();
+  updateSoundToggle();
+  try {
+    window.localStorage.setItem(
+      'pilgrims-progress-sound',
+      music.enabled ? 'on' : 'off',
+    );
+  } catch {
+    // The setting remains active for this session if storage is unavailable.
+  }
 });
 
 ui.restartBtn.addEventListener('click', () => window.location.reload());
@@ -1528,6 +1572,10 @@ function revealShiningLight(): void {
 
 const keys = new Set<string>();
 window.addEventListener('keydown', (e) => {
+  if (ui.settingsOverlay.classList.contains('open')) {
+    if (e.code === 'Escape') closeSettings();
+    return;
+  }
   if (e.repeat) return;
   keys.add(e.code);
   if (
@@ -1561,6 +1609,7 @@ window.addEventListener('keydown', (e) => {
     }
     else if (mode === 'valley') valley.tryAttack();
     else if (mode === 'lucre') lucre.tryTouchPillar();
+    else if (mode === 'mountain') mountain.talkShepherd();
     else if (mode === 'enchanted') enchanted.tryWakeAction();
     else if (mode === 'beulah') { if (beulah.nearAngel()) beulah.talkAngel(); }
     else if (mode === 'celestial') { if (celestial.nearSaint()) celestial.talkSaint(); }
@@ -1828,6 +1877,7 @@ ui.talkBtn.addEventListener('click', () => {
   }
   else if (mode === 'valley') valley.tryAttack();
   else if (mode === 'lucre') lucre.tryTouchPillar();
+  else if (mode === 'mountain') mountain.talkShepherd();
   else if (mode === 'enchanted') enchanted.tryWakeAction();
   else if (mode === 'beulah') { if (beulah.nearAngel()) beulah.talkAngel(); }
   else if (mode === 'celestial') { if (celestial.nearSaint()) celestial.talkSaint(); }
@@ -2968,6 +3018,19 @@ function tick(): void {
     }
     mountain.afterMove();
     mountain.update(dt, t, moving);
+
+    const canTalkShepherd = mountain.nearShepherd() && !dialogueOpen && !endingOpen;
+    ui.prompt.style.display = canTalkShepherd ? 'block' : 'none';
+    if (canTalkShepherd) {
+      ui.promptKey.style.display = isTouch ? 'none' : 'inline-block';
+      ui.promptWho.textContent = `Talk to ${mountain.nearbyShepherdName()}`;
+      if (isTouch) {
+        ui.talkBtn.textContent = 'Talk';
+        ui.talkBtn.style.display = 'block';
+      }
+    } else if (isTouch && !dialogueOpen) {
+      ui.talkBtn.style.display = 'none';
+    }
 
     camTarget.lerp(mc.root.position, Math.min(4 * dt, 1));
     camera.position.copy(camTarget).add(camOffset);

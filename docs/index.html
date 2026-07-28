@@ -42,15 +42,17 @@
       pointer-events: none; z-index: 10;
       transition: opacity 0.4s;
     }
-    #music-btn {
+    #settings-btn {
       position: fixed; top: calc(12px + env(safe-area-inset-top));
       right: calc(12px + env(safe-area-inset-right)); z-index: 20;
       width: 46px; height: 46px; border-radius: 50%;
       border: 3px solid var(--accent2); background: var(--paper);
       font-size: 20px; cursor: pointer;
       box-shadow: 0 4px 0 rgba(91, 74, 63, 0.15);
+      transition: transform .2s ease, box-shadow .2s ease, background .2s ease;
     }
-    #music-btn:active { transform: translateY(2px); box-shadow: 0 2px 0 rgba(91,74,63,0.15); }
+    #settings-btn:hover { background: #f2faff; transform: rotate(8deg); }
+    #settings-btn:active { transform: translateY(2px) rotate(8deg); box-shadow: 0 2px 0 rgba(91,74,63,0.15); }
 
     /* ---------- Debug chapter select ---------- */
     #debug-btn {
@@ -79,6 +81,103 @@
       padding: 6px 10px; cursor: pointer; color: var(--ink);
     }
     #debug-panel button:active { background: var(--accent2); }
+
+    /* ---------- Settings & About ---------- */
+    #settings-overlay {
+      position: fixed; inset: 0; z-index: 45;
+      display: none; align-items: center; justify-content: center;
+      padding: calc(18px + env(safe-area-inset-top))
+               calc(18px + env(safe-area-inset-right))
+               calc(18px + env(safe-area-inset-bottom))
+               calc(18px + env(safe-area-inset-left));
+      background: rgba(79, 91, 92, .28);
+      backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px);
+      opacity: 0; transition: opacity .22s ease;
+    }
+    #settings-overlay.open { display: flex; opacity: 1; }
+    #settings-dialog {
+      position: relative; width: min(430px, 100%);
+      max-height: min(620px, calc(100dvh - 36px));
+      overflow-y: auto; padding: 25px;
+      border: 4px solid #9bcce4; border-radius: 24px;
+      background: linear-gradient(160deg, #fffaf2 0%, #f7fbf2 52%, #eef8fd 100%);
+      box-shadow: 0 9px 0 rgba(91,74,63,.16), 0 24px 60px rgba(62,82,89,.24);
+      transform: translateY(14px) scale(.96);
+      transition: transform .28s cubic-bezier(.2,.8,.2,1);
+    }
+    #settings-overlay.open #settings-dialog { transform: translateY(0) scale(1); }
+    #settings-dialog h2 {
+      margin: 0 42px 5px 0; color: #654f42;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 27px; letter-spacing: -.02em;
+    }
+    #settings-dialog .settings-lead {
+      margin: 0 0 20px; color: #8a7668; font-size: 13px; line-height: 1.45;
+    }
+    #settings-close {
+      position: absolute; right: 16px; top: 15px;
+      width: 36px; height: 36px; border-radius: 50%;
+      border: 2px solid #e5c8cf; background: #fff7f8; color: #865e68;
+      font: 800 18px/1 inherit; cursor: pointer;
+      transition: transform .18s ease, background .18s ease;
+    }
+    #settings-close:hover { background: #ffe7ec; transform: rotate(6deg); }
+    .settings-row {
+      display: flex; align-items: center; justify-content: space-between; gap: 18px;
+      padding: 15px 16px; border: 2px solid #d7e8df; border-radius: 16px;
+      background: rgba(255,255,255,.72);
+    }
+    .settings-row-copy { display: flex; align-items: center; gap: 11px; min-width: 0; }
+    .settings-row-icon {
+      display: grid; place-items: center; flex: 0 0 auto;
+      width: 38px; height: 38px; border-radius: 12px;
+      background: #dff1fb; font-size: 19px;
+    }
+    .settings-row strong { display: block; font-size: 15px; color: #654f42; }
+    .settings-row small { display: block; margin-top: 2px; color: #907e72; font-size: 11px; }
+    #sound-toggle {
+      position: relative; flex: 0 0 auto; width: 62px; height: 34px;
+      border: 0; border-radius: 999px; padding: 0; cursor: pointer;
+      background: #d8d4ce; box-shadow: inset 0 2px 4px rgba(91,74,63,.14);
+      transition: background .28s ease, box-shadow .28s ease;
+    }
+    #sound-toggle::before {
+      content: ''; position: absolute; left: 4px; top: 4px;
+      width: 26px; height: 26px; border-radius: 50%;
+      background: #fffaf1; box-shadow: 0 3px 5px rgba(91,74,63,.22);
+      transition: transform .32s cubic-bezier(.2,.9,.25,1.25), background .25s ease;
+    }
+    #sound-toggle[aria-checked="true"] {
+      background: linear-gradient(90deg, #a9d8f0, #a8d9bd);
+      box-shadow: inset 0 2px 4px rgba(72,115,119,.12), 0 0 0 3px rgba(169,216,240,.18);
+    }
+    #sound-toggle[aria-checked="true"]::before {
+      transform: translateX(28px); background: #fffdf4;
+    }
+    #sound-toggle:active::before { width: 29px; }
+    #sound-toggle[aria-checked="true"]:active::before { transform: translateX(25px); }
+    .about-section {
+      margin-top: 20px; padding-top: 18px; border-top: 2px dashed #d9cbb9;
+      text-align: center;
+    }
+    .about-section h3 {
+      margin: 0 0 8px; font-family: Georgia, "Times New Roman", serif;
+      color: #6f6254; font-size: 19px;
+    }
+    .about-section p {
+      margin: 0 auto 14px; max-width: 340px; color: #806f64;
+      font-size: 12px; line-height: 1.55;
+    }
+    #kofi-btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      min-height: 42px; padding: 9px 18px; border: 3px solid #e8aebc;
+      border-radius: 999px; background: #fff1f4; color: #7f4f5c;
+      font-weight: 800; text-decoration: none;
+      box-shadow: 0 4px 0 #d79aa9;
+      transition: transform .18s ease, box-shadow .18s ease, background .18s ease;
+    }
+    #kofi-btn:hover { background: #ffe5eb; transform: translateY(-2px); box-shadow: 0 6px 0 #d79aa9; }
+    #kofi-btn:active { transform: translateY(3px); box-shadow: 0 1px 0 #d79aa9; }
 
     /* ---------- Interact prompt ---------- */
     #prompt {
@@ -427,7 +526,7 @@
     .touch-device #prompt { pointer-events: auto; cursor: pointer; touch-action: manipulation; }
     .touch-device #prompt:active { transform: translateX(-50%) translateY(3px); box-shadow: 0 1px 0 rgba(91, 74, 63, 0.15); }
     @media (max-width: 700px) {
-      #music-btn {
+      #settings-btn {
         top: var(--mobile-controls-top, calc(78px + env(safe-area-inset-top)));
         right: calc(10px + env(safe-area-inset-right));
       }
@@ -493,6 +592,7 @@
         max-height: calc(100dvh - 80px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
         overflow-y: auto;
       }
+      #settings-dialog { padding: 21px 18px; border-radius: 20px; }
     }
     .hidden { opacity: 0; pointer-events: none; }
     #ending { display: none; }
@@ -725,13 +825,13 @@
     #finale.end #finale-scroll { opacity: 0; transition: opacity 1.0s ease; }
     #finale.end #finale-end { opacity: 1; }
   </style>
-  <script type="module" crossorigin src="./assets/index-D9alOXQS.js"></script>
+  <script type="module" crossorigin src="./assets/index-CaVnlDDJ.js"></script>
 </head>
 <body>
   <div id="app"></div>
 
   <div id="objective">🐻 Say goodbye, then find Evangelist</div>
-  <button id="music-btn" title="Toggle music">🎵</button>
+  <button id="settings-btn" title="Settings" aria-label="Open settings">⚙️</button>
   <button id="debug-btn" title="Jump to a chapter">🐞</button>
   <div id="debug-panel">
     <div class="label">Jump to chapter</div>
@@ -757,6 +857,30 @@
     <button data-jump="ignorance-epilogue">XVII · Ignorance in Beulah</button>
     <div class="label">Or</div>
     <button data-jump="map">World Map</button>
+  </div>
+  <div id="settings-overlay" aria-hidden="true">
+    <section id="settings-dialog" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+      <button id="settings-close" aria-label="Close settings">×</button>
+      <h2 id="settings-title">Settings</h2>
+      <p class="settings-lead">Make the journey comfortable for you.</p>
+      <div class="settings-row">
+        <div class="settings-row-copy">
+          <span class="settings-row-icon" aria-hidden="true">🎵</span>
+          <span><strong>Music &amp; sound</strong><small>Story music and gentle sound effects</small></span>
+        </div>
+        <button id="sound-toggle" role="switch" aria-checked="true" aria-label="Music and sound on"></button>
+      </div>
+      <div class="about-section">
+        <h3>About this adventure</h3>
+        <p>
+          An illustrated storybook journey inspired by John Bunyan’s
+          <em>The Pilgrim’s Progress</em>, retold in friendly modern English.
+        </p>
+        <a id="kofi-btn" href="https://ko-fi.com/poporetto" target="_blank" rel="noopener noreferrer">
+          <span aria-hidden="true">☕</span> Support on Ko-fi
+        </a>
+      </div>
+    </section>
   </div>
   <div id="prompt"><span class="key">E</span><span class="who"></span></div>
 
