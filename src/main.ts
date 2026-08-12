@@ -1546,7 +1546,7 @@ function showFinale(): void {
 }
 
 document.getElementById('finale-restart')?.addEventListener('click', () => {
-  window.location.reload();
+  clearSaveAndReload();
 });
 
 function enterVanity(revisit: boolean): void {
