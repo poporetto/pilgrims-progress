@@ -54,19 +54,26 @@
     #settings-btn:hover { background: #f2faff; transform: rotate(8deg); }
     #settings-btn:active { transform: translateY(2px) rotate(8deg); box-shadow: 0 2px 0 rgba(91,74,63,0.15); }
 
-    /* ---------- Debug chapter select ---------- */
+    /* ---------- Journey Book chapter select ---------- */
     #debug-btn {
       position: fixed; top: calc(12px + env(safe-area-inset-top));
       right: calc(66px + env(safe-area-inset-right)); z-index: 20;
-      width: 46px; height: 46px; border-radius: 50%;
-      border: 3px solid #cbbfae; background: var(--paper);
-      font-size: 18px; cursor: pointer; opacity: 0.75;
+      display: grid; place-items: center;
+      width: 46px; height: 46px; padding: 0; border-radius: 15px;
+      border: 3px solid #a8cde0; background: #fff8ef;
+      cursor: pointer;
       box-shadow: 0 4px 0 rgba(91, 74, 63, 0.15);
+      transition: transform .18s ease, background .18s ease, box-shadow .18s ease;
     }
+    #debug-btn:hover { background: #f4e2e8; transform: translateY(-1px) rotate(-2deg); }
     #debug-btn:active { transform: translateY(2px); box-shadow: 0 2px 0 rgba(91,74,63,0.15); }
+    #debug-btn .book-icon { width: 27px; height: 27px; display: block; }
+    #debug-btn .book-cover { fill: #7eaec4; }
+    #debug-btn .book-page { fill: #fffaf0; stroke: #5f879a; stroke-width: 1.5; }
+    #debug-btn .book-line { stroke: #d89aad; stroke-width: 1.6; stroke-linecap: round; }
     #debug-panel {
       position: fixed; top: 64px; right: 12px; z-index: 25;
-      background: var(--paper); border: 3px solid #cbbfae; border-radius: 14px;
+      background: var(--paper); border: 3px solid #a8cde0; border-radius: 16px;
       padding: 10px; display: none; flex-direction: column; gap: 6px;
       box-shadow: 0 4px 0 rgba(91, 74, 63, 0.15); max-width: 230px;
     }
@@ -290,11 +297,38 @@
       background: transparent; color: var(--ink); border-color: var(--accent);
       font-size: 15px; padding: 10px 28px; margin-top: 14px; box-shadow: none;
     }
+    /* Before the module is ready, this pastel loader occupies the Start
+       button's exact place. The real button is not clickable—or even shown—
+       until its handler and the first rendered frame are ready. */
+    #boot-loader {
+      display: inline-flex; align-items: center; justify-content: center; gap: 13px;
+      min-width: min(300px, 100%); min-height: 62px; padding: 12px 24px;
+      border: 4px solid #fffbea; border-radius: 999px;
+      background: linear-gradient(90deg, #bddff0, #cbe5cf, #f0d8df);
+      color: #67584e; box-shadow: 0 6px 0 #8aa7aa, 0 12px 25px rgba(81,111,126,.17);
+    }
+    #boot-loader strong {
+      font-family: Georgia, "Times New Roman", serif; font-size: 14px;
+      letter-spacing: .025em; white-space: nowrap;
+    }
+    .loader-dots { display: flex; gap: 6px; height: 10px; }
+    .loader-dots i {
+      display: block; width: 10px; height: 10px; border-radius: 3px;
+      background: #91bdd2; animation: loader-dot 1.05s ease-in-out infinite;
+    }
+    .loader-dots i:nth-child(2) { background: #a9cfaa; animation-delay: .14s; }
+    .loader-dots i:nth-child(3) { background: #e7b7c2; animation-delay: .28s; }
+    @keyframes loader-dot {
+      0%, 100% { transform: translateY(0); opacity: .45; }
+      50% { transform: translateY(-7px); opacity: 1; }
+    }
+    #title-screen:not(.game-ready) #start-btn { display: none; }
+    #title-screen.game-ready #boot-loader { display: none; }
     /* ---------- opening storybook cover ---------- */
     #title-screen {
       overflow: hidden;
       isolation: isolate;
-      background: #c9e3f1;
+      background: #d8edf7;
     }
     .title-landscape {
       position: absolute; inset: -7%; z-index: -3; overflow: hidden;
@@ -456,21 +490,21 @@
     .title-card {
       position: relative; z-index: 2; width: min(620px, calc(100vw - 32px));
       padding: clamp(28px, 5vw, 48px) clamp(22px, 6vw, 58px) 38px;
-      border: 8px double #bda66e; border-radius: 18px;
-      background: linear-gradient(180deg, rgba(255,253,239,.97), rgba(244,238,208,.97));
-      box-shadow: 0 10px 0 rgba(106,91,72,.18), 0 22px 60px rgba(87,112,90,.22),
+      border: 8px double #c5a06f; border-radius: 18px;
+      background: linear-gradient(180deg, rgba(255,250,239,.97), rgba(249,226,219,.97));
+      box-shadow: 0 10px 0 rgba(106,91,72,.18), 0 22px 60px rgba(126,82,91,.2),
                   inset 0 0 0 3px rgba(255,255,255,.72);
     }
     .title-card::before, .title-card::after {
       content: '❦'; position: absolute; top: 20px; color: #94785f; font-size: 25px;
     }
     .title-card::before { left: 24px; }
-    .title-card::after { right: 24px; color: #89a8b4; transform: scaleX(-1); }
+    .title-card::after { right: 24px; color: #c78698; transform: scaleX(-1); }
     .title-mark {
       display: grid; place-items: center; width: 78px; height: 78px;
       margin: -74px auto 14px; border: 6px double #fff9df;
-      border-radius: 50%; background: #c6dce8; font-size: 42px; overflow: hidden;
-      box-shadow: 0 7px 0 #829fac, 0 12px 24px rgba(91,74,63,.15);
+      border-radius: 50%; background: #d5eaf3; font-size: 42px; overflow: hidden;
+      box-shadow: 0 7px 0 #94b5c4, 0 12px 24px rgba(91,74,63,.13);
     }
     #title-face-canvas { width: 100%; height: 100%; display: block; }
     #title-screen .eyebrow {
@@ -484,30 +518,59 @@
       color: #604c36; letter-spacing: -.035em; font-weight: 700;
       text-shadow: 0 3px 0 #fffdf2, 0 6px 0 #d6c795;
     }
-    #title-screen h1 span { display: block; color: #718f9d; font-style: italic; }
+    #title-screen h1 span { display: block; color: #82aabd; font-style: italic; }
     #title-screen h2 {
       display: inline-block; margin: 20px 0 18px; padding: 7px 18px;
       border-top: 2px solid #af9c6d; border-bottom: 2px solid #af9c6d;
       border-left: 0; border-right: 0; border-radius: 0;
-      background: transparent; color: #607984; opacity: 1;
+      background: transparent; color: #8a665f; opacity: 1;
       font-family: Georgia, "Times New Roman", serif;
       font-size: clamp(14px, 2.5vw, 18px); font-weight: 700;
     }
     #title-screen p {
-      margin: 0 auto 25px; max-width: 475px; color: #665449;
+      margin: 0 auto 31px; max-width: 475px; color: #665449;
       font-family: Georgia, "Times New Roman", serif;
       font-size: clamp(14px, 2.3vw, 17px); line-height: 1.6;
     }
-    #title-screen #start-btn {
-      position: relative; min-width: min(300px, 100%); padding: 15px 30px;
-      border-color: #fffbea; background: linear-gradient(180deg, #8fb9ce, #6f98ad);
-      box-shadow: 0 7px 0 #516f7e, 0 13px 28px rgba(81,111,126,.24);
-      font-family: Georgia, "Times New Roman", serif; letter-spacing: .025em;
+    #title-screen #start-btn,
+    #title-screen #new-journey-btn {
+      width: 420px; max-width: 100%; min-width: 0; padding: 15px 30px;
+      border-width: 4px; border-radius: 999px;
+      font-family: "Trebuchet MS", system-ui, sans-serif;
+      font-size: 20px; line-height: 1.2; font-weight: 800; letter-spacing: 0;
+      transition: transform .16s ease, box-shadow .16s ease, background .16s ease;
     }
-    #title-screen #start-btn::after { content: '  ❧'; color: #fff0ad; }
-    #title-screen #start-btn:hover { transform: translateY(-2px); box-shadow: 0 9px 0 #516f7e, 0 15px 30px rgba(81,111,126,.28); }
-    #title-screen #start-btn:active { transform: translateY(4px); box-shadow: 0 3px 0 #516f7e; }
-    .title-credit { margin-top: 14px; font-size: 11px; font-weight: bold; opacity: .5; letter-spacing: .08em; }
+    #title-screen #start-btn {
+      position: relative;
+      margin: 5px auto 0;
+      border-color: #fffdf8;
+      background: linear-gradient(180deg, #f6bdc9, #efabb9);
+      box-shadow: 0 7px 0 #c9bec4, 0 13px 28px rgba(126,82,91,.18);
+    }
+    #title-screen #start-btn::after { content: '  →'; color: #fff; }
+    #title-screen #start-btn:hover {
+      transform: translateY(-2px);
+      background: linear-gradient(180deg, #f8c7d1, #f1b0bd);
+      box-shadow: 0 9px 0 #c9bec4, 0 15px 30px rgba(126,82,91,.2);
+    }
+    #title-screen #start-btn:active { transform: translateY(4px); box-shadow: 0 3px 0 #c9bec4; }
+    #new-journey-btn {
+      display: none; margin: 20px auto 3px;
+      border-color: #f4b8c4;
+      background: rgba(242,234,242,.94); color: var(--ink);
+      box-shadow: none;
+    }
+    #new-journey-btn:hover {
+      background: #fff8fb; transform: translateY(-2px);
+      box-shadow: 0 5px 0 rgba(126,82,91,.12);
+    }
+    #new-journey-btn:active { transform: translateY(3px); box-shadow: none; }
+    #save-summary {
+      display: none; margin: 16px auto 0; color: #7b675c;
+      font-family: Georgia, "Times New Roman", serif;
+      font-size: 12px; font-weight: 700; line-height: 1.5; letter-spacing: .025em;
+    }
+    .title-credit { margin-top: 24px; font-size: 11px; font-weight: bold; opacity: .5; letter-spacing: .08em; }
     @media (max-height: 650px) {
       .title-card { padding-top: 28px; padding-bottom: 22px; }
       .title-mark { width: 58px; height: 58px; margin-top: -57px; font-size: 31px; border-radius: 50%; }
@@ -832,9 +895,16 @@
 
   <div id="objective">🐻 Say goodbye, then find Evangelist</div>
   <button id="settings-btn" title="Settings" aria-label="Open settings">⚙️</button>
-  <button id="debug-btn" title="Jump to a chapter">🐞</button>
+  <button id="debug-btn" title="Open Journey Book" aria-label="Open Journey Book">
+    <svg class="book-icon" viewBox="0 0 32 32" aria-hidden="true">
+      <rect class="book-cover" x="3" y="4" width="26" height="25" rx="6"/>
+      <path class="book-page" d="M5.5 6.5h7.2c2 0 3.3 1.2 3.3 3v16.2c-.9-1.4-2.2-2.1-4.1-2.1H5.5z"/>
+      <path class="book-page" d="M26.5 6.5h-7.2c-2 0-3.3 1.2-3.3 3v16.2c.9-1.4 2.2-2.1 4.1-2.1h6.5z"/>
+      <path class="book-line" d="M8 11h4M8 15h4M20 11h4M20 15h4"/>
+    </svg>
+  </button>
   <div id="debug-panel">
-    <div class="label">Jump to chapter</div>
+    <div class="label">Journey Book · Choose a chapter</div>
     <button data-jump="village">I · City of Destruction</button>
     <button data-jump="slough">II · Slough of Despond</button>
     <button data-jump="morality">III · Worldly Wiseman &amp; Sinai</button>
@@ -944,7 +1014,13 @@
       <h2>Chapter I · The City of Destruction</h2>
       <p>Christian carries a heavy burden and knows he must find a better way.
          Walk beside him as his hopeful journey toward the Celestial City begins.</p>
-      <button id="start-btn">Begin the Journey</button>
+      <div id="boot-loader" role="status" aria-live="polite" aria-label="Loading the journey">
+        <div class="loader-dots" aria-hidden="true"><i></i><i></i><i></i></div>
+        <strong>Preparing the journey…</strong>
+      </div>
+      <button id="start-btn" disabled aria-disabled="true">Loading Journey…</button>
+      <div id="save-summary" aria-live="polite"></div>
+      <button id="new-journey-btn">Start a New Journey</button>
       <div class="title-credit">AN INTERACTIVE STORYBOOK ADVENTURE · AFTER JOHN BUNYAN</div>
     </div>
   </div>

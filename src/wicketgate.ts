@@ -221,10 +221,10 @@ export class WicketGateScene {
       species: 'lion', outfit: 'robe',
       outfitColor: PALETTE.robeWhite, scale: 1.3,
     });
-    // the Interpreter: a wise old owl in a scholar's gold robe
+    // The Interpreter: match his portrait's brown owl and muted blue scholar robe.
     this.interpreter = makeBear({
-      species: 'owl', outfit: 'robe',
-      outfitColor: PALETTE.robeGold, scale: 1.05,
+      species: 'owl', fur: 0x806b50, outfit: 'robe',
+      outfitColor: 0x6688a0, scale: 1.05,
     });
   }
 
@@ -440,9 +440,12 @@ export class WicketGateScene {
     }
     // flowers dotting the highway's verge — a kinder country already
     for (let i = 0; i < 34; i++) {
+      const flowerX = GATE_X + 3 + Math.random() * 84;
+      // Keep the Interpreter's doorway and greeting spot clear.
+      if (Math.abs(flowerX - COTTAGE_X) < 4.5) continue;
       const f = block(0.18, 0.18, 0.18,
         [PALETTE.flowerYellow, PALETTE.flowerPink, PALETTE.flowerBlue][i % 3],
-        GATE_X + 3 + Math.random() * 84, 0.98, (Math.random() > 0.5 ? 2.1 : -2.1));
+        flowerX, 0.98, (Math.random() > 0.5 ? 2.1 : -2.1));
       f.castShadow = false;
       s.add(f);
     }
@@ -537,6 +540,20 @@ export class WicketGateScene {
     s.add(block(96, 0.2, HOUSE_WIDTH, PALETTE.wood, midX, -0.1, 0));
     s.add(block(96, 3.1, 0.3, PALETTE.wallCream, midX, 1.55, -HOUSE_HALF));
     s.add(block(96, 3.1, 0.3, PALETTE.wallCream, midX, 1.55, HOUSE_HALF));
+    // Warm timber rails, inset panels, and short pilasters keep the long
+    // cream walls from reading as one unbroken slab.
+    for (const side of [-1, 1]) {
+      const wallZ = side * (HOUSE_HALF - 0.18);
+      s.add(block(96, 0.16, 0.12, PALETTE.woodDark, midX, 0.3, wallZ));
+      s.add(block(96, 0.12, 0.12, PALETTE.wood, midX, 2.72, wallZ));
+      for (let i = 0; i < 10; i++) {
+        const panelX = IX + 4 + i * 9.5;
+        const panelColor = i % 2 === 0 ? PALETTE.wallMint : PALETTE.wallPink;
+        s.add(block(4.6, 1.15, 0.08, panelColor, panelX, 1.55, wallZ - side * 0.04));
+        s.add(block(0.14, 2.45, 0.14, PALETTE.wood, panelX - 2.65, 1.42, wallZ - side * 0.08));
+        s.add(block(0.14, 2.45, 0.14, PALETTE.wood, panelX + 2.65, 1.42, wallZ - side * 0.08));
+      }
+    }
     for (let i = 0; i < 10; i++) {
       const lx = IX + 4 + i * 9.5;
       let lz = i % 2 === 0 ? -HOUSE_HALF + 0.4 : HOUSE_HALF - 0.4;
@@ -896,13 +913,23 @@ export class WicketGateScene {
       HOUSE_EXIT_X, 1.5, (HOUSE_HALF + DOOR_GAP) / 2));
     s.add(block(0.3, 3.0, HOUSE_HALF - DOOR_GAP, PALETTE.wallCream,
       HOUSE_EXIT_X, 1.5, -(HOUSE_HALF + DOOR_GAP) / 2));
-    s.add(block(0.3, 0.4, DOOR_GAP * 2 + 0.3, PALETTE.wallCream, HOUSE_EXIT_X, 3.2, 0)); // lintel
+    // Bring the wall down directly onto the door frame: no floating gap
+    // above the panel.
+    s.add(block(0.3, 0.5, DOOR_GAP * 2 + 0.3, PALETTE.wallCream, HOUSE_EXIT_X, 2.75, 0));
+    // A warm timber surround makes the exit read as a built-in doorway.
+    s.add(block(0.38, 2.5, 0.16, PALETTE.wood, HOUSE_EXIT_X - 0.02, 1.25, -DOOR_GAP));
+    s.add(block(0.38, 2.5, 0.16, PALETTE.wood, HOUSE_EXIT_X - 0.02, 1.25, DOOR_GAP));
+    s.add(block(0.38, 0.18, DOOR_GAP * 2 + 0.16, PALETTE.woodDark, HOUSE_EXIT_X - 0.02, 2.5, 0));
     // a real, solid door on a hinge, filling the doorway, swinging open
     // once the farewell is said
     const exitDoorPivot = new THREE.Group();
     exitDoorPivot.position.set(HOUSE_EXIT_X, 0, -DOOR_GAP);
-    const exitPanel = block(0.14, 1.9, DOOR_GAP * 1.85, PALETTE.woodDark, 0, 0.95, DOOR_GAP * 0.925);
+    const exitPanel = block(0.14, 2.46, DOOR_GAP * 1.85, PALETTE.woodDark, 0, 1.23, DOOR_GAP * 0.925);
     exitDoorPivot.add(exitPanel);
+    // Recessed voxel panels and a small brass latch give the door scale.
+    exitDoorPivot.add(block(0.04, 0.72, 0.62, PALETTE.wood, -0.09, 1.68, 0.55));
+    exitDoorPivot.add(block(0.04, 0.72, 0.62, PALETTE.wood, -0.09, 0.72, 0.55));
+    exitDoorPivot.add(block(0.06, 0.13, 0.13, PALETTE.robeGold, -0.12, 1.22, 1.55));
     s.add(exitDoorPivot);
     this.exitDoor = exitDoorPivot;
 

@@ -45,17 +45,17 @@ const titleJourneyRenderer = new THREE.WebGLRenderer({
   canvas: titleJourneyCanvas, alpha: true, antialias: true,
 });
 titleJourneyRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
-titleJourneyRenderer.setClearColor(0xc9e7f6, 1);
+titleJourneyRenderer.setClearColor(0xd8edf7, 1);
 titleJourneyRenderer.shadowMap.enabled = true;
 titleJourneyRenderer.shadowMap.type = THREE.PCFSoftShadowMap;
 const titleJourneyScene = new THREE.Scene();
-titleJourneyScene.background = new THREE.Color(0xc9e7f6);
-titleJourneyScene.fog = new THREE.Fog(0xc9e7f6, 24, 62);
+titleJourneyScene.background = new THREE.Color(0xd8edf7);
+titleJourneyScene.fog = new THREE.Fog(0xd8edf7, 24, 62);
 const titleJourneyCamera = new THREE.PerspectiveCamera(34, 1, 0.1, 80);
 titleJourneyCamera.position.set(0, 7.2, 15);
 titleJourneyCamera.lookAt(0, 1.1, 0);
-titleJourneyScene.add(new THREE.HemisphereLight(0xeaf5fb, 0xc4aa87, 1.45));
-const titleJourneySun = new THREE.DirectionalLight(0xffefcf, 1.35);
+titleJourneyScene.add(new THREE.HemisphereLight(0xfff4e9, 0xd0b18e, 1.58));
+const titleJourneySun = new THREE.DirectionalLight(0xffe2bd, 1.55);
 titleJourneySun.position.set(-7, 12, 8);
 titleJourneySun.castShadow = true;
 titleJourneySun.shadow.mapSize.set(1024, 1024);
@@ -65,12 +65,12 @@ titleJourneySun.shadow.camera.top = 10;
 titleJourneySun.shadow.camera.bottom = -8;
 titleJourneyScene.add(titleJourneySun);
 
-const titleGround = new THREE.Mesh(new THREE.PlaneGeometry(74, 34), mat(0xaecf91));
+const titleGround = new THREE.Mesh(new THREE.PlaneGeometry(74, 34), mat(0xb8cc8f));
 titleGround.rotation.x = -Math.PI / 2;
 titleGround.position.y = -0.03;
 titleGround.receiveShadow = true;
 titleJourneyScene.add(titleGround);
-const titleHighway = new THREE.Mesh(new THREE.PlaneGeometry(42, 3.7), mat(0xe6d4ae));
+const titleHighway = new THREE.Mesh(new THREE.PlaneGeometry(42, 3.7), mat(0xe9c9a4));
 titleHighway.rotation.x = -Math.PI / 2;
 titleHighway.position.y = 0.015;
 titleHighway.receiveShadow = true;
@@ -78,7 +78,7 @@ titleJourneyScene.add(titleHighway);
 for (let i = 0; i < 25; i++) {
   const roadStone = block(
     1.15, 0.055, 0.72,
-    [0xd6c29c, 0xeadbbb, 0xcab58f][i % 3],
+    [0xd8b892, 0xf0d5b2, 0xcaa47f][i % 3],
     -14 + i * 1.18, 0.055, ((i % 3) - 1) * 0.62,
   );
   roadStone.rotation.y = ((i % 5) - 2) * 0.025;
@@ -87,7 +87,7 @@ for (let i = 0; i < 25; i++) {
 }
 for (const side of [-1, 1]) {
   for (let i = 0; i < 12; i++) {
-    const edge = block(0.75, 0.14, 0.34, i % 2 ? 0xaa9274 : 0xbba483,
+    const edge = block(0.75, 0.14, 0.34, i % 2 ? 0xad866d : 0xc29d7d,
       -13.5 + i * 2.45, 0.08, side * 1.95);
     edge.castShadow = false;
     titleJourneyScene.add(edge);
@@ -97,8 +97,8 @@ for (const side of [-1, 1]) {
 function addTitleTree(x: number, z: number, scale: number, blossom = false): void {
   const tree = new THREE.Group();
   tree.add(block(0.42, 2.0, 0.42, 0x967252, 0, 1.0, 0));
-  tree.add(block(2.0, 1.25, 1.8, blossom ? 0xf2bfd0 : 0x8db87a, 0, 2.3, 0));
-  tree.add(block(1.35, 1.0, 1.25, blossom ? 0xf7d3df : 0xa4c891, 0.2, 3.15, 0));
+  tree.add(block(2.0, 1.25, 1.8, blossom ? 0xefaebe : 0x92b778, 0, 2.3, 0));
+  tree.add(block(1.35, 1.0, 1.25, blossom ? 0xf8cbd5 : 0xacc88c, 0.2, 3.15, 0));
   tree.scale.setScalar(scale);
   tree.position.set(x, 0, z);
   titleJourneyScene.add(tree);
@@ -113,10 +113,10 @@ addTitleTree(16, 2.8, 0.7, true);
 // Block-built clouds and sun complete the fully 3D title background.
 function addTitleCloud(x: number, y: number, z: number, scale: number): void {
   const cloud = new THREE.Group();
-  cloud.add(block(3.4, 0.8, 1.2, 0xf8fcff, 0, 0, 0));
-  cloud.add(block(1.8, 1.0, 1.25, 0xffffff, -1.0, 0.55, 0));
-  cloud.add(block(2.0, 1.2, 1.3, 0xffffff, 0.8, 0.62, 0));
-  cloud.add(block(1.3, 0.75, 1.0, 0xeaf4fa, 2.0, 0.1, 0));
+  cloud.add(block(3.4, 0.8, 1.2, 0xfff4ec, 0, 0, 0));
+  cloud.add(block(1.8, 1.0, 1.25, 0xfffaf2, -1.0, 0.55, 0));
+  cloud.add(block(2.0, 1.2, 1.3, 0xfff8f0, 0.8, 0.62, 0));
+  cloud.add(block(1.3, 0.75, 1.0, 0xf3dce0, 2.0, 0.1, 0));
   cloud.scale.setScalar(scale);
   cloud.position.set(x, y, z);
   titleJourneyScene.add(cloud);
@@ -131,7 +131,7 @@ titleSunMat.emissiveIntensity = 0.65;
 titleJourneyScene.add(titleSun);
 // Soft grass and flowers replace the old blue-brown lower band around the
 // highway. They stay low so Christian remains the unmistakable focal point.
-const titleFlowerColors = [0xf2b8cc, 0xffefad, 0xc9dfff, 0xf7f2e7];
+const titleFlowerColors = [0xe99eb4, 0xf5b7c6, 0xffd4dc, 0xffe6ad, 0xf8f0e5];
 for (const side of [-1, 1]) {
   for (let i = 0; i < 18; i++) {
     const x = -14 + i * 1.65;
@@ -165,10 +165,10 @@ function addTitleMountain(
   mountain.position.set(x, -0.1, z);
   titleJourneyScene.add(mountain);
 }
-addTitleMountain(-10.5, -11.23, 8.64, 6.3, [0xb5d8eb, 0x91bfd9, 0xc6e2ef]);
-addTitleMountain(-3.7, -12.38, 10.8, 7.2, [0xa5cee4, 0x7fb3d1, 0xbadcec]);
-addTitleMountain(4.5, -11.95, 10.08, 6.7, [0xafd5e8, 0x88b9d4, 0xc2e0ed]);
-addTitleMountain(11.2, -11.09, 8.16, 5.8, [0xc0ddec, 0x9bc5dc, 0xcde5ef]);
+addTitleMountain(-10.5, -11.23, 8.64, 6.3, [0xc2dfed, 0x9fc8dc, 0xd5e9f1]);
+addTitleMountain(-3.7, -12.38, 10.8, 7.2, [0xb5d7e8, 0x8fbdd5, 0xcbe5f0]);
+addTitleMountain(4.5, -11.95, 10.08, 6.7, [0xbdddeb, 0x98c3d8, 0xd1e8f1]);
+addTitleMountain(11.2, -11.09, 8.16, 5.8, [0xcce5ef, 0xa9cfdf, 0xdcecf2]);
 
 const titleChristian = makeBear({
   species: 'bear', fur: PALETTE.bearBrown,
@@ -320,6 +320,160 @@ let mode:
   | 'highway' | 'hill' | 'palace' | 'valley' | 'shadow' | 'vanity' | 'lucre' | 'castle'
   | 'mountain' | 'enchanted' | 'beulah' | 'celestial' = 'village';
 
+// ---------------------------------------------------------------- chapter save
+
+const SAVE_KEY = 'pilgrims-progress-save';
+const SAVE_VERSION = 1;
+interface ChapterSave {
+  version: number;
+  completedChapter: number;
+  updatedAt: string;
+}
+
+const CHAPTER_NAMES = [
+  '',
+  'City of Destruction',
+  'Slough of Despond',
+  'Worldly Wiseman & Mount Sinai',
+  'Wicket Gate & the Interpreter',
+  'The Cross',
+  'The King’s Highway',
+  'Hill Difficulty',
+  'Palace Beautiful',
+  'Valley of Humiliation',
+  'Shadow of Death',
+  'Vanity Fair',
+  'Hill Lucre',
+  'Doubting Castle',
+  'Delectable Mountains',
+  'Enchanted Ground',
+  'Beulah Land',
+  'The Celestial City',
+];
+
+function latestCompletedChapter(): number {
+  if (quest.celestialDone) return 17;
+  if (quest.beulahDone) return 16;
+  if (quest.enchantedDone) return 15;
+  if (quest.mountainDone) return 14;
+  if (quest.castleDone) return 13;
+  if (quest.lucreDone) return 12;
+  if (quest.vanityDone) return 11;
+  if (quest.shadowDone) return 10;
+  if (quest.valleyDone) return 9;
+  if (quest.palaceDone) return 8;
+  if (quest.hillDone) return 7;
+  if (quest.highwayDone) return 6;
+  if (quest.crossDone) return 5;
+  if (quest.wicketDone) return 4;
+  if (quest.moralityDone) return 3;
+  if (quest.sloughComplete) return 2;
+  if (quest.chapterComplete) return 1;
+  return 0;
+}
+
+function readChapterSave(): ChapterSave | null {
+  try {
+    const raw = window.localStorage.getItem(SAVE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<ChapterSave>;
+    if (
+      parsed.version !== SAVE_VERSION
+      || !Number.isInteger(parsed.completedChapter)
+      || (parsed.completedChapter ?? 0) < 1
+      || (parsed.completedChapter ?? 0) > 17
+      || typeof parsed.updatedAt !== 'string'
+    ) return null;
+    return parsed as ChapterSave;
+  } catch {
+    return null;
+  }
+}
+
+function saveChapterProgress(): void {
+  const completedChapter = latestCompletedChapter();
+  if (completedChapter < 1) return;
+  try {
+    window.localStorage.setItem(SAVE_KEY, JSON.stringify({
+      version: SAVE_VERSION,
+      completedChapter,
+      updatedAt: new Date().toISOString(),
+    } satisfies ChapterSave));
+  } catch {
+    // The game remains playable when storage is blocked or unavailable.
+  }
+}
+
+function restoreChapterProgress(save: ChapterSave): void {
+  const rank = save.completedChapter;
+  Object.assign(quest, {
+    talkedToEvangelist: rank >= 1,
+    talkedToFamily: rank >= 1,
+    chaseDone: rank >= 1,
+    pliableFollowing: rank >= 1,
+    pliableLeft: rank >= 2,
+    chapterComplete: rank >= 1,
+    sloughComplete: rank >= 2,
+    moralityDone: rank >= 3,
+    wicketDone: rank >= 4,
+    interpreterDone: rank >= 4,
+    crossDone: rank >= 5,
+    highwayDone: rank >= 6,
+    hillDone: rank >= 7,
+    palaceDone: rank >= 8,
+    valleyDone: rank >= 9,
+    shadowDone: rank >= 10,
+    vanityDone: rank >= 11,
+    lucreDone: rank >= 12,
+    castleDone: rank >= 13,
+    mountainDone: rank >= 14,
+    enchantedDone: rank >= 15,
+    beulahDone: rank >= 16,
+    celestialDone: rank >= 17,
+  });
+
+  worldMap.sloughDone = rank >= 2;
+  worldMap.moralityDone = rank >= 3;
+  worldMap.wicketDone = rank >= 4;
+  worldMap.crossDone = rank >= 5;
+  worldMap.highwayDone = rank >= 6;
+  worldMap.hillDone = rank >= 7;
+  worldMap.palaceDone = rank >= 8;
+  worldMap.valleyDone = rank >= 9;
+  worldMap.shadowDone = rank >= 10;
+  worldMap.vanityDone = rank >= 11;
+  worldMap.lucreDone = rank >= 12;
+  worldMap.castleDone = rank >= 13;
+  worldMap.mountainDone = rank >= 14;
+  worldMap.enchantedDone = rank >= 15;
+  worldMap.beulahDone = rank >= 16;
+  worldMap.celestialDone = rank >= 17;
+
+  worldMap.progress = rank >= 17 ? worldMap.celestialT
+    : rank >= 16 ? worldMap.beulahT
+    : rank >= 15 ? worldMap.enchantedT
+    : rank >= 14 ? worldMap.mountainT
+    : rank >= 13 ? worldMap.castleT
+    : rank >= 12 ? worldMap.lucreT
+    : rank >= 11 ? worldMap.vanityT
+    : rank >= 10 ? worldMap.shadowT
+    : rank >= 9 ? worldMap.valleyT
+    : rank >= 8 ? worldMap.palaceT
+    : rank >= 7 ? worldMap.hillT
+    : rank >= 6 ? worldMap.highwayT
+    : rank >= 5 ? worldMap.crossT
+    : rank >= 4 ? worldMap.beyondT
+    : rank >= 3 ? worldMap.forkT
+    : rank >= 2 ? worldMap.sloughT
+    : worldMap.cityT;
+  worldMap.road = 'main';
+  worldMap.branchP = 0;
+  worldMap.justDiverted = false;
+  worldMap.start(mapParty());
+}
+
+let storedChapterSave = readChapterSave();
+
 // ---------------------------------------------------------------- UI refs
 
 const ui = {
@@ -340,6 +494,8 @@ const ui = {
   stick: document.querySelector('#joystick .stick')! as HTMLElement,
   titleScreen: document.getElementById('title-screen')!,
   startBtn: document.getElementById('start-btn')! as HTMLButtonElement,
+  newJourneyBtn: document.getElementById('new-journey-btn')! as HTMLButtonElement,
+  saveSummary: document.getElementById('save-summary')! as HTMLElement,
   ending: document.getElementById('ending')!,
   restartBtn: document.getElementById('restart-btn')! as HTMLButtonElement,
   debugBtn: document.getElementById('debug-btn')! as HTMLButtonElement,
@@ -385,8 +541,27 @@ let started = false;
 ui.startBtn.addEventListener('click', () => {
   started = true;
   music.start();
+  if (storedChapterSave) {
+    restoreChapterProgress(storedChapterSave);
+    goToMap();
+  }
   ui.titleScreen.classList.add('hidden');
   setTimeout(() => (ui.titleScreen.style.display = 'none'), 900);
+});
+
+function clearSaveAndReload(): void {
+  try {
+    window.localStorage.removeItem(SAVE_KEY);
+  } catch {
+    // Reload still starts a fresh in-memory journey if storage is unavailable.
+  }
+  storedChapterSave = null;
+  window.location.reload();
+}
+
+ui.newJourneyBtn.addEventListener('click', () => {
+  if (!window.confirm('Start a new journey? Your saved chapter progress will be cleared.')) return;
+  clearSaveAndReload();
 });
 
 function updateSoundToggle(): void {
@@ -430,7 +605,10 @@ ui.soundToggle.addEventListener('click', () => {
   }
 });
 
-ui.restartBtn.addEventListener('click', () => window.location.reload());
+ui.restartBtn.addEventListener('click', () => {
+  if (!window.confirm('Restart from the beginning? Your saved chapter progress will be cleared.')) return;
+  clearSaveAndReload();
+});
 
 // ---------- parametrized chapter-complete screen ----------
 let endingAction: (() => void) | null = null;
@@ -438,6 +616,9 @@ let endingOpen = false;
 let cutscene = false; // freezes the player during scripted scenes (gate chase)
 
 function showEnding(title: string, sub: string, body: string, action: () => void): void {
+  // Chapter-level autosave only: no positions, dialogue steps, or mid-chapter
+  // state are written. Reopening the game resumes from the world map.
+  saveChapterProgress();
   endingOpen = true;
   document.getElementById('ending-title')!.textContent = title;
   document.getElementById('ending-sub')!.textContent = sub;
@@ -1340,6 +1521,7 @@ const celestial = new CelestialScene({
   onComplete: () => {
     quest.celestialDone = true;
     worldMap.celestialDone = true;
+    saveChapterProgress();
     // the true ending: Bunyan's scroll, then "The End"
     showFinale();
   },
@@ -2763,7 +2945,7 @@ function tick(): void {
     if (palace.nearWatchful()) palaceTalkTarget = 'Talk to Watchful';
     else {
       for (let wi = 0; wi < 4; wi++) {
-        if (palace.nearWoman(wi)) { palaceTalkTarget = 'Talk to the Keeper'; break; }
+        if (palace.nearWoman(wi)) { palaceTalkTarget = `Talk to ${palace.womanName(wi)}`; break; }
       }
     }
     const canTalkPalace = !!palaceTalkTarget && !dialogueOpen && !endingOpen;
@@ -3255,6 +3437,27 @@ window.addEventListener('resize', () => {
 });
 
 tick();
+
+// The title HTML can appear before this module has finished evaluating on a
+// slower phone. Reveal the real Start button only after its listener is bound
+// and the title scene has completed its first paint.
+requestAnimationFrame(() => {
+  requestAnimationFrame(() => {
+    ui.startBtn.disabled = false;
+    ui.startBtn.setAttribute('aria-disabled', 'false');
+    if (storedChapterSave) {
+      const completed = storedChapterSave.completedChapter;
+      ui.startBtn.textContent = 'Continue the Journey';
+      ui.saveSummary.textContent =
+        `Saved after Chapter ${completed} · ${CHAPTER_NAMES[completed]}`;
+      ui.saveSummary.style.display = 'block';
+      ui.newJourneyBtn.style.display = 'block';
+    } else {
+      ui.startBtn.textContent = 'Begin the Journey';
+    }
+    ui.titleScreen.classList.add('game-ready');
+  });
+});
 
 // small debug handle for testing (harmless in production)
 (window as any).__game = {

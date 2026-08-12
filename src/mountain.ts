@@ -125,13 +125,19 @@ export class MountainScene {
       species: 'dog', fur: 0xd9b088, outfit: 'shirt', outfitColor: 0x7fb8a2,
     });
 
-    // The four shepherds — calm bears in earthy pastoral robes, each with a crook
-    const robeColors = [0xa8c4d8, 0xc4b088, 0xb0c49a, 0xd0b4c0];
-    const furColors  = [0xbf9a6e, 0xa8815c, 0xcaa878, 0x9c7852];
+    // Match the established portraits: Knowledge the white sheep, Experience
+    // the brown ox, Watchful the owl, and Sincere the brown bear.
+    const shepherdLooks = [
+      { species: 'sheep' as const, fur: 0xeee8dc, robe: 0x758b91 },
+      { species: 'ox' as const, fur: 0x8a6548, robe: 0x62744f },
+      { species: 'owl' as const, fur: 0x806b50, robe: 0x71854d },
+      { species: 'bear' as const, fur: 0x9a704f, robe: 0x9a7bb0 },
+    ];
     for (let i = 0; i < 4; i++) {
+      const look = shepherdLooks[i];
       const s = makeBear({
-        species: 'bear', fur: furColors[i],
-        outfit: 'robe', outfitColor: robeColors[i],
+        species: look.species, fur: look.fur,
+        outfit: 'robe', outfitColor: look.robe,
       });
       // a shepherd's crook in the right hand
       const crook = new THREE.Group();
@@ -140,8 +146,21 @@ export class MountainScene {
       crook.add(block(0.24, 0.08, 0.08, 0x8a6a44, 0.1, 1.18, 0));   // hook curl
       crook.position.set(0.12, -0.5, 0.16);
       s.armR.add(crook);
-      // a soft cloth headwrap so they read as shepherds, not just bears
-      s.head.add(block(1.0, 0.24, 0.84, robeColors[i], 0, 0.74, 0));
+      // A low cowl keeps the face and each animal silhouette unobstructed.
+      // Owls already receive the portrait-matched stepped cowl in makeBear.
+      if (look.species !== 'owl') {
+        s.body.add(block(1.02, 0.18, 0.7, look.robe, 0, 0.82, 0));
+        s.body.add(block(0.78, 0.16, 0.72, look.robe, 0, 0.94, -0.02));
+      }
+      if (look.species === 'sheep') {
+        // Knowledge's portrait has dark curled horns beside the wool cap.
+        for (const side of [-1, 1]) {
+          const horn = block(0.16, 0.44, 0.15, 0x5b4638, 0.43 * side, 1.08, -0.02);
+          horn.rotation.z = 0.24 * side;
+          s.head.add(horn);
+          s.head.add(block(0.18, 0.18, 0.16, 0x5b4638, 0.52 * side, 0.91, 0));
+        }
+      }
       this.shepherds.push(s);
     }
 

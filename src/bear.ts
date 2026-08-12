@@ -5,7 +5,7 @@ import { PALETTE } from './palette';
 // (stubby legs, round body, oversized head); species swap out ears, snouts
 // and tails, and everyone wears clothes.
 
-export type Species = 'bear' | 'pig' | 'frog' | 'rabbit' | 'cat' | 'lion' | 'owl' | 'mouse' | 'sheep' | 'dog';
+export type Species = 'bear' | 'pig' | 'frog' | 'rabbit' | 'cat' | 'lion' | 'owl' | 'mouse' | 'sheep' | 'dog' | 'ox';
 export type Outfit = 'shirt' | 'dress' | 'apron' | 'robe' | 'overalls' | 'none';
 
 export interface CharacterOptions {
@@ -78,6 +78,7 @@ const DEFAULT_FUR: Record<Species, number> = {
   mouse: 0xb8aa9c,
   sheep: 0xf3efe4,
   dog: 0xb98f66,
+  ox: 0x8a6548,
 };
 
 const BELLY: Record<Species, number> = {
@@ -91,6 +92,7 @@ const BELLY: Record<Species, number> = {
   mouse: 0xf3ece3,
   sheep: 0xfaf7ef,
   dog: 0xf0e2cc,
+  ox: 0xe5d4bc,
 };
 
 const LION_MANE = 0xb0793a;
@@ -194,6 +196,10 @@ export function makeBear(opts: CharacterOptions = {}): BearParts {
     body.add(tailMid);
     const tailTip = block(0.18, 0.18, 0.18, BELLY.dog, 0.27, 0.82, -(bodyD / 2 + 0.4));
     body.add(tailTip);
+  } else if (species === 'ox') {
+    // A sturdy, low tail with a dark block tuft.
+    body.add(block(0.13, 0.13, 0.52, fur, 0.12, 0.3, -0.48));
+    body.add(block(0.2, 0.2, 0.2, 0x5b4435, 0.12, 0.28, -0.79));
   }
   // frogs and owls have no visible tail
 
@@ -278,24 +284,24 @@ export function makeBear(opts: CharacterOptions = {}): BearParts {
     head.add(block(0.44, 0.32, 0.2, PALETTE.snout, 0, 0.26, 0.47));
     head.add(block(0.16, 0.12, 0.08, PALETTE.nose, 0, 0.35, 0.58));
   } else if (species === 'owl') {
-    // Strong stepped brow and pointed ear tufts make the silhouette distinctly
-    // owl-like even at the small scale used for Interpreter and Watchful.
+    // Portrait-matched owl silhouette: a broad, level crown, stepped horn-like
+    // feather tufts, large cream facial disks and blocky cheek feathers.
+    head.add(block(0.78, 0.16, 0.14, fur, 0, 0.81, 0.43));
     for (const side of [-1, 1]) {
-      const tuft = block(0.18, 0.38, 0.16, fur, 0.34 * side, 1.02, -0.01);
-      tuft.rotation.z = -0.25 * side;
-      head.add(tuft);
-      const brow = block(0.42, 0.13, 0.12, fur, 0.22 * side, 0.72, 0.47);
-      brow.rotation.z = -0.18 * side;
-      head.add(brow);
-      // Cream facial disks sit behind the detailed eye layers below.
-      head.add(block(0.44, 0.46, 0.1, belly, 0.23 * side, 0.49, 0.45));
+      // A single short voxel tuft keeps the owl silhouette while reducing the
+      // former three-step feather horns to roughly one-fifth their height.
+      head.add(block(0.16, 0.1, 0.16, fur, 0.37 * side, 0.94, 0));
+      // The cream mask is wide and almost meets at the beak, as in the profile.
+      head.add(block(0.48, 0.55, 0.12, belly, 0.23 * side, 0.48, 0.47));
+      head.add(block(0.38, 0.16, 0.13, belly, 0.27 * side, 0.18, 0.46));
+      // Side and lower cheek feathers soften the square base head.
+      head.add(block(0.18, 0.34, 0.18, fur, 0.52 * side, 0.4, 0.08));
+      head.add(block(0.24, 0.15, 0.18, fur, 0.34 * side, 0.08, 0.12));
     }
-    // Two-piece golden hooked beak.
-    const beakTop = block(0.2, 0.2, 0.18, 0xe8a23a, 0, 0.34, 0.58);
-    beakTop.rotation.x = 0.2;
+    // Compact two-step golden beak.
+    const beakTop = block(0.2, 0.24, 0.2, 0xe8a23a, 0, 0.36, 0.59);
     head.add(beakTop);
-    const beakTip = block(0.12, 0.16, 0.14, 0xc98428, 0, 0.22, 0.63);
-    beakTip.rotation.x = -0.28;
+    const beakTip = block(0.14, 0.12, 0.15, 0xc98428, 0, 0.2, 0.64);
     head.add(beakTip);
     // Layered breast plumage and short wing feathers.
     body.add(block(0.68, 0.22, 0.1, belly, 0, 0.66, bodyD / 2 + 0.08));
@@ -345,6 +351,22 @@ export function makeBear(opts: CharacterOptions = {}): BearParts {
     head.add(block(0.16, 0.07, 0.16, 0xe58a9b, 0.08, 0.0, 0.62));
     // a brow patch above one eye, like every good mutt
     head.add(block(0.2, 0.18, 0.06, earC, 0.24, 0.7, 0.42));
+  } else if (species === 'ox') {
+    // Broad brow, side ears, stepped ivory horns and a pale square muzzle.
+    head.add(block(0.82, 0.22, 0.16, 0x76553d, 0, 0.76, 0.4));
+    for (const side of [-1, 1]) {
+      const ear = block(0.34, 0.2, 0.16, fur, 0.55 * side, 0.66, 0.02);
+      ear.rotation.z = -0.2 * side;
+      head.add(ear);
+      const hornBase = block(0.15, 0.38, 0.14, 0xe8dfc8, 0.42 * side, 0.98, 0);
+      hornBase.rotation.z = -0.34 * side;
+      head.add(hornBase);
+      const hornTip = block(0.13, 0.28, 0.12, 0xf4eddd, 0.53 * side, 1.2, 0);
+      hornTip.rotation.z = 0.18 * side;
+      head.add(hornTip);
+    }
+    head.add(block(0.5, 0.34, 0.2, belly, 0, 0.24, 0.47));
+    head.add(block(0.16, 0.1, 0.08, 0x4c382e, 0, 0.34, 0.58));
   } else if (species === 'mouse') {
     // big round ears
     head.add(block(0.3, 0.3, 0.1, fur, -0.32, 0.98, 0.02));
@@ -362,12 +384,10 @@ export function makeBear(opts: CharacterOptions = {}): BearParts {
   // eyes (frogs already have theirs on top)
   const eyes: THREE.Mesh[] = [];
   if (species === 'owl') {
-    // Christian-style readable eyes: bright square whites with dark voxel
-    // pupils, placed fully in front of the facial disks.
+    // Tall, single-colour eyes match the portraits; the cream facial disks
+    // provide all the contrast, so no separate white sclera is needed.
     for (const side of [-1, 1]) {
-      const white = block(0.22, 0.24, 0.07, 0xf9fbf5, 0.23 * side, 0.52, 0.525);
-      const pupil = block(0.1, 0.14, 0.055, PALETTE.nose, 0.23 * side, 0.51, 0.59);
-      head.add(white);
+      const pupil = block(0.14, 0.27, 0.07, PALETTE.nose, 0.23 * side, 0.52, 0.57);
       head.add(pupil);
       eyes.push(pupil);
     }
@@ -378,9 +398,11 @@ export function makeBear(opts: CharacterOptions = {}): BearParts {
     head.add(eyeR);
     eyes.push(eyeL, eyeR);
   }
-  // rosy cheeks for everyone
-  head.add(block(0.12, 0.08, 0.04, 0xf7b2bd, -0.36, 0.32, 0.41));
-  head.add(block(0.12, 0.08, 0.04, 0xf7b2bd, 0.36, 0.32, 0.41));
+  // Rosy cheeks suit the mammals, while the owl portraits use feather disks.
+  if (species !== 'owl') {
+    head.add(block(0.12, 0.08, 0.04, 0xf7b2bd, -0.36, 0.32, 0.41));
+    head.add(block(0.12, 0.08, 0.04, 0xf7b2bd, 0.36, 0.32, 0.41));
+  }
 
   // --- clothes ---
   const outfit = opts.outfit ?? 'none';
@@ -417,7 +439,14 @@ export function makeBear(opts: CharacterOptions = {}): BearParts {
     body.add(block(0.3, 0.1, 0.06, PALETTE.robeGold, 0, 0.66, 0.34)); // clasp
     armL.add(block(0.34, 0.4, 0.38, oc, 0, -0.14, 0));
     armR.add(block(0.34, 0.4, 0.38, oc, 0, -0.14, 0));
-    head.add(block(0.9, 0.5, 0.2, oc, 0, 0.5, -0.45)); // hood
+    if (species === 'owl') {
+      // Low stepped cowl from the portrait, clear of the head and feather tufts.
+      body.add(block(1.12, 0.2, 0.74, oc, 0, 0.82, 0));
+      body.add(block(0.42, 0.18, 0.16, oc, -0.34, 0.92, 0.34));
+      body.add(block(0.42, 0.18, 0.16, oc, 0.34, 0.92, 0.34));
+    } else {
+      head.add(block(0.9, 0.5, 0.2, oc, 0, 0.5, -0.45)); // hood
+    }
   }
 
   // --- travel sling bag (diagonal strap over the chest, bag at the hip) ---
