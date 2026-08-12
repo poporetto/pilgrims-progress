@@ -570,16 +570,18 @@ export class ShadowScene {
     for (let i = 0; i < this.storyFigures.length; i++) {
       const fp = this.storyFigures[i].root.position;
       const near = Math.hypot(p.x - fp.x, p.z - fp.z) < 2.4;
-      if (near && !this.figureNear[i]) {
-        this.figureNear[i] = true;
-        if (cur >= this.figureUnlock[i]) {
-          this.christian.root.rotation.y = Math.atan2(fp.x - p.x, fp.z - p.z);
-          this.storyFigures[i].root.rotation.y = Math.atan2(p.x - fp.x, p.z - fp.z);
-          this.cb.playScript(this.figureLines[i]);
-          return true;
-        }
-      } else if (!near) {
+      if (!near) {
         this.figureNear[i] = false;
+        continue;
+      }
+      // Only latch (and consume the approach) once the figure is unlocked, so
+      // standing near it too early doesn't permanently swallow its line.
+      if (!this.figureNear[i] && cur >= this.figureUnlock[i]) {
+        this.figureNear[i] = true;
+        this.christian.root.rotation.y = Math.atan2(fp.x - p.x, fp.z - p.z);
+        this.storyFigures[i].root.rotation.y = Math.atan2(p.x - fp.x, p.z - fp.z);
+        this.cb.playScript(this.figureLines[i]);
+        return true;
       }
     }
     return false;

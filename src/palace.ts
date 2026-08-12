@@ -471,8 +471,9 @@ export class PalaceScene {
     hall.add(block(0.8, 7, 20, WALL, -5, 3.5, 0));
     hall.add(block(0.8, 7, 20, WALL, 21, 3.5, 0));
 
-    // paired columns down the nave
-    for (let i = 0; i < 5; i++) {
+    // paired columns down the nave (four pairs; the east end is left open for
+    // the ascending staircase against the right wall)
+    for (let i = 0; i < 4; i++) {
       const cx = -1 + i * 5;
       for (const z of [-6.5, 6.5]) {
         hall.add(block(0.75, 6.2, 0.75, 0xf3ecde, cx, 3.1, z));
@@ -648,7 +649,7 @@ export class PalaceScene {
     // Solid obstacles so Christian can't walk through the columns or tables.
     // Positions mirror the local layout above, offset into world coords.
     this.hallColliders = [];
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < 4; i++) {
       const cx = -1 + i * 5;
       for (const z of [-6.5, 6.5]) {
         this.hallColliders.push({ x: HALL.x + cx, z, hx: 0.45, hz: 0.45 }); // columns
