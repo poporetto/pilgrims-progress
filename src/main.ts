@@ -23,13 +23,21 @@ import { MountainScene } from './mountain';
 import { BeulahScene } from './beulah';
 import { CelestialScene } from './celestial';
 import { makeAlpineMountain } from './alpine';
-import { getDialogueCharacterNames, getDialoguePortrait } from './dialoguePortraits';
+import { getDialogueCharacterNames, getDialoguePortrait, preloadAllPortraits } from './dialoguePortraits';
 
 // ---------------------------------------------------------------- setup
 
 // Vercel Analytics (vanilla/no-framework integration — this is a plain
 // Vite + TS app, not Next.js). No-ops harmlessly when not served from Vercel.
 injectAnalytics();
+
+// Warm the portrait image cache in the background once the browser is idle,
+// so dialogue portraits are already downloaded before any character speaks
+// (rather than popping in empty for a split second on first use). Deferred
+// off the critical path so it never competes with the initial scene setup.
+const schedulePortraitPreload =
+  window.requestIdleCallback ?? ((cb: () => void) => window.setTimeout(cb, 1200));
+schedulePortraitPreload(() => preloadAllPortraits());
 
 // dev only: a hot update must never stack a second game instance (two tick
 // loops sharing one dialogue DOM = ghost dialogue) — always hard-reload.
@@ -625,7 +633,7 @@ function showEnding(title: string, sub: string, body: string, action: () => void
   // state are written. Reopening the game resumes from the world map.
   saveChapterProgress();
   endingOpen = true;
-  document.getElementById('ending-title')!.textContent = title;
+  document.getElementById('ending-title')!.textContent = title.replace(LEADING_EMOJI, '');
   document.getElementById('ending-sub')!.textContent = sub;
   document.getElementById('ending-body')!.textContent = body;
   endingAction = action;
@@ -1617,8 +1625,12 @@ function enterVillage(): void {
   setObjective('🏘 Home for a visit — the shining light in the east leads back to the road');
 }
 
+// strip a leading emoji/pictograph (plus its trailing space) from objective
+// text — call sites still write '🌊 Chapter II Complete' etc. throughout the
+// codebase, but the hint bar itself now shows plain text only.
+const LEADING_EMOJI = /^(?:\p{Extended_Pictographic}️?‍?)+\s*/u;
 function setObjective(text: string): void {
-  ui.objective.textContent = text;
+  ui.objective.textContent = text.replace(LEADING_EMOJI, '');
 }
 
 // ---------------------------------------------------------------- dialogue

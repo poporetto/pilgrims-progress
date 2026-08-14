@@ -169,9 +169,17 @@ export class Music {
     return this.enabled;
   }
 
-  // fade out, switch mood, fade back in
+  // fade out, switch mood, fade back in. Leaving the world map's roaming
+  // theme for a chapter is a hard scene cut (the new chapter is already on
+  // screen), so that particular transition fades out much faster — otherwise
+  // the map music noticeably lingers into the next chapter. Any other mood
+  // change (e.g. within a chapter) keeps the slower, gentler crossfade.
   setStyle(style: MusicStyle): void {
     if (style === this.style) return;
+    const leavingMap = this.style === 'map';
+    const fadeOutMs = leavingMap ? 0.35 : 1.4;
+    const holdMs = leavingMap ? 380 : 1500;
+    const fadeInMs = leavingMap ? 0.9 : 2.0;
     if (!this.ctx || !this.master) {
       this.style = style;
       return;
@@ -179,7 +187,7 @@ export class Music {
     const t = this.ctx.currentTime;
     this.master.gain.cancelScheduledValues(t);
     this.master.gain.setValueAtTime(this.master.gain.value, t);
-    this.master.gain.linearRampToValueAtTime(0.0001, t + 1.4);
+    this.master.gain.linearRampToValueAtTime(0.0001, t + fadeOutMs);
     window.setTimeout(() => {
       this.style = style;
       this.bar = 0;
@@ -190,10 +198,10 @@ export class Music {
         this.master.gain.cancelScheduledValues(t2);
         this.master.gain.setValueAtTime(0.0001, t2);
         this.master.gain.linearRampToValueAtTime(
-          this.enabled ? this.volume : 0, t2 + 2.0,
+          this.enabled ? this.volume : 0, t2 + fadeInMs,
         );
       }
-    }, 1500);
+    }, holdMs);
   }
 
   // one-shot cute blip for UI (dialogue advance)

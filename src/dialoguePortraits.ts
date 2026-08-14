@@ -106,13 +106,33 @@ export function getDialogueCharacterNames(): string[] {
   ])].sort((a, b) => b.length - a.length);
 }
 
+// Public portrait filenames stay stable, so bump this whenever the atlas is
+// recut to prevent browsers from reusing an older, badly framed crop.
+const PORTRAIT_VERSION = '20260730-17';
+
+function portraitUrl(slug: string): string {
+  const url = new URL(`./portraits/${slug}.webp`, document.baseURI);
+  url.searchParams.set('v', PORTRAIT_VERSION);
+  return url.href;
+}
+
 export function getDialoguePortrait(speaker: string): string | null {
   const canonicalName = aliases[speaker] ?? speaker;
   const slug = portraitSlugs.get(canonicalName);
   if (!slug) return null;
-  const url = new URL(`./portraits/${slug}.webp`, document.baseURI);
-  // Public portrait filenames stay stable, so bump this whenever the atlas is
-  // recut to prevent browsers from reusing an older, badly framed crop.
-  url.searchParams.set('v', '20260730-17');
-  return url.href;
+  return portraitUrl(slug);
+}
+
+// Warm the browser's HTTP cache for every portrait up front, so the very
+// first time a given character speaks their picture is already downloaded
+// instead of popping in a moment after the dialogue box opens. The whole set
+// is only a few hundred KB, so this is cheap even on a slow connection.
+export function preloadAllPortraits(): void {
+  const seen = new Set<string>();
+  for (const slug of portraitSlugs.values()) {
+    if (seen.has(slug)) continue;
+    seen.add(slug);
+    const img = new Image();
+    img.src = portraitUrl(slug);
+  }
 }
