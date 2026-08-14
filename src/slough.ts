@@ -489,7 +489,7 @@ export class SloughScene {
       this.christian.root.rotation.y = Math.PI / 2;
       this.cb.splashSound();
       this.cb.playScript([
-        { speaker: 'Christian', text: '*GLUB—!* The mud reaches his ears. Coughing and splashing, he scrambles back to the western bank.' },
+        { speaker: '', text: '*GLUB—!* The mud reaches his ears. Coughing and splashing, he scrambles back to the western bank.' },
         { speaker: 'Christian', text: 'It pulls hardest when I stand still… Keep moving, and catch your breath on the solid Steps!' },
       ]);
     }
