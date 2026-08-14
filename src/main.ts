@@ -1,3 +1,4 @@
+import { inject as injectAnalytics } from '@vercel/analytics';
 import * as THREE from 'three';
 import { PALETTE } from './palette';
 import { makeBear, animateBear, block, mat } from './bear';
@@ -25,6 +26,10 @@ import { makeAlpineMountain } from './alpine';
 import { getDialogueCharacterNames, getDialoguePortrait } from './dialoguePortraits';
 
 // ---------------------------------------------------------------- setup
+
+// Vercel Analytics (vanilla/no-framework integration — this is a plain
+// Vite + TS app, not Next.js). No-ops harmlessly when not served from Vercel.
+injectAnalytics();
 
 // dev only: a hot update must never stack a second game instance (two tick
 // loops sharing one dialogue DOM = ghost dialogue) — always hard-reload.
