@@ -1,3 +1,4 @@
+import { bakeStatic } from './world/voxels';
 import * as THREE from 'three';
 import { PALETTE } from './palette';
 import { makeBear, animateBear, BearParts, block, mat } from './bear';
@@ -1019,6 +1020,13 @@ export class WorldMap {
     // travellers
     this.scene.add(this.christian.root);
     this.placeOn(this.mainCurve, this.christian.root, this.progress);
+    // merge every static opaque mesh on the continent into one draw call;
+    // animated pieces (party, clouds, birds, halos) stay separate
+    const live = new Set<THREE.Object3D>([this.christian.root, ...this.followers.map((f) => f.root), ...this.clouds, ...this.birds.map((b) => b.g), ...this.sunHalos]);
+    const statics = new THREE.Group();
+    for (const o of [...s.children]) if (!live.has(o) && (o as THREE.Mesh).isMesh || o.type === 'Group' && !live.has(o)) statics.add(o);
+    s.add(statics);
+    bakeStatic(statics);
   }
 
   private nearLand(x: number, z: number): boolean {
