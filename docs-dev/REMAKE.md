@@ -110,6 +110,7 @@ update the checklist as phases land.
 - [x] VI Highway at evening
 - [x] VII Hill Difficulty
 - [x] VIII Palace (exterior; hall/roof keep their rooms)
+- [x] IX Valley of Humiliation
 
 ## Baseline (before remake, dev build, 1 s sample after debug jump)
 

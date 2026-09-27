@@ -1,6 +1,10 @@
 import * as THREE from 'three';
 import { PALETTE } from './palette';
 import { makeBear, animateBear, addPilgrimArmorDetails, BearParts, block, mat } from './bear';
+import { dressExterior } from './world/dress';
+import { band } from './world/terrain';
+import { createRock } from './world/props';
+import { voxelMesh, Voxel, rng as seeded, vary } from './world/voxels';
 import { makeShiningLight, animateShiningLight, ShiningLight, setupSunShadow } from './light';
 import { DialogueLine } from './npcs';
 
@@ -369,56 +373,72 @@ export class ValleyScene {
     sun.shadow.camera.bottom = -50;
     s.add(sun);
 
-    const ground = new THREE.Mesh(new THREE.BoxGeometry(160, 1, 90), mat(0x7a8a6a));
-    ground.position.y = -0.5;
-    ground.receiveShadow = true;
-    s.add(ground);
+    // the valley: the road descends the exact walking height from the high
+    // western plateau to the floor, while scarred valley walls rise either side
+    const vr = seeded(91);
+    dressExterior(s, {
+      seed: 99,
+      bounds: { minX: -95, maxX: 72, minZ: -55, maxZ: 55 },
+      cell: 1.5,
+      flat: (x, z) => band(Math.max(0, Math.abs(z) - 9), 0, 5) * band(Math.max(0, -96 - x, x - 42), 0, 8),
+      shape: (x, z) => this.groundY(x) + (1 - band(Math.abs(z), 11, 24)) * 4.5,
+      hills: 3,
+      blocked: (x, z) => Math.abs(z) < 1.4 && x > -34 && x < 40,
+      palette: {
+        grass: [0x8f9c74, 0x87946c, 0x97a47b, 0x808d67],
+        highGrass: 0xa39b7c,
+        earth: 0xb8a888,
+        leaves: [0x869467, 0x7c8a5e, 0x909e6f],
+        pine: [0x5f6f58, 0x677760, 0x586851],
+        flowers: [0xe8d6c2, 0xf2d5b8, 0xd8cfe0],
+      },
+      tint: (_x, _z, y, c) => { if (y > 3.5) c.lerp(new THREE.Color(0xa4917c), THREE.MathUtils.clamp((y - 3.5) / 5, 0, 0.6)); },
+      grass: 2200,
+      flowers: 120,
+      trees: 35,
+      shrubs: 70,
+      treeZone: (_x, z) => Math.abs(z) > 10 && Math.abs(z) < 38,
+    });
 
-    // the descent: broad slabs stepping down from the west
-    const STEPS = 14;
-    for (let i = 0; i < STEPS; i++) {
-      const x0 = HILL_X0 + (i * (HILL_X1 - HILL_X0)) / STEPS;
-      const x1 = HILL_X0 + ((i + 1) * (HILL_X1 - HILL_X0)) / STEPS;
-      const h = Math.max(this.groundY((x0 + x1) / 2 - 1), 0.4);
-      const slab = block(x1 - x0 + 0.6, h, 26, i % 2 === 0 ? 0x74855f : 0x687a55, (x0 + x1) / 2, h / 2, 0);
-      slab.receiveShadow = true;
-      s.add(slab);
-    }
-    // The high west plateau continues well beyond the opening camera view, so
-    // Christian begins on a real peak instead of beside an empty backdrop.
-    const rim = block(50, HILL_H, 32, 0x74855f, HILL_X0 - 25, HILL_H / 2, 0);
-    rim.receiveShadow = true;
-    s.add(rim);
-    s.add(block(48, 0.45, 30, 0x829367, HILL_X0 - 25, HILL_H + 0.22, 0));
-    for (const [x, z, w] of [
-      [-68, -10, 3.2], [-60, 9, 2.4], [-51, -8, 2.8], [-42, 10, 3.4], [-35, -10, 2.2],
-    ] as const) {
-      s.add(block(w, 0.8, w * 0.8, 0x62675b, x, HILL_H + 0.4, z));
-      s.add(block(w * 0.55, 0.45, w * 0.5, 0x74786a, x + 0.7, HILL_H + 0.9, z - 0.4));
-    }
-
-    // gnarled valley scenery: dark rocks and dead trees
-    for (const [rx, rz] of [[-2, -8], [4, 8], [12, -8], [18, 7], [26, -7], [-10, 8]] as const) {
-      s.add(block(1.6 + Math.random(), 1.1, 1.4, 0x5e6258, rx, 0.55, rz));
-      s.add(block(0.9, 0.6, 0.8, 0x525648, rx + 1, 0.3, rz + 0.6));
-    }
-    for (const [tx, tz] of [[-6, -9], [9, 9], [22, -9], [30, 8]] as const) {
-      const dead = new THREE.Group();
-      dead.add(block(0.42, 2.6, 0.42, 0x6a5f56, 0, 1.3, 0));
-      dead.add(block(1.5, 0.28, 0.28, 0x6a5f56, 0.45, 2.2, 0));
-      dead.add(block(0.28, 1.0, 0.28, 0x5a5048, 1.1, 2.8, 0));
+    // gnarled valley scenery: dark scree boulders and dead trees
+    ([[-2, -8], [4, 8], [12, -8], [18, 7], [26, -7], [-10, 8], [-18, -8.5], [33, 8]] as const).forEach(([rx, rz], i) => {
+      for (let k = 0; k < 2; k++) {
+        const rock = createRock({ seed: 990 + i * 3 + k, size: 1.0 - k * 0.4, color: 0x7d7b72 });
+        const x = rx + k * 1.1;
+        const z = rz + k * 0.6;
+        rock.position.set(x, rock.position.y + this.groundY(x), z);
+        s.add(rock);
+      }
+    });
+    for (const [tx, tz] of [[-6, -9], [9, 9], [22, -9], [30, 8], [-22, 9], [-14, -9.5]] as const) {
+      const dead = voxelMesh([
+        { w: 0.5, h: 0.3, d: 0.5, x: 0, y: 0.15, z: 0, color: 0x5f554c },
+        { w: 0.42, h: 2.6, d: 0.42, x: 0, y: 1.3, z: 0, color: 0x6a5f56 },
+        { w: 1.5, h: 0.28, d: 0.28, x: 0.45, y: 2.2, z: 0, color: 0x6a5f56, rz: 0.2 },
+        { w: 0.28, h: 1.0, d: 0.28, x: 1.1, y: 2.8, z: 0, color: 0x5a5048, rz: -0.15 },
+        { w: 0.9, h: 0.22, d: 0.22, x: -0.5, y: 1.6, z: 0.1, color: 0x5a5048, rz: -0.4 },
+      ]);
       dead.position.set(tx, this.groundY(tx), tz);
+      dead.rotation.y = tx * 0.37;
       s.add(dead);
     }
 
-    // the road down and along the valley floor
+    // the road down and along the valley floor — worn flagstones
+    const roadVox: Voxel[] = [];
     for (let i = 0; i <= 22; i++) {
       const px = -30 + i * 3.1;
-      const stone = block(0.9 + Math.random() * 0.5, 0.14, 1.7 + Math.random() * 0.6,
-        0xb8a888, px, this.groundY(px) + 0.07, (Math.random() - 0.5) * 0.7);
-      stone.castShadow = false;
-      s.add(stone);
+      for (let k = 0; k < 2; k++) {
+        const x = px + k * 1.5;
+        roadVox.push({
+          w: 1.0 + vr() * 0.5, h: 0.14, d: 1.5 + vr() * 0.6,
+          x, y: this.groundY(x) + 0.07, z: (vr() - 0.5) * 0.7,
+          ry: (vr() - 0.5) * 0.3, color: vary(0xc4b394, vr, 0.04),
+        });
+      }
     }
+    const road = voxelMesh(roadVox);
+    road.castShadow = false;
+    s.add(road);
     this.apollyon.position.copy(this.apHome);
     s.add(this.apollyon);
     s.add(this.groundSword);
