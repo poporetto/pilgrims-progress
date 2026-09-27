@@ -4,6 +4,12 @@ import { makeBear, animateBear, addPilgrimArmorDetails, BearParts, block, mat } 
 import { makeShiningLight, animateShiningLight, ShiningLight, setupSunShadow } from './light';
 import { DialogueLine } from './npcs';
 import { addHighwayPaving } from './road';
+import { dressExterior } from './world/dress';
+import { band } from './world/terrain';
+import { createTree, createRock } from './world/props';
+import { bakeStatic } from './world/voxels';
+import { waterMaterial } from './world/water';
+import { makeAlpineMountain } from './alpine';
 
 // Chapter XIV — The Delectable Mountains.
 // After Doubting Castle, Christian and Hopeful reach the bright, safe mountains
@@ -63,6 +69,7 @@ export class MountainScene {
   hopeful: BearParts;
   // the four shepherds, in fixed order: Knowledge, Experience, Watchful, Sincere
   private shepherds: BearParts[] = [];
+  private terrainY: (x: number, z: number) => number = () => 0;
   private shepherdNames = ['Knowledge', 'Experience', 'Watchful', 'Sincere'];
   private shepherdLines: DialogueLine[][] = [
     [{ speaker: 'Knowledge', text: 'The road is short now, pilgrim. Keep the Word open every day — it is the only map that never lies.' }],
@@ -288,48 +295,39 @@ export class MountainScene {
     const rand = (a: number, b: number) => a + rng() * (b - a);
     this.placementZones = [];
     this.reserveFixedLayout();
+    // water first, so its zones keep grass and flowers out of it
+    this.buildLake(-24, 10, 5, 3);
+    this.buildLake(14, -12, 4, 2.6);
+    this.buildLake(44, 12, 6, 3.4);
+    this.buildRiver();
 
-    // ---- rolling green ground with texture patches ----
-    const ground = new THREE.Mesh(new THREE.BoxGeometry(240, 1, 60), mat(0x8fd06a));
-    ground.position.set(LIGHT_X / 2, -0.5, 0);
-    ground.receiveShadow = true;
-    s.add(ground);
-    for (let i = 0; i < 72; i++) {
-      const spot = this.tryPlace(rng, WEST_EDGE - 4, LIGHT_X + 8, -16, -4, 0.8)
-        ?? this.tryPlace(rng, WEST_EDGE - 4, LIGHT_X + 8, 4, 16, 0.8);
-      if (!spot) continue;
-      const patch = block(
-        0.9 + rng() * 1.8, 0.1, 0.9 + rng() * 1.8,
-        rng() > 0.5 ? 0x86c862 : 0x9ad878,
-        spot.x, 0.04 + rng() * 0.03, spot.z,
-      );
-      patch.castShadow = false;
-      s.add(patch);
-      this.reserveZone(spot.x, spot.z, 1.0);
-    }
+    // ---- rolling green meadows, rising into foothills and snowy peaks ----
+    const foot = (z: number) => 1 - band(Math.abs(z), 17, 27);
+    const dress = dressExterior(s, {
+      seed: 141,
+      bounds: { minX: -90, maxX: 120, minZ: -52, maxZ: 52 },
+      cell: 1.8,
+      flat: (x, z) => band(Math.max(0, Math.abs(z) - 17), 0, 3) * band(Math.max(0, -40 - x, x - (LIGHT_X + 10)), 0, 8),
+      shape: (_x, z) => foot(z) * 5.5,
+      hills: 4.2,
+      blocked: (x, z) => !this.canPlace(x, z, 0.2, 0.2),
+      palette: {
+        grass: [0x9bd57c, 0x92cf72, 0xa6dc88, 0x89c86a],
+        highGrass: 0xc4e6ae,
+        blossom: true,
+        flowers: [0xf4c2d4, 0xfff0a0, 0xe8d4f8, 0xffb3c6, 0xaecbff, 0xffffff],
+      },
+      tint: (_x, _z, y, c) => { if (y > 6) c.lerp(new THREE.Color(0xbfc9b7), THREE.MathUtils.clamp((y - 6) / 5, 0, 0.6)); },
+      grass: 3200,
+      flowers: 700,
+      trees: 40,
+      shrubs: 50,
+      treeZone: (_x, z) => Math.abs(z) > 18 && Math.abs(z) < 34,
+    });
+    this.terrainY = dress.heightAt;
 
     // distant ridges and sky — layered depth behind the play lane
     this.buildMountainBackdrop();
-
-    // rolling hills in the far meadow band — never overlapping path props
-    const hillColors = [0x86c862, 0x93d072, 0x7bbe58];
-    let domesPlaced = 0;
-    for (let attempt = 0; attempt < 80 && domesPlaced < 24; attempt++) {
-      const northSide = rng() < 0.5;
-      const hx = rand(WEST_EDGE - 4, LIGHT_X + 4);
-      const hz = northSide ? -rand(19, 24) : rand(19, 24);
-      const hr = rand(3, 6);
-      if (!this.canPlace(hx, hz, hr + 0.5)) continue;
-      const dome = new THREE.Mesh(
-        new THREE.SphereGeometry(hr, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2),
-        mat(hillColors[domesPlaced % 3]),
-      );
-      dome.position.set(hx, -0.2, hz);
-      dome.scale.y = rand(0.35, 0.6);
-      s.add(dome);
-      this.reserveZone(hx, hz, hr + 0.8);
-      domesPlaced++;
-    }
 
     // ---- the King's Highway path down the middle ----
     const path = new THREE.Mesh(new THREE.PlaneGeometry(LIGHT_X - WEST_EDGE + 12, 4.2), mat(PALETTE.path));
@@ -355,22 +353,6 @@ export class MountainScene {
     // dry-stone walls and rocky outcrops framing the meadows
     this.buildPastoralDetails();
 
-    // ---- scattered flowers and low bushes (meadow band only) ----
-    const flowerColors = [0xf4c2d4, 0xfff0a0, 0xe8d4f8, 0xffb3c6, 0xaecbff];
-    for (let i = 0; i < 110; i++) {
-      const north = i % 2 === 0;
-      const spot = this.tryPlace(
-        rng, WEST_EDGE - 4, LIGHT_X + 4,
-        north ? -16 : 4, north ? -4 : 16,
-        0.35,
-      );
-      if (!spot) continue;
-      s.add(block(0.16, 0.3, 0.16, flowerColors[i % 5], spot.x, 0.15, spot.z));
-      if (i % 4 === 0) {
-        s.add(block(0.08, 0.2, 0.08, PALETTE.leaf, spot.x, 0.06, spot.z));
-      }
-    }
-
     // ---- fruit trees (meadow band, clear of hills and landmarks) ----
     for (let i = 0; i < 20; i++) {
       const north = i % 2 === 0;
@@ -385,10 +367,6 @@ export class MountainScene {
     }
 
     // ---- small lakes + a flowing river (before camp so zones are reserved) ----
-    this.buildLake(-24, 10, 5, 3);
-    this.buildLake(14, -12, 4, 2.6);
-    this.buildLake(44, 12, 6, 3.4);
-    this.buildRiver();
 
     // ---- shepherd's rest camp at the welcome plaza ----
     this.buildShepherdCamp();
@@ -433,16 +411,9 @@ export class MountainScene {
   }
 
   private buildFruitTree(x: number, z: number): void {
-    const t = new THREE.Group();
-    t.add(block(0.5, 1.6, 0.5, PALETTE.trunk, 0, 0.8, 0));
-    t.add(block(2.0, 1.4, 2.0, 0x74c060, 0, 2.2, 0));
-    t.add(block(1.3, 1.0, 1.3, 0x82cc6c, 0, 3.05, 0));
-    for (let i = 0; i < 6; i++) {
-      const a = (i / 6) * Math.PI * 2;
-      t.add(block(0.22, 0.22, 0.22, i % 2 ? 0xff8a4a : 0xf25b6a,
-        Math.cos(a) * 0.9, 2.2 + Math.sin(a * 2) * 0.4, Math.sin(a) * 0.9));
-    }
+    const t = createTree({ seed: Math.round(x * 13 + z * 7) + 1400, kind: 'fruit' });
     t.position.set(x, 0, z);
+    t.rotation.y = x * 0.7;
     this.scene.add(t);
   }
 
@@ -455,21 +426,16 @@ export class MountainScene {
     const ROCK = 0x8a9e88;
     const SNOW = 0xf4fbff;
 
+    // the same faceted alpine language as the title screen and world map,
+    // seated on the foothills so each peak rises out of real ground
     const addPeak = (x: number, z: number, h: number, r: number, rot = 0): void => {
-      const slope = new THREE.Mesh(new THREE.ConeGeometry(r, h, 7), mat(x % 3 === 0 ? GREEN : GREEN_DK));
-      slope.position.set(x, h / 2 - 0.3, z);
-      slope.rotation.y = rot;
-      g.add(slope);
-      const snowH = h * 0.32;
-      const snow = new THREE.Mesh(new THREE.ConeGeometry(r * 0.55, snowH, 7), mat(SNOW));
-      snow.position.set(x, h - snowH / 2 + 0.1, z);
-      snow.rotation.y = rot;
-      g.add(snow);
-      if (r > 3.8) {
-        const spur = new THREE.Mesh(new THREE.ConeGeometry(r * 0.38, h * 0.55, 6), mat(ROCK));
-        spur.position.set(x + r * 0.62, h * 0.28, z + 0.8);
-        g.add(spur);
-      }
+      const peak = makeAlpineMountain({
+        width: r * 2.1, height: h * 1.35, depth: r * 1.6,
+        rock: x % 3 === 0 ? 0x86a58b : 0x7b9a82, rockLight: 0x9dbf95, snow: SNOW, snowHeightRatio: 0.34,
+      });
+      peak.position.set(x, this.terrainY(x, z) - 0.6, z);
+      peak.rotation.y = rot;
+      g.add(peak);
     };
 
     const northRidge = [
@@ -477,24 +443,13 @@ export class MountainScene {
       [6, -25, 10.5, 6.8], [20, -23, 8.0, 5.4], [34, -24, 7.2, 5.0],
       [48, -22, 9.8, 6.2], [62, -23, 7.6, 5.1], [76, -24, 8.8, 5.8],
     ] as const;
-    for (const [x, z, h, r] of northRidge) addPeak(x, z, h, r, x * 0.04);
+    for (const [x, z, h, r] of northRidge) addPeak(x, z - 6, h, r, x * 0.04);
 
     const southRidge = [
       [-30, 20, 5.2, 4.2], [-14, 22, 6.4, 4.8], [2, 21, 5.8, 4.4],
       [18, 23, 7.0, 5.0], [32, 21, 5.5, 4.3], [50, 22, 6.8, 4.9], [68, 21, 5.9, 4.5],
     ] as const;
-    for (const [x, z, h, r] of southRidge) addPeak(x, z, h * 0.85, r, -x * 0.03);
-
-    const haze = new THREE.Mesh(
-      new THREE.BoxGeometry(LIGHT_X - WEST_EDGE + 40, 4, 2),
-      new THREE.MeshStandardMaterial({ color: 0xd8f0ff, transparent: true, opacity: 0.35 }),
-    );
-    haze.position.set((WEST_EDGE + LIGHT_X) / 2, 3.5, -27);
-    haze.castShadow = false;
-    g.add(haze);
-    const hazeS = haze.clone();
-    hazeS.position.z = 26;
-    g.add(hazeS);
+    for (const [x, z, h, r] of southRidge) addPeak(x, z + 8, h * 0.7, r, -x * 0.03);
 
     this.scene.add(g);
   }
@@ -516,7 +471,7 @@ export class MountainScene {
       }
       wall.position.set(wx, 0, wz);
       wall.rotation.y = rot;
-      s.add(wall);
+      s.add(bakeStatic(wall));
     }
 
     for (const [fx, fz] of [[-32, -12], [30, 13], [58, -12]] as const) {
@@ -549,11 +504,9 @@ export class MountainScene {
         0.7,
       );
       if (!spot) continue;
-      const rock = block(
-        0.6 + rng() * 0.8, 0.4 + rng() * 0.5, 0.5 + rng() * 0.7,
-        0x9a9488, spot.x, 0.25, spot.z,
-      );
-      rock.rotation.y = rng() * Math.PI;
+      const rock = createRock({ seed: 1410 + i, size: 0.55 + rng() * 0.4, moss: rng() > 0.4 });
+      rock.position.x = spot.x;
+      rock.position.z = spot.z;
       s.add(rock);
       this.reserveZone(spot.x, spot.z, 0.9);
     }
@@ -682,12 +635,11 @@ export class MountainScene {
 
   private buildLake(x: number, z: number, w: number, d: number): void {
     this.reserveZone(x, z, Math.max(w, d) + 0.8);
-    const lake = new THREE.Mesh(new THREE.CircleGeometry(1, 20), mat(0x8fd0ea));
+    const lake = new THREE.Mesh(new THREE.CircleGeometry(1, 24), waterMaterial);
     lake.rotation.x = -Math.PI / 2;
     lake.scale.set(w, d, 1);
     lake.position.set(x, 0.03, z);
-    (lake.material as THREE.MeshStandardMaterial).transparent = true;
-    (lake.material as THREE.MeshStandardMaterial).opacity = 0.9;
+    lake.renderOrder = 2;
     this.scene.add(lake);
     this.water.push(lake);
     const rim = new THREE.Mesh(new THREE.RingGeometry(0.9, 1.05, 20), mat(0xbfe6f2));
@@ -711,18 +663,45 @@ export class MountainScene {
   // a river of blue tiles winding across the north side; the tiles bob gently
   // to suggest flowing water
   private buildRiver(): void {
-    for (let i = 0; i < 40; i++) {
-      const rx = WEST_EDGE + i * ((LIGHT_X - WEST_EDGE) / 40);
+    // one continuous rippling ribbon winding across the south meadow
+    const pos: number[] = [];
+    const N = 80;
+    const half = 1.15;
+    for (let i = 0; i <= N; i++) {
+      const rx = WEST_EDGE - 4 + i * ((LIGHT_X + 8 - WEST_EDGE) / N);
       const rz = 9 + Math.sin(rx * 0.15) * 3.5;
-      this.reserveZone(rx, rz, 2.0);
-      const tile = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 2.2), mat(0x7ec8ea));
-      tile.rotation.x = -Math.PI / 2;
-      tile.position.set(rx, 0.04, rz);
-      (tile.material as THREE.MeshStandardMaterial).transparent = true;
-      (tile.material as THREE.MeshStandardMaterial).opacity = 0.85;
-      this.scene.add(tile);
-      this.water.push(tile);
+      if (i % 2 === 0) this.reserveZone(rx, rz, 2.0);
+      const w = half * (1 + Math.sin(rx * 0.37) * 0.18);
+      pos.push(rx, 0, rz - w, rx, 0, rz + w);
     }
+    const idx: number[] = [];
+    for (let i = 0; i < N; i++) {
+      const a = i * 2;
+      idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2);
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    geo.setIndex(idx);
+    geo.computeVertexNormals();
+    const river = new THREE.Mesh(geo, waterMaterial);
+    river.position.y = 0.04;
+    river.receiveShadow = true;
+    river.renderOrder = 2;
+    this.scene.add(river);
+    this.water.push(river);
+    // a soft sandy bank under the water
+    const bankGeo = geo.clone();
+    const bp = bankGeo.getAttribute('position') as THREE.BufferAttribute;
+    for (let i = 0; i < bp.count; i++) {
+      const z0 = bp.getZ(i);
+      const mid = 9 + Math.sin(bp.getX(i) * 0.15) * 3.5;
+      bp.setZ(i, mid + (z0 - mid) * 1.35);
+    }
+    bankGeo.computeVertexNormals();
+    const bank = new THREE.Mesh(bankGeo, new THREE.MeshStandardMaterial({ color: 0xd8c49c, roughness: 1 }));
+    bank.position.y = 0.02;
+    bank.receiveShadow = true;
+    this.scene.add(bank);
   }
 
   // 1. Hill Error — a cliff edge to the north (top of screen), a dark chasm
