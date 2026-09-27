@@ -4,6 +4,10 @@ import { makeBear, animateBear, BearParts, block, mat } from './bear';
 import { makeShiningLight, animateShiningLight, ShiningLight, setupSunShadow } from './light';
 import { DialogueLine } from './npcs';
 import { addHighwayPaving } from './road';
+import { dressExterior } from './world/dress';
+import { band } from './world/terrain';
+import { createTree, createRock } from './world/props';
+import { voxelMesh, Voxel, rng as seeded, vary } from './world/voxels';
 
 // Chapter VII — the Hill of Difficulty.
 // At the foot of a steep hill the road splits in three: the King's marked
@@ -57,6 +61,7 @@ export class HillScene {
   private formalist: BearParts;
   private hypocrisy: BearParts;
   private deserters = false; // true while F & H walk off to their doom
+  private terrainY: (x: number, z: number) => number = () => 0;
   private timorous: BearParts;
   private mistrust: BearParts;
   private fleeT = 0;
@@ -170,40 +175,30 @@ export class HillScene {
     s.add(sun);
     this.sunLight = sun;
 
-    const ground = new THREE.Mesh(new THREE.BoxGeometry(160, 1, 90), mat(PALETTE.grass));
-    ground.position.y = -0.5;
-    ground.receiveShadow = true;
-    s.add(ground);
-    for (let i = 0; i < 45; i++) {
-      const x = -50 + Math.random() * 100;
-      const z = -35 + Math.random() * 70;
-      if (x > HILL_X0 - 1 && x < HILL_X1 + 34) continue; // keep the hillside clean
-      const p = block(0.9 + Math.random() * 1.6, 0.1, 0.9 + Math.random() * 1.6,
-        Math.random() > 0.5 ? PALETTE.grassLight : PALETTE.grassDark, x, 0.04 + Math.random() * 0.03, z);
-      p.castShadow = false;
-      s.add(p);
-    }
-
-    // ---------- the hill: broad grassy steps up to a long summit ridge ----------
-    const stepColors = [0x9ede97, PALETTE.grass, 0xa8e6a3];
-    // many shallow steps, each topped at the height of its WESTERN edge, so
-    // every slab sits at or below where Christian walks — no clipping into it
-    const STEPS = 16;
-    for (let i = 0; i < STEPS; i++) {
-      const x0 = HILL_X0 + (i * (HILL_X1 - HILL_X0)) / STEPS;
-      const x1 = HILL_X0 + ((i + 1) * (HILL_X1 - HILL_X0)) / STEPS;
-      const h = Math.max(this.groundY(x0 + 0.01), 0.3);
-      const slab = block(x1 - x0 + 0.4, h, 26, stepColors[i % 3], (x0 + x1) / 2, h / 2, 0);
-      slab.receiveShadow = true;
-      s.add(slab);
-    }
-    // the summit ridge, running east to the light
-    const ridge = block(34, HILL_H, 26, PALETTE.grass, HILL_X1 + 17, HILL_H / 2, 0);
-    ridge.receiveShadow = true;
-    s.add(ridge);
-    const ridgeTrim = block(34.4, 0.14, 26.4, 0x9ede97, HILL_X1 + 17, HILL_H + 0.02, 0);
-    ridgeTrim.castShadow = false;
-    s.add(ridgeTrim);
+    // ---------- the hill: one faceted landform. Along the King's way it
+    // matches the exact walking height; the ridge then falls away to the easy
+    // ways on either side, and meadows roll beyond.
+    const ridge = (x: number, z: number) => this.groundY(x) * band(Math.abs(z), 8.5, 13.5);
+    const dress = dressExterior(s, {
+      seed: 77,
+      bounds: { minX: -75, maxX: 85, minZ: -55, maxZ: 55 },
+      cell: 1.35,
+      flat: (x, z) => band(Math.max(0, Math.abs(z) - 16), 0, 6) * band(Math.max(0, -34 - x, x - 48), 0, 8),
+      shape: ridge,
+      hills: 3.6,
+      blocked: (x, z) => (Math.abs(z) < 2.1 && x > -30 && x < 44) || Math.hypot(x - ARBOR.x, z - ARBOR.z) < 2.2,
+      palette: {
+        grass: [0xabdd9b, 0xa2d692, 0xb6e4a6, 0x9ccf8d],
+        highGrass: 0xc4ebb0,
+        blossom: true,
+      },
+      grass: 3000,
+      flowers: 420,
+      trees: 60,
+      shrubs: 50,
+      treeZone: (_x, z) => Math.abs(z) > 17 && Math.abs(z) < 42,
+    });
+    this.terrainY = dress.heightAt;
 
     // the King's way: stones straight up the slope and along the ridge
     addHighwayPaving(s, -28, 42, {
@@ -217,25 +212,35 @@ export class HillScene {
     s.add(mark);
 
     // ---------- the two easy ways: Danger (left) and Destruction (right) ----------
+    const er = seeded(71);
+    const easyVox: Voxel[] = [];
     for (const dir of [-1, 1]) {
       for (let i = 0; i < 9; i++) {
         const px = FORK_X + 1 + i * 2.2;
         const pz = dir * (1.5 + i * 1.35);
-        const stone = block(1.6, 0.12, 1.6, 0xd9c9a8, px, 0.06, pz);
-        stone.castShadow = false;
-        s.add(stone);
+        easyVox.push({ w: 1.6, h: 0.12, d: 1.6, x: px, y: dress.heightAt(px, pz) + 0.06, z: pz, ry: er() * 0.4, color: vary(0xd9c9a8, er, 0.03) });
       }
-      // each ends among dark rocks and dead trees
+      // each ends among dark rocks and a dead tree
       const ex = FORK_X + 1 + 9 * 2.2;
       const ez = dir * (1.5 + 9 * 1.35);
-      s.add(block(2.2, 1.6, 1.8, 0x6f6f7a, ex + 0.5, 0.8, ez));
-      s.add(block(1.4, 1.0, 1.2, 0x62626e, ex - 1.2, 0.5, ez + dir * 1.2));
-      const dead = new THREE.Group();
-      dead.add(block(0.4, 2.4, 0.4, 0x9a8f86, 0, 1.2, 0));
-      dead.add(block(1.4, 0.26, 0.26, 0x9a8f86, 0.4, 2.1, 0));
-      dead.position.set(ex - 0.5, 0, ez - dir * 1.5);
+      for (let k = 0; k < 3; k++) {
+        const rock = createRock({ seed: 700 + k + (dir > 0 ? 10 : 0), size: 1.1 - k * 0.25, color: 0x8a8594 });
+        const rx = ex + 0.5 - k * 0.9;
+        const rz = ez + dir * k * 0.7;
+        rock.position.set(rx, rock.position.y + dress.heightAt(rx, rz), rz);
+        s.add(rock);
+      }
+      const dead = voxelMesh([
+        { w: 0.4, h: 2.4, d: 0.4, x: 0, y: 1.2, z: 0, color: 0xa39a92 },
+        { w: 1.4, h: 0.26, d: 0.26, x: 0.4, y: 2.1, z: 0, color: 0xa39a92, rz: 0.25 },
+        { w: 0.24, h: 0.8, d: 0.24, x: 0.95, y: 2.55, z: 0, color: 0x958c84 },
+      ]);
+      dead.position.set(ex - 0.5, dress.heightAt(ex - 0.5, ez - dir * 1.5), ez - dir * 1.5);
       s.add(dead);
     }
+    const easyMesh = voxelMesh(easyVox);
+    easyMesh.castShadow = false;
+    s.add(easyMesh);
     // a three-armed signpost at the fork
     const post = new THREE.Group();
     post.add(block(0.16, 2.8, 0.16, PALETTE.woodDark, 0, 1.4, 0));
@@ -290,17 +295,13 @@ export class HillScene {
     this.scrollProp = sp;
 
     // trees flanking the lower road and dotted along the ridge
-    for (const [tx, tz, blossom] of [
-      [-26, 7, true], [-20, -8, false], [-11, 8, false],
-      [20, 8, true], [27, -8, false], [33, 7, true],
-    ] as const) {
-      const tree = new THREE.Group();
-      tree.add(block(0.5, 1.6, 0.5, PALETTE.trunk, 0, 0.8, 0));
-      tree.add(block(1.9, 1.3, 1.9, blossom ? PALETTE.leafPink : PALETTE.leaf, 0, 2.2, 0));
-      tree.add(block(1.2, 0.9, 1.2, blossom ? PALETTE.leafPink : PALETTE.leaf, 0, 3.1, 0));
-      tree.position.set(tx, this.groundY(tx), tz);
+    ([[-26, 7, 'blossom'], [-20, -8, 'leafy'], [-11, 8, 'leafy'],
+      [20, 8, 'blossom'], [27, -8, 'fruit'], [33, 7, 'blossom']] as const).forEach(([tx, tz, kind], i) => {
+      const tree = createTree({ seed: 770 + i * 3, kind });
+      tree.position.set(tx, dress.heightAt(tx, tz), tz);
+      tree.rotation.y = i * 1.3;
       s.add(tree);
-    }
+    });
 
     // the pair wait invisible until the warning scene
     this.timorous.root.visible = false;
@@ -555,6 +556,7 @@ export class HillScene {
         const wp = who.root.position;
         wp.x += dt * 3.4;
         wp.z += dir * dt * 2.2;
+        wp.y = this.terrainY(wp.x, wp.z);
         who.root.rotation.y = Math.atan2(3.4, dir * 2.2);
         animateBear(who, t * 1.3 + dir, true);
         if (Math.abs(wp.z) > 13) who.root.visible = false;
