@@ -4,6 +4,9 @@ import { makeBear, animateBear, addPilgrimArmorDetails, BearParts, block, mat } 
 import { makeShiningLight, animateShiningLight, ShiningLight, setupSunShadow } from './light';
 import { DialogueLine } from './npcs';
 import { addHighwayPaving } from './road';
+import { dressExterior } from './world/dress';
+import { band } from './world/terrain';
+import { createPine, createLamp } from './world/props';
 
 // Chapter VIII — Palace Beautiful.
 // At dusk Christian reaches a shining white palace — but two enormous lions
@@ -266,9 +269,9 @@ export class PalaceScene {
     s.background = new THREE.Color(0x8a86b8); // deep dusk
     s.fog = new THREE.Fog(0x8a86b8, 40, 110);
 
-    this.exteriorHemi = new THREE.HemisphereLight(0xb8b4d8, 0x8a8a9a, 0.75);
+    this.exteriorHemi = new THREE.HemisphereLight(0xcdbfe6, 0x9d9092, 0.98);
     s.add(this.exteriorHemi);
-    const sun = new THREE.DirectionalLight(0xd8c4f0, 0.9);
+    const sun = new THREE.DirectionalLight(0xf4c8da, 1.08); // rosy low twilight sun
     sun.position.set(30, 30, 20);
     setupSunShadow(sun);
     sun.shadow.mapSize.set(2048, 2048);
@@ -279,17 +282,38 @@ export class PalaceScene {
     s.add(sun);
     this.exteriorSun = sun;
 
-    const ground = new THREE.Mesh(new THREE.BoxGeometry(160, 1, 90), mat(0x7fa274));
-    ground.position.y = -0.5;
-    ground.receiveShadow = true;
-    s.add(ground);
-    for (let i = 0; i < 40; i++) {
-      const x = -45 + Math.random() * 85;
-      const z = -35 + Math.random() * 70;
-      const p = block(0.9 + Math.random() * 1.6, 0.1, 0.9 + Math.random() * 1.6,
-        Math.random() > 0.5 ? 0x74996a : 0x8cb281, x, 0.04 + Math.random() * 0.03, z);
-      p.castShadow = false;
-      s.add(p);
+    // twilight grounds: dusky sage meadows kept level along the road and the
+    // palace forecourt, rolling into softly lit hills and woods beyond
+    const TWILIGHT = new THREE.Color(0xa99ec4);
+    dressExterior(s, {
+      seed: 88,
+      bounds: { minX: -72, maxX: 58, minZ: -58, maxZ: 55 },
+      flat: (x, z) => Math.max(
+        band(Math.max(0, Math.abs(z) - 10), 0, 6),
+        band(Math.max(0, Math.abs(x - 10) - 17, -21 - z, z), 0, 5),
+      ) * band(Math.max(0, -33 - x, x - 47), 0, 8),
+      hills: 3.8,
+      blocked: (x, z) => (Math.abs(z) < 2.2 && x > -31 && x < 44) || (x > -3 && x < 25 && z < -1 && z > -19),
+      palette: {
+        grass: [0x8fae8b, 0x87a684, 0x97b692, 0x81a07f],
+        highGrass: 0xa9b8b6,
+        leaves: [0x7d9f7e, 0x739474, 0x87aa86],
+        pine: [0x5d8373, 0x66907e, 0x557a6b],
+        flowers: [0xe9e2ff, 0xfff4d6, 0xd9e8ff, 0xf6dbe8],
+      },
+      tint: (_x, _z, y, c) => c.lerp(TWILIGHT, THREE.MathUtils.clamp(y / 6, 0, 0.25)),
+      grass: 2600,
+      flowers: 300,
+      trees: 70,
+      shrubs: 45,
+      treeZone: (x, z) => (z > 11 || (z < -21 && Math.abs(x - 10) < 40) || (z < -3 && (x < -4 || x > 27))) && Math.abs(z) < 42,
+    });
+    // slender cypress sentinels flanking the palace grounds
+    for (const [cx2, cz2] of [[-4, -10.5], [-4, -14], [24, -10.5], [24, -14], [-6, -18], [26, -18]] as const) {
+      const cy = createPine({ seed: 880 + Math.round(cx2 * 3 + cz2), height: 4.4, colors: [0x5d8373, 0x66907e, 0x557a6b] });
+      cy.scale.set(0.7, 1.2, 0.7);
+      cy.position.set(cx2, 0, cz2);
+      s.add(cy);
     }
 
     // the road — and through the lions' stretch, a clearly narrow causeway
@@ -396,12 +420,7 @@ export class PalaceScene {
       palace.add(block(3.5, 0.7, 0.5, 0x5a8a4a, hx, 0.35, 3.2));
     }
     for (const [lx, lz] of [[6, -2], [12, 2]] as const) {
-      const lamp = new THREE.Group();
-      lamp.add(block(0.16, 2.6, 0.16, PALETTE.woodDark, 0, 1.3, 0));
-      const bulb = block(0.38, 0.38, 0.38, PALETTE.light, 0, 2.7, 0);
-      (bulb.material as THREE.MeshStandardMaterial).emissive = new THREE.Color(0xfff0b0);
-      (bulb.material as THREE.MeshStandardMaterial).emissiveIntensity = 0.5;
-      lamp.add(bulb);
+      const lamp = createLamp({ seed: lx * 11, height: 2.5 });
       lamp.position.set(lx, 0, lz);
       palace.add(lamp);
     }
@@ -1335,8 +1354,8 @@ export class PalaceScene {
       this.scene.background = sky;
       if (this.scene.fog instanceof THREE.Fog) this.scene.fog.color.copy(sky);
       if (this.exteriorSun) {
-        this.exteriorSun.color.copy(new THREE.Color(0xd8c4f0).lerp(new THREE.Color(0xffe1a8), d));
-        this.exteriorSun.intensity = THREE.MathUtils.lerp(0.9, 1.55, d);
+        this.exteriorSun.color.copy(new THREE.Color(0xf4c8da).lerp(new THREE.Color(0xffe1a8), d));
+        this.exteriorSun.intensity = THREE.MathUtils.lerp(1.08, 1.55, d);
         this.exteriorSun.position.set(
           THREE.MathUtils.lerp(-30, -38, d),
           THREE.MathUtils.lerp(20, 36, d),
@@ -1344,8 +1363,8 @@ export class PalaceScene {
         );
       }
       if (this.exteriorHemi) {
-        this.exteriorHemi.color.copy(new THREE.Color(0xb8b4d8).lerp(new THREE.Color(0xffedcf), d));
-        this.exteriorHemi.intensity = THREE.MathUtils.lerp(0.75, 1.05, d);
+        this.exteriorHemi.color.copy(new THREE.Color(0xcdbfe6).lerp(new THREE.Color(0xffedcf), d));
+        this.exteriorHemi.intensity = THREE.MathUtils.lerp(0.98, 1.1, d);
       }
     }
 
