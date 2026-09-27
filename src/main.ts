@@ -1267,8 +1267,9 @@ const choiceB = document.querySelector('#choice .opt-b')! as HTMLButtonElement;
 let choiceCb: ((pick: 0 | 1) => void) | null = null;
 
 function showChoice(a: string, b: string, cb: (pick: 0 | 1) => void): void {
-  choiceA.textContent = a;
-  choiceB.textContent = b;
+  // the cosy choice cards carry their own icons — drop legacy emoji
+  choiceA.textContent = a.replace(LEADING_EMOJI, '');
+  choiceB.textContent = b.replace(LEADING_EMOJI, '');
   choiceCb = cb;
   choiceBox.classList.add('open');
 }

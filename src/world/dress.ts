@@ -45,6 +45,7 @@ export interface DressSpec {
   shrubs?: number;
   /** extra height shaping (mounds, basins, cliffs) */
   shape?: (x: number, z: number) => number;
+  tint?: (x: number, z: number, y: number, c: THREE.Color) => void;
 }
 
 export interface Dressing {
@@ -90,6 +91,7 @@ export function dressExterior(scene: THREE.Object3D, spec: DressSpec): Dressing 
     grass: p.grass,
     highGrass: p.highGrass,
     earth: p.earth,
+    tint: spec.tint,
   });
   // when a chapter walks on slopes, blend the hills on top of its ground line
   group.add(terrain.mesh);

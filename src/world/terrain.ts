@@ -56,6 +56,8 @@ export interface TerrainOptions {
   earth?: number;
   /** sink terrain at the far edges so it melts into fog */
   y?: number;
+  /** final per-face colour adjustment (dry ground near a mountain, snow…) */
+  tint?: (x: number, z: number, y: number, c: THREE.Color) => void;
 }
 
 export interface Terrain {
@@ -118,6 +120,7 @@ export function createTerrain(o: TerrainOptions): Terrain {
       const p = THREE.MathUtils.clamp(o.path(cx, cz), 0, 1);
       if (p > 0) c.lerp(earth, p);
     }
+    if (o.tint) o.tint(cx, cz, cy, c);
     for (const v of [a, b, d]) {
       pos.push(px[v], py[v], pz[v]);
       col.push(c.r, c.g, c.b);

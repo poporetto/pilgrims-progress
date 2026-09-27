@@ -4,6 +4,9 @@ import { makeBear, animateBear, BearParts, block, mat } from './bear';
 import { setupSunShadow } from './light';
 import { DialogueLine } from './npcs';
 import { addHighwayPaving } from './road';
+import { dressExterior } from './world/dress';
+import { band } from './world/terrain';
+import { createTree, createBush, createRock, createBench, createLamp, createHouse } from './world/props';
 
 // Chapter III — Mr. Worldly Wiseman and Mount Sinai.
 // On the road, Christian is charmed off the true way by Mr. Worldly Wiseman,
@@ -102,21 +105,36 @@ export class MoralityScene {
     sun.shadow.camera.bottom = -40;
     s.add(sun);
 
-    // rolling ground — greener west, drier toward the mountain
-    const ground = new THREE.Mesh(new THREE.BoxGeometry(140, 1, 90), mat(0x9cc48e));
-    ground.position.y = -0.5;
-    ground.receiveShadow = true;
-    s.add(ground);
-    for (let i = 0; i < 60; i++) {
-      const x = -45 + Math.random() * 90;
-      const z = -35 + Math.random() * 70;
-      const dry = x > 4;
-      const p = block(0.9 + Math.random() * 1.6, 0.1, 0.9 + Math.random() * 1.6,
-        dry ? (Math.random() > 0.5 ? 0xb3b98a : 0xa6ad84) : (Math.random() > 0.5 ? 0x8cba80 : 0xaad49c),
-        x, 0.05, z);
-      p.castShadow = false;
-      s.add(p);
-    }
+    // rolling land — lush in the west, drying and scorched toward Sinai
+    const DRY = new THREE.Color(0xc9c29a);
+    const SCORCH = new THREE.Color(0xa99f92);
+    dressExterior(s, {
+      seed: 33,
+      bounds: { minX: -70, maxX: 64, minZ: -55, maxZ: 55 },
+      flat: (x, z) => Math.max(
+        band(Math.max(0, Math.abs(z) - 15), 0, 7) * band(Math.max(0, -30 - x, x - 22), 0, 6),
+        // the tidy rise of Morality and Sinai's footprint stay level
+        band(Math.hypot((x - 30) / 1.4, z + 4), 7, 12),
+        band(Math.hypot(x - 14, (z + 4) / 1.3), 11, 15),
+      ),
+      hills: 3.2,
+      blocked: (x, z) => (Math.abs(z) < 2.8 && x > -38 && x < 42) || (x > 3 && x < 26 && z < 8 && z > -16),
+      palette: {
+        grass: [0xa6d496, 0x9dcc8c, 0xb0da9f, 0x96c487],
+        leaves: [0x93c682, 0x86bb76, 0xa2d08c],
+      },
+      tint: (x, _z, _y, c) => {
+        const dry = THREE.MathUtils.smoothstep(x, -6, 10);
+        if (dry > 0) c.lerp(DRY, dry * 0.75);
+        const scorch = THREE.MathUtils.smoothstep(x, 6, 16);
+        if (scorch > 0) c.lerp(SCORCH, scorch * 0.55);
+      },
+      grass: 2400,
+      flowers: 300,
+      trees: 60,
+      shrubs: 45,
+      treeZone: (x, z) => x < 4 && Math.abs(z) > 17 && Math.abs(z) < 42,
+    });
 
     // The King's Highway: a continuous pale ribbon with individually laid
     // voxel stones. The earlier separated slabs looked like unrelated patches
@@ -162,56 +180,63 @@ export class MoralityScene {
       }
     }
     for (const x of [-1.5, 3.2]) {
-      s.add(block(1.8, 0.16, 0.62, 0xb68c5d, x, 0.68, 4.4));
-      s.add(block(0.16, 0.72, 0.16, 0x806044, x - 0.65, 0.36, 4.4));
-      s.add(block(0.16, 0.72, 0.16, 0x806044, x + 0.65, 0.36, 4.4));
+      const bench = createBench({ seed: Math.round(x * 10) + 3 });
+      bench.position.set(x, 0, 4.4);
+      bench.rotation.y = Math.PI;
+      s.add(bench);
     }
     for (const x of [-4.5, 1.0, 5.5]) {
-      s.add(block(0.13, 1.5, 0.13, 0x62594f, x, 0.75, -3.8));
-      const lamp = block(0.38, 0.42, 0.38, 0xffe7a0, x, 1.58, -3.8);
-      (lamp.material as THREE.MeshStandardMaterial).emissive = new THREE.Color(0xffcf69);
-      (lamp.material as THREE.MeshStandardMaterial).emissiveIntensity = 0.45;
+      const lamp = createLamp({ seed: Math.round(x * 7) + 40, height: 1.9 });
+      lamp.position.set(x, 0, -3.8);
+      lamp.rotation.y = -Math.PI / 2;
       s.add(lamp);
     }
 
     // friendly trees on the west half only — the east grows bare
-    for (const [tx, tz, blossom] of [
-      [-24, -8, true], [-19, 9, false], [-13, -10, false], [-8, 8, true], [-2, -9, false],
-    ] as const) {
-      const tree = new THREE.Group();
-      tree.add(block(0.5, 1.6, 0.5, PALETTE.trunk, 0, 0.8, 0));
-      tree.add(block(1.9, 1.3, 1.9, blossom ? PALETTE.leafPink : PALETTE.leaf, 0, 2.2, 0));
-      tree.add(block(1.2, 0.9, 1.2, blossom ? PALETTE.leafPink : PALETTE.leaf, 0, 3.1, 0));
-      tree.position.set(tx, 0, tz);
-      s.add(tree);
+    ([[-24, -8, 'blossom'], [-19, 9, 'leafy'], [-13, -10, 'fruit'], [-8, 8, 'blossom'], [-2, -9, 'leafy'], [-30, 11, 'leafy'], [-27, -13, 'blossom']] as const)
+      .forEach(([tx, tz, kind], i) => {
+        const tree = createTree({ seed: 330 + i * 11, kind });
+        tree.position.set(tx, 0, tz);
+        tree.rotation.y = i * 1.3;
+        s.add(tree);
+      });
+    // flowering verges along the west half of the road
+    for (const [bx, bz] of [[-20, -4], [-15, 4.6], [-26, 4.8], [-10, -4.8]] as const) {
+      const bush = createBush({ seed: Math.round(bx * 5 + bz), flowers: true });
+      bush.position.set(bx, 0, bz);
+      s.add(bush);
     }
-    // gray boulders near the mountain
-    for (const [bx, bz] of [[8, 6], [11, -7], [16, 8], [19, -6], [9, -10]] as const) {
-      s.add(block(1.2 + Math.random(), 0.8, 1.1, 0x9a9aa4, bx, 0.4, bz));
-      s.add(block(0.7, 0.5, 0.7, 0x8d8d96, bx + 0.8, 0.25, bz + 0.5));
-    }
+    // grey boulders and scree tumbling from the mountain
+    ([[8, 6], [11, -7], [16, 8], [19, -6], [9, -10], [13, 10], [6, -6]] as const).forEach(([bx, bz], i) => {
+      for (let k = 0; k < 2; k++) {
+        const rock = createRock({ seed: 400 + i * 5 + k, size: 0.9 - k * 0.35, color: k ? 0xa9a5b0 : 0xb7b2bd });
+        rock.position.x = bx + k * 0.9;
+        rock.position.z = bz + k * 0.5;
+        s.add(rock);
+      }
+    });
 
     // ---------- MOUNT SINAI: hangs over the road, flashing fire ----------
     const m = new THREE.Group();
     const rock = (w: number, h: number, d: number, c: number, x: number, y: number, z: number) =>
       m.add(block(w, h, d, c, x, y, z));
     // Broad foothills establish a real mountain footprint before the summit.
-    rock(20, 2.2, 13, 0x9898a1, 0, 1.1, -7.0);
-    rock(17.5, 2.5, 11, 0x898994, -0.5, 3.1, -6.7);
-    rock(14.5, 2.7, 9, 0x7b7b87, 0.2, 5.55, -6.2);
-    rock(11.5, 2.8, 7.5, 0x85858f, -0.25, 8.25, -5.8);
-    rock(8.2, 2.7, 5.8, 0x70707c, 0.35, 10.85, -5.3);
-    rock(5.2, 2.5, 4.1, 0x62626e, -0.15, 13.25, -4.9);
-    rock(2.8, 2.1, 2.5, 0x73737e, 0.2, 15.4, -4.6);
+    rock(20, 2.2, 13, 0xa9a4b3, 0, 1.1, -7.0);
+    rock(17.5, 2.5, 11, 0x9a95a6, -0.5, 3.1, -6.7);
+    rock(14.5, 2.7, 9, 0x8c879a, 0.2, 5.55, -6.2);
+    rock(11.5, 2.8, 7.5, 0x958fa2, -0.25, 8.25, -5.8);
+    rock(8.2, 2.7, 5.8, 0x817b90, 0.35, 10.85, -5.3);
+    rock(5.2, 2.5, 4.1, 0x736d83, -0.15, 13.25, -4.9);
+    rock(2.8, 2.1, 2.5, 0x847e92, 0.2, 15.4, -4.6);
     // Uneven secondary crags stop the silhouette reading as a single pyramid.
-    rock(5.5, 5.8, 4.6, 0x85858f, -6.2, 5.0, -6.0);
-    rock(4.2, 4.8, 3.8, 0x777783, 6.3, 4.3, -5.8);
-    rock(2.8, 3.6, 2.7, 0x696975, -4.7, 9.2, -5.1);
+    rock(5.5, 5.8, 4.6, 0x958fa2, -6.2, 5.0, -6.0);
+    rock(4.2, 4.8, 3.8, 0x888297, 6.3, 4.3, -5.8);
+    rock(2.8, 3.6, 2.7, 0x7a748a, -4.7, 9.2, -5.1);
     // The overhanging south face still threatens Christian, but now grows out
     // of the mountain's slope instead of floating as a separate block shelf.
-    rock(10.5, 2.4, 5.0, 0x747480, 0.5, 7.7, -1.65);
-    rock(7.7, 2.1, 4.5, 0x676773, 0.9, 5.7, 0.75);
-    rock(5.0, 1.7, 3.4, 0x5d5d69, 1.2, 4.25, 2.8);
+    rock(10.5, 2.4, 5.0, 0x857f93, 0.5, 7.7, -1.65);
+    rock(7.7, 2.1, 4.5, 0x787288, 0.9, 5.7, 0.75);
+    rock(5.0, 1.7, 3.4, 0x6e687e, 1.2, 4.25, 2.8);
     // Blocky scree and ledges soften the base into the surrounding terrain.
     const scree = [
       [-8.8, 0.7, -1.4, 2.4, 1.4, 2.0], [-6.5, 0.5, 0.4, 1.8, 1.0, 1.5],
@@ -219,7 +244,7 @@ export class MoralityScene {
       [7.1, 0.7, -0.4, 2.1, 1.4, 1.8], [9.0, 0.5, -2.6, 1.5, 1.0, 1.4],
     ] as const;
     for (const [x, y, z, w, h, d] of scree) {
-      const stone = block(w, h, d, y > 0.6 ? 0x85858f : 0x9a9aa4, x, y, z);
+      const stone = block(w, h, d, y > 0.6 ? 0x958fa2 : 0xaaa5b4, x, y, z);
       stone.rotation.y = x * 0.025;
       m.add(stone);
     }
@@ -279,13 +304,10 @@ export class MoralityScene {
     const village = new THREE.Group();
     village.add(block(14, 1.2, 10, 0xaed9a0, 0, 0.6, 0)); // the rise
     const tidyHouse = (hx: number, hz: number, roof: number) => {
-      village.add(block(2.2, 1.6, 1.9, 0xfaf6ec, hx, 2.0, hz));
-      village.add(block(2.5, 0.7, 2.2, roof, hx, 3.15, hz));
-      village.add(block(0.4, 1.0, 0.12, PALETTE.woodDark, hx, 1.7, hz + 1.0));
+      const house = createHouse({ seed: Math.round(hx * 13 + hz * 7 + 90), w: 2.4, d: 2.0, h: 1.5, wall: 0xfdf8ee, roof, trim: 0xb9a78f, chimney: false });
+      house.position.set(hx, 1.2, hz);
+      village.add(house);
     };
-    tidyHouse(-3.5, 0.5, 0x9db8d8);
-    tidyHouse(0, 1.2, 0xb8c8b0);
-    tidyHouse(3.5, 0.5, 0x9db8d8);
     for (let i = 0; i < 6; i++) {
       village.add(block(1.4, 0.5, 0.5, 0x86ad7d, -5 + i * 2.1, 1.45, 3.2)); // neat hedges
     }
