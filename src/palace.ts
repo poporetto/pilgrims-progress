@@ -1,3 +1,4 @@
+import { bakeStatic } from './world/voxels';
 import * as THREE from 'three';
 import { PALETTE } from './palette';
 import { makeBear, animateBear, addPilgrimArmorDetails, BearParts, block, mat } from './bear';
@@ -457,6 +458,7 @@ export class PalaceScene {
 
     palace.position.set(0, 0, -7.5);
     s.add(palace);
+    bakeStatic(palace);
     const palaceLight = new THREE.PointLight(0xffe9c0, 2.0, 34);
     palaceLight.position.set(8, 7, -2);
     s.add(palaceLight);
@@ -665,6 +667,10 @@ export class PalaceScene {
 
     hall.position.copy(HALL);
     s.add(hall);
+    // the welcome table hides after the feast, so it stays its own mesh set
+    hall.remove(welcomeTable);
+    bakeStatic(hall);
+    hall.add(welcomeTable);
     // Solid obstacles so Christian can't walk through the columns or tables.
     // Positions mirror the local layout above, offset into world coords.
     this.hallColliders = [];
@@ -835,6 +841,7 @@ export class PalaceScene {
 
     roof.position.copy(ROOF);
     s.add(roof);
+    bakeStatic(roof);
     // the Celestial City, impossibly far to the east — a shining hint
     const city = new THREE.Group();
     const cityMat = new THREE.MeshBasicMaterial({ color: 0xfff3c4, transparent: true, opacity: 0.85, fog: false });
@@ -854,6 +861,7 @@ export class PalaceScene {
     this.cityGlow = cityHalo;
     city.position.set(ROOF.x + 46, ROOF.y + 6, -4);
     s.add(city);
+    bakeStatic(city);
 
     // the women live in the hall
     this.womenHome = [
