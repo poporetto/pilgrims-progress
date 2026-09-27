@@ -4,6 +4,10 @@ import { makeBear, animateBear, BearParts, block, mat } from './bear';
 import { makeShiningLight, animateShiningLight, ShiningLight, setupSunShadow } from './light';
 import { DialogueLine } from './npcs';
 import { addHighwayPaving } from './road';
+import { dressExterior } from './world/dress';
+import { band } from './world/terrain';
+import { createTree } from './world/props';
+import { voxelMesh, Voxel, rng as seeded, vary } from './world/voxels';
 
 // Chapter VI — the King's Highway at evening.
 // Burden-free, Christian walks on east. Beside the road he finds three
@@ -157,35 +161,44 @@ export class HighwayScene {
     s.add(sun);
     this.sunLight = sun;
 
-    // rolling meadow
-    const ground = new THREE.Mesh(new THREE.BoxGeometry(150, 1, 90), mat(0x93bb85));
-    ground.position.y = -0.5;
-    ground.receiveShadow = true;
-    s.add(ground);
-    for (let i = 0; i < 50; i++) {
-      const x = -50 + Math.random() * 100;
-      const z = -35 + Math.random() * 70;
-      const p = block(0.9 + Math.random() * 1.6, 0.1, 0.9 + Math.random() * 1.6,
-        Math.random() > 0.5 ? 0x86ad7d : 0xa4c69a, x, 0.04 + Math.random() * 0.03, z);
-      p.castShadow = false;
-      s.add(p);
-    }
+    // rolling evening meadow — level along the road, the sleepers' verge and
+    // the run-up to the wall; soft hills beyond
+    dressExterior(s, {
+      seed: 66,
+      bounds: { minX: -75, maxX: 85, minZ: -60, maxZ: 60 },
+      flat: (x, z) => Math.max(
+        band(Math.max(0, -4.5 - z, z - 11), 0, 6),
+        band(Math.abs(x - CLIMB_X), 3, 6) * band(Math.max(0, -25 - z), 0, 4) * (z < 0 ? 1 : 0),
+      ) * band(Math.max(0, -35 - x, x - 48), 0, 8),
+      hills: 3.2,
+      blocked: (x, z) =>
+        (Math.abs(z) < 2.1 && x > -36 && x < 46) ||
+        (x > WALL_X0 - 1.5 && x < WALL_X1 + 1.5 && z > -4.3 && z < -2.9),
+      palette: {
+        grass: [0xa8cf8f, 0x9fc786, 0xb3d69a, 0x98c082],
+        highGrass: 0xc6dca3,
+        leaves: [0x9cc97d, 0x8fbe72, 0xaad38a],
+        flowers: [0xfff0b8, 0xffd9c2, 0xffffff, 0xf7c6d3, 0xe6d6ff],
+        blossom: true,
+      },
+      grass: 2800,
+      flowers: 380,
+      trees: 60,
+      shrubs: 40,
+      treeZone: (x, z) => (z < -6 && Math.abs(x - CLIMB_X) > 5) || z > 12,
+    });
 
     // the Highway itself: scattered stepping stones, west → east
     addHighwayPaving(s, -34, 44, { width: 3.2 });
 
     // trees flanking the way
-    for (const [tx, tz, blossom] of [
-      [-28, 7, true], [-22, -8, false], [-6, 8, false],
-      [18, 8, true], [30, -8, false], [36, 7, true],
-    ] as const) {
-      const tree = new THREE.Group();
-      tree.add(block(0.5, 1.6, 0.5, PALETTE.trunk, 0, 0.8, 0));
-      tree.add(block(1.9, 1.3, 1.9, blossom ? PALETTE.leafPink : PALETTE.leaf, 0, 2.2, 0));
-      tree.add(block(1.2, 0.9, 1.2, blossom ? PALETTE.leafPink : PALETTE.leaf, 0, 3.1, 0));
+    ([[-28, 7, 'blossom'], [-22, -8, 'leafy'], [-6, 8, 'leafy'],
+      [18, 8, 'blossom'], [30, -8, 'fruit'], [36, 7, 'blossom']] as const).forEach(([tx, tz, kind], i) => {
+      const tree = createTree({ seed: 660 + i * 5, kind });
       tree.position.set(tx, 0, tz);
+      tree.rotation.y = i * 0.9;
       s.add(tree);
-    }
+    });
 
     // ---------- the three sleepers, just south of the road ----------
     const spots: Array<[number, number, number]> = [
@@ -211,10 +224,20 @@ export class HighwayScene {
     });
 
     // ---------- the wall along the north side of the road ----------
+    const wr = seeded(61);
+    const wallVox: Voxel[] = [];
     for (let wx = WALL_X0; wx <= WALL_X1; wx += 2) {
-      s.add(block(2.1, 1.7, 0.8, 0xb9b0a2, wx, 0.85, -3.6));
-      s.add(block(2.25, 0.25, 0.95, 0xa39a8c, wx, 1.8, -3.6));
+      wallVox.push({ w: 2.08, h: 1.7, d: 0.8, x: wx, y: 0.85, z: -3.6, color: vary(0xc6bcad, wr, 0.03) });
+      wallVox.push({ w: 2.2, h: 0.25, d: 0.95, x: wx, y: 1.8, z: -3.6, color: vary(0xb0a695, wr, 0.02) });
+      // proud stones and a trailing sprig of ivy here and there
+      wallVox.push({ w: 0.7, h: 0.34, d: 0.08, x: wx + (wr() - 0.5), y: 0.5 + wr() * 0.9, z: -3.18, color: vary(0xd2c8b8, wr, 0.03) });
+      if (wr() > 0.5) {
+        const ix = wx + (wr() - 0.5) * 1.4;
+        wallVox.push({ w: 0.36, h: 0.9, d: 0.06, x: ix, y: 1.3, z: -3.16, color: vary(0x86b77a, wr, 0.05) });
+        wallVox.push({ w: 0.5, h: 0.2, d: 0.2, x: ix, y: 1.96, z: -3.6, color: vary(0x8dbd80, wr, 0.05) });
+      }
     }
+    s.add(voxelMesh(wallVox));
 
     // the climbers wait far north, off-screen
     this.formalist.root.position.set(CLIMB_X - 1.2, 0, -22);
