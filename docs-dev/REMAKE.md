@@ -106,6 +106,7 @@ update the checklist as phases land.
 - [x] II Slough
 - [x] III Morality & Sinai
 - [x] IV Wicket Gate (exterior + cottage; interior house keeps its rooms)
+- [x] V Cross
 
 ## Baseline (before remake, dev build, 1 s sample after debug jump)
 

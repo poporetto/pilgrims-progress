@@ -4,6 +4,9 @@ import { makeBear, animateBear, addShiningOneDetails, BearParts, block, mat } fr
 import { makeShiningLight, animateShiningLight, ShiningLight, setupSunShadow } from './light';
 import { DialogueLine } from './npcs';
 import { addHighwayPaving } from './road';
+import { dressExterior } from './world/dress';
+import { band } from './world/terrain';
+import { createTree, createRock, scatterFlowers } from './world/props';
 
 // Chapter V — the Cross and the empty tomb.
 // The narrow road climbs a green hill. At the top stands a Cross, and a
@@ -177,48 +180,36 @@ export class CrossScene {
     sun.shadow.camera.bottom = -45;
     s.add(sun);
 
-    // green ground
-    const ground = new THREE.Mesh(new THREE.BoxGeometry(150, 1, 90), mat(PALETTE.grass));
-    ground.position.y = -0.5;
-    ground.receiveShadow = true;
-    s.add(ground);
-    for (let i = 0; i < 55; i++) {
-      const x = -50 + Math.random() * 100;
-      const z = -35 + Math.random() * 70;
-      if (Math.hypot(x, z) < HILL_R + 1) continue; // keep the hill clean
-      const p = block(0.9 + Math.random() * 1.6, 0.1, 0.9 + Math.random() * 1.6,
-        Math.random() > 0.5 ? PALETTE.grassLight : PALETTE.grassDark, x, 0.05, z);
-      p.castShadow = false;
-      s.add(p);
-    }
-
-    // ---------- the green hill: tall nested terraces up to the summit ----------
-    const terraceColors = [0x9ede97, PALETTE.grass, 0xa8e6a3];
-    const STEPS = 14;
-    for (let i = 0; i < STEPS; i++) {
-      const rOuter = HILL_R * (1 - i / STEPS) + 0.5;
-      const topY = Math.max(this.groundY(HILL_R * (1 - (i + 0.7) / STEPS), 0), 0.5);
-      const disc = new THREE.Mesh(
-        new THREE.CylinderGeometry(rOuter, rOuter + 0.7, topY, 24),
-        mat(terraceColors[i % 3]),
-      );
-      disc.position.set(0, topY / 2, 0);
-      disc.receiveShadow = true;
-      disc.castShadow = true;
-      s.add(disc);
-    }
-    // flowers dotted up the slope
-    for (let i = 0; i < 14; i++) {
-      const a = Math.random() * Math.PI * 2;
-      const rr = 3 + Math.random() * 7;
-      const fx = Math.cos(a) * rr;
-      const fz = Math.sin(a) * rr;
-      const f = block(0.16, 0.16, 0.16,
-        [PALETTE.flowerYellow, PALETTE.flowerPink, PALETTE.flowerBlue][i % 3],
-        fx, this.groundY(fx, fz) + 0.1, fz);
-      f.castShadow = false;
-      s.add(f);
-    }
+    // the green knoll: faceted terrain that follows the exact walking height
+    // of the hill, with soft meadows rolling away on either side
+    const roadBand = (x: number, z: number) => band(Math.max(0, Math.abs(z) - 10.5), 0, 6) * band(Math.max(0, -34 - x, x - 40), 0, 8);
+    const dress = dressExterior(s, {
+      seed: 55,
+      bounds: { minX: -75, maxX: 80, minZ: -55, maxZ: 55 },
+      cell: 1.3,
+      flat: roadBand,
+      shape: (x, z) => this.groundY(x, z),
+      hills: 3.4,
+      blocked: (x, z) =>
+        (Math.abs(z) < 2.2 && x > -36 && x < 38) ||
+        Math.hypot(x - TOMB.x, z - TOMB.z) < 3 ||
+        Math.hypot(x, z + 2.2) < 1.6,
+      palette: {
+        grass: [0xabdd9b, 0xa2d692, 0xb6e4a6, 0x9ccf8d],
+        highGrass: 0xc4ebb0,
+      },
+      grass: 3000,
+      flowers: 420,
+      trees: 60,
+      shrubs: 45,
+      treeZone: (x, z) => Math.abs(z) > 12 && Math.abs(z) < 40 && Math.hypot(x, z) > HILL_R + 3,
+    });
+    // a crown of wildflowers ringing the summit
+    s.add(scatterFlowers({
+      minX: -9, maxX: 9, minZ: -9, maxZ: 9,
+      allow: (x, z) => Math.hypot(x, z) < 8.5 && Math.abs(z) > 1.8 && Math.hypot(x, z + 2.2) > 1.8,
+      y: dress.heightAt,
+    }, 220, 57, [0xfff4c4, 0xffffff, 0xffd1dc, 0xe4d2ff]));
 
     // the narrow road: scattered stepping-stones with gaps, wandering slightly
     addHighwayPaving(s, -34, 36, {
@@ -260,16 +251,23 @@ export class CrossScene {
     s.add(tomb);
 
     // friendly trees flanking the road, clear of the hill
-    for (const [tx, tz, blossom] of [
-      [-26, -7, true], [-20, 8, false], [-14, -9, true],
-      [16, 7, false], [22, -8, true], [28, 6, false],
-    ] as const) {
-      const tree = new THREE.Group();
-      tree.add(block(0.5, 1.6, 0.5, PALETTE.trunk, 0, 0.8, 0));
-      tree.add(block(1.9, 1.3, 1.9, blossom ? PALETTE.leafPink : PALETTE.leaf, 0, 2.2, 0));
-      tree.add(block(1.2, 0.9, 1.2, blossom ? PALETTE.leafPink : PALETTE.leaf, 0, 3.1, 0));
-      tree.position.set(tx, 0, tz);
+    ([[-26, -7, 'blossom'], [-20, 8, 'leafy'], [-14, -9, 'blossom'],
+      [16, 7, 'leafy'], [22, -8, 'blossom'], [28, 6, 'fruit']] as const).forEach(([tx, tz, kind], i) => {
+      const tree = createTree({ seed: 550 + i * 7, kind });
+      tree.position.set(tx, this.groundY(tx, tz), tz);
+      tree.rotation.y = i * 1.7;
       s.add(tree);
+    });
+    // the tomb is hewn into the hillside: mossy boulders hug its sides
+    for (let k = 0; k < 6; k++) {
+      const a = -0.6 + k * 0.55;
+      const rx = TOMB.x + 0.6 + Math.cos(a) * 2.2;
+      const rz = TOMB.z + Math.sin(a) * 2.0;
+      const rock = createRock({ seed: 560 + k, size: 0.7 + (k % 3) * 0.2, moss: k % 2 === 0, color: 0xc4bfb6 });
+      rock.position.x = rx;
+      rock.position.z = rz;
+      rock.position.y += this.groundY(rx, rz) - 0.1;
+      s.add(rock);
     }
 
     // ---------- the shining light at the road's end (the standard beacon) ----------
