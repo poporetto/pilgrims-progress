@@ -174,3 +174,26 @@ TypeScript is kept deliberately: it is the maintainable-JS architecture and
 9. **Perf pass** — static mesh merging per material, instancing, measured
    against the baseline.
 10. **Full regression** against the checklist above.
+
+## Remake status (after phases 8–10)
+
+- **Ambient life:** `world/ambient.ts` — shader-animated instanced
+  butterflies and drifting petals/leaves (zero CPU per frame), set per
+  chapter mood through `dressExterior` (none at night/gloom; golden leaves
+  in the Enchanted Ground; white-gold petals at the Celestial City).
+- **Perf:** world map 431 → ~64 calls and palace 254 → ~30 via `bakeStatic`
+  (animated party, clouds, birds, halos and the hideable welcome table kept
+  separate).
+- **Regression sweep:** all 21 debug jumps load with zero console errors;
+  every area is between 29 and 103 draw calls and under 85k triangles.
+  `tsc` and `vite build` are clean.
+
+| area | calls | tris |
+|---|---|---|
+| village | 46 | 83k |
+| slough / morality / wicket | 31 / 42 / 32 | 17k / 23k / 27k |
+| cross / highway / hill | 42 / 34 / 73 | 34k / 24k / 36k |
+| palace / valley / shadow | 29 / 44 / 30 | 15k / 23k / 15k |
+| vanity / lucre / castle | 65 / 66 / 67 | 22k / 26k / 20k |
+| mountain / enchanted / beulah | 91 / 66 / 103 | 33k / 22k / 27k |
+| celestial / world map | 98 / 64 | 32k / 39k |
