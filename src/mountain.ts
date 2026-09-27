@@ -305,6 +305,7 @@ export class MountainScene {
     const foot = (z: number) => 1 - band(Math.abs(z), 17, 27);
     const dress = dressExterior(s, {
       seed: 141,
+      petals: 40,
       bounds: { minX: -90, maxX: 120, minZ: -52, maxZ: 52 },
       cell: 1.8,
       flat: (x, z) => band(Math.max(0, Math.abs(z) - 17), 0, 3) * band(Math.max(0, -40 - x, x - (LIGHT_X + 10)), 0, 8),

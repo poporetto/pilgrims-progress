@@ -378,6 +378,7 @@ export class ValleyScene {
     const vr = seeded(91);
     dressExterior(s, {
       seed: 99,
+      butterflies: 0,
       bounds: { minX: -95, maxX: 72, minZ: -55, maxZ: 55 },
       cell: 1.5,
       flat: (x, z) => band(Math.max(0, Math.abs(z) - 9), 0, 5) * band(Math.max(0, -96 - x, x - 42), 0, 8),

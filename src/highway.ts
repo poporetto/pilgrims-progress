@@ -165,6 +165,7 @@ export class HighwayScene {
     // the run-up to the wall; soft hills beyond
     dressExterior(s, {
       seed: 66,
+      butterflies: 0,
       bounds: { minX: -75, maxX: 85, minZ: -60, maxZ: 60 },
       flat: (x, z) => Math.max(
         band(Math.max(0, -4.5 - z, z - 11), 0, 6),

@@ -288,6 +288,7 @@ export class PalaceScene {
     const TWILIGHT = new THREE.Color(0xa99ec4);
     dressExterior(s, {
       seed: 88,
+      butterflies: 0,
       bounds: { minX: -72, maxX: 58, minZ: -58, maxZ: 55 },
       flat: (x, z) => Math.max(
         band(Math.max(0, Math.abs(z) - 10), 0, 6),

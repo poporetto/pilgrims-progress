@@ -170,6 +170,7 @@ export class EnchantedScene {
     const GOLDEN_LEAVES = [0xd2b46a, 0xc6a968, 0xdcc07a, 0xbfa05e];
     dressExterior(s, {
       seed: 151,
+      butterflies: 0, petals: 70, petalColors: [0xf2c94c, 0xe8a94a, 0xf6dc8a],
       bounds: { minX: -85, maxX: 128, minZ: -50, maxZ: 50 },
       flat: (x, z) => band(Math.max(0, Math.abs(z) - 11), 0, 6) * band(Math.max(0, WEST - 6 - x, x - (LIGHT_X + 10)), 0, 8),
       hills: 3.2,

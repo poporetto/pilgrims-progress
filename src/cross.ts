@@ -185,6 +185,7 @@ export class CrossScene {
     const roadBand = (x: number, z: number) => band(Math.max(0, Math.abs(z) - 10.5), 0, 6) * band(Math.max(0, -34 - x, x - 40), 0, 8);
     const dress = dressExterior(s, {
       seed: 55,
+      butterflies: 30, petals: 40,
       bounds: { minX: -75, maxX: 80, minZ: -55, maxZ: 55 },
       cell: 1.3,
       flat: roadBand,

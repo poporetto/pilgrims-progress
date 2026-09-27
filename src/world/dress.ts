@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { rng } from './voxels';
+import { createButterflies, createPetals } from './ambient';
 import { createTerrain, Terrain } from './terrain';
 import {
   createTree, createPine, createBush, createRock, createStump, createMushrooms,
@@ -43,6 +44,10 @@ export interface DressSpec {
   /** only place framing trees where this returns true (visible band) */
   treeZone?: (x: number, z: number) => boolean;
   shrubs?: number;
+  /** ambient life: butterflies near the walkable ground, drifting petals */
+  butterflies?: number;
+  petals?: number;
+  petalColors?: readonly number[];
   /** extra height shaping (mounds, basins, cliffs) */
   shape?: (x: number, z: number) => number;
   tint?: (x: number, z: number, y: number, c: THREE.Color) => void;
@@ -139,6 +144,11 @@ export function dressExterior(scene: THREE.Object3D, spec: DressSpec): Dressing 
     place(obj, x, z);
     k++;
   }
+
+  // butterflies keep to the edges of the walkable ground where the flowers are
+  const near = (x: number, z: number) => open(x, z) && spec.flat(x, z) > 0.4;
+  if ((spec.butterflies ?? 28) > 0) group.add(createButterflies({ ...b, allow: near, y: heightAt }, spec.butterflies ?? 28, spec.seed + 4));
+  if ((spec.petals ?? 0) > 0) group.add(createPetals({ ...b, allow: near, y: heightAt }, spec.petals!, spec.seed + 5, spec.petalColors));
 
   scene.add(group);
   return { group, terrain, heightAt };

@@ -209,6 +209,7 @@ export class BeulahScene {
     const GOLD = new THREE.Color(0xeedb9f);
     dressExterior(s, {
       seed: 161,
+      butterflies: 36, petals: 70,
       bounds: { minX: -85, maxX: 118, minZ: -58, maxZ: 58 },
       flat: (x, z) => Math.max(
         band(Math.max(0, Math.abs(z) - 21), 0, 6),

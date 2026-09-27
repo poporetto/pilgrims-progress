@@ -463,6 +463,7 @@ export class CastleScene {
     // approach, with pale moorland hills rolling away beyond ----
     dressExterior(s, {
       seed: 131,
+      butterflies: 0,
       bounds: { minX: -80, maxX: 118, minZ: -40, maxZ: 52 },
       flat: (x, z) => Math.max(
         band(Math.max(0, z - 12, -12 - z), 0, 6),

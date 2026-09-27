@@ -119,6 +119,7 @@ export class SloughScene {
     const east = (x: number) => THREE.MathUtils.smoothstep(x, 14, 26); // marsh → meadow
     dressExterior(s, {
       seed: 22,
+      butterflies: 10,
       bounds: { minX: -70, maxX: 80, minZ: -60, maxZ: 60 },
       flat: (x, z) => band(Math.max(0, Math.abs(z) - 17), 0, 7) * band(Math.max(0, -30 - x, x - 46), 0, 7),
       hills: 3.4,

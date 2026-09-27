@@ -399,6 +399,7 @@ export class CelestialScene {
     const GLOW = new THREE.Color(0xf6e7b0);
     dressExterior(s, {
       seed: 171,
+      butterflies: 30, petals: 60, petalColors: [0xffffff, 0xfff3c4, 0xf6e7b0],
       bounds: { minX: -85, maxX: 118, minZ: -58, maxZ: 58 },
       cell: 1.5,
       flat: (x, z) => band(Math.max(0, Math.abs(z) - 30), 0, 8) * band(Math.max(0, WEST_EDGE - 8 - x), 0, 8),
