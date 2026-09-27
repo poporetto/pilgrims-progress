@@ -106,7 +106,14 @@ export function makeBear(opts: CharacterOptions = {}): BearParts {
   const root = new THREE.Group();
   // Scene-agnostic character collision metadata. The active pilgrim is marked
   // by the same burdened/pre-armor or plump/post-Cross options used elsewhere.
-  root.userData.characterRadius = 0.72 * scale;
+  // Footprint follows the visible species size, so tiny mice and frogs do not
+  // create an invisible bear-sized wall while full-sized pilgrims still keep
+  // a comfortable, consistent amount of personal space.
+  const collisionRadius = species === 'mouse' ? 0.5
+    : species === 'frog' ? 0.58
+    : species === 'rabbit' || species === 'cat' ? 0.64
+    : 0.7;
+  root.userData.characterRadius = collisionRadius * scale;
   root.userData.isPilgrim = species === 'bear' && (opts.plump === true || opts.burden === true);
 
   // Chapter I-style dust pool. These are emitted into the scene (rather than
@@ -116,10 +123,11 @@ export function makeBear(opts: CharacterOptions = {}): BearParts {
   // Christian is burdened before the Cross and plump after it; both forms need
   // the same trail. Other bears stay dust-free.
   const hasFootDust = species === 'bear' && (opts.plump === true || opts.burden === true);
-  for (const side of [-1, 1]) {
+  for (let i = 0; i < 6; i++) {
+    const side = i % 2 ? 1 : -1;
     const puff = new THREE.Mesh(
       new THREE.BoxGeometry(0.22, 0.22, 0.22),
-      new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, depthWrite: false }),
+      new THREE.MeshBasicMaterial({ color: 0xf5e7cc, transparent: true, opacity: 0, depthWrite: false }),
     );
     puff.position.set(side * 0.2, 0.11, -0.58);
     puff.scale.setScalar(1);

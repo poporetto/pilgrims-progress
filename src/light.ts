@@ -80,4 +80,8 @@ export function setupSunShadow(sun: THREE.DirectionalLight, half = 90): void {
   c.updateProjectionMatrix();
   sun.shadow.bias = -0.0004;
   sun.shadow.normalBias = 0.02;
+  // Chapter I's broad, storybook-soft edge is the visual standard. Keeping
+  // this here prevents later chapters from silently falling back to a hard
+  // one-pixel shadow.
+  sun.shadow.radius = 5;
 }

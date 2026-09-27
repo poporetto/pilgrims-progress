@@ -369,7 +369,7 @@ export class CastleScene {
     // lighting placeholders (populated in build())
     this.hemi = new THREE.HemisphereLight(0xdff0ff, 0xc9e8c0, 1.0);
     this.sun  = new THREE.DirectionalLight(0xfff0d8, 1.6);
-    this.sun.position.set(-30, 45, 25);
+    this.sun.position.set(30, 45, 25);
     setupSunShadow(this.sun);
   }
 

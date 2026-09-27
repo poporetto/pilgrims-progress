@@ -269,7 +269,7 @@ export class PalaceScene {
     this.exteriorHemi = new THREE.HemisphereLight(0xb8b4d8, 0x8a8a9a, 0.75);
     s.add(this.exteriorHemi);
     const sun = new THREE.DirectionalLight(0xd8c4f0, 0.9);
-    sun.position.set(-30, 30, 20);
+    sun.position.set(30, 30, 20);
     setupSunShadow(sun);
     sun.shadow.mapSize.set(2048, 2048);
     sun.shadow.camera.left = -55;

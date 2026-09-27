@@ -197,7 +197,7 @@ export class VanityScene {
 
     s.add(new THREE.HemisphereLight(0xf0f8ff, 0xc9d8b8, 1.1));
     const sun = new THREE.DirectionalLight(PALETTE.sun, 1.4);
-    sun.position.set(-24, 40, 22);
+    sun.position.set(24, 40, 22);
     setupSunShadow(sun);
     sun.shadow.mapSize.set(2048, 2048);
     sun.shadow.camera.left = -60;

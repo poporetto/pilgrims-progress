@@ -3,6 +3,7 @@ import { PALETTE } from './palette';
 import { makeBear, animateBear, BearParts, block, mat } from './bear';
 import { setupSunShadow } from './light';
 import { DialogueLine } from './npcs';
+import { addHighwayPaving } from './road';
 
 // Chapter III — Mr. Worldly Wiseman and Mount Sinai.
 // On the road, Christian is charmed off the true way by Mr. Worldly Wiseman,
@@ -92,7 +93,7 @@ export class MoralityScene {
 
     s.add(new THREE.HemisphereLight(0xe0ecef, 0xafc4a4, 0.85));
     const sun = new THREE.DirectionalLight(0xf5ecd8, 1.15);
-    sun.position.set(-24, 38, 20);
+    sun.position.set(24, 38, 20);
     setupSunShadow(sun);
     sun.shadow.mapSize.set(2048, 2048);
     sun.shadow.camera.left = -45;
@@ -125,18 +126,7 @@ export class MoralityScene {
     highway.position.set(2, 0.025, 0);
     highway.receiveShadow = true;
     s.add(highway);
-    const roadColors = [0xeadcba, 0xd9c7a1, 0xf0e2c2, 0xcebd9b];
-    for (let i = 0; i < 42; i++) {
-      const px = -34 + i * 1.72;
-      const pz = ((i % 3) - 1) * 0.62;
-      const paving = block(
-        1.45 + (i % 2) * 0.18, 0.055, 0.74,
-        roadColors[i % roadColors.length], px, 0.055, pz,
-      );
-      paving.rotation.y = ((i % 5) - 2) * 0.025;
-      paving.castShadow = false;
-      s.add(paving);
-    }
+    addHighwayPaving(s, -36, 40, { width: 3.2 });
     // Broken shoulder stones frame the route while keeping it open and soft.
     for (const side of [-1, 1]) {
       for (let i = 0; i < 18; i++) {

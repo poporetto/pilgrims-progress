@@ -321,12 +321,68 @@ const quest: QuestState = {
   celestialDone: false,
 };
 
-const music = new Music();
-try {
-  music.enabled = window.localStorage.getItem('pilgrims-progress-sound') !== 'off';
-} catch {
-  // Storage can be unavailable in strict private browsing; sound still works.
+type TextSpeed = 'instant' | 'gentle' | 'storybook';
+interface GameSettings {
+  version: 1;
+  audioEnabled: boolean;
+  musicVolume: number;
+  sfxVolume: number;
+  textSpeed: TextSpeed;
+  reducedMotion: boolean;
+  largeDialogue: boolean;
 }
+const SETTINGS_KEY = 'pilgrims-progress-settings';
+const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const defaultSettings: GameSettings = {
+  version: 1,
+  audioEnabled: true,
+  musicVolume: 0.5,
+  sfxVolume: 0.7,
+  textSpeed: 'gentle',
+  reducedMotion: prefersReducedMotion,
+  largeDialogue: false,
+};
+function readGameSettings(): GameSettings {
+  try {
+    const raw = window.localStorage.getItem(SETTINGS_KEY);
+    if (!raw) {
+      return {
+        ...defaultSettings,
+        audioEnabled: window.localStorage.getItem('pilgrims-progress-sound') !== 'off',
+      };
+    }
+    const saved = JSON.parse(raw) as Partial<GameSettings>;
+    const speed: TextSpeed = ['instant', 'gentle', 'storybook'].includes(saved.textSpeed ?? '')
+      ? saved.textSpeed as TextSpeed : defaultSettings.textSpeed;
+    return {
+      version: 1,
+      audioEnabled: typeof saved.audioEnabled === 'boolean' ? saved.audioEnabled : true,
+      musicVolume: THREE.MathUtils.clamp(Number(saved.musicVolume ?? .5), 0, 1),
+      sfxVolume: THREE.MathUtils.clamp(Number(saved.sfxVolume ?? .7), 0, 1),
+      textSpeed: speed,
+      reducedMotion: typeof saved.reducedMotion === 'boolean' ? saved.reducedMotion : prefersReducedMotion,
+      largeDialogue: saved.largeDialogue === true,
+    };
+  } catch {
+    return { ...defaultSettings };
+  }
+}
+let gameSettings = readGameSettings();
+function saveGameSettings(): void {
+  try {
+    window.localStorage.setItem(SETTINGS_KEY, JSON.stringify(gameSettings));
+    window.localStorage.setItem('pilgrims-progress-sound', gameSettings.audioEnabled ? 'on' : 'off');
+  } catch {
+    // Settings still work for this session when storage is unavailable.
+  }
+}
+
+const music = new Music();
+music.enabled = gameSettings.audioEnabled;
+music.setMusicVolume(gameSettings.musicVolume);
+music.setSfxVolume(gameSettings.sfxVolume);
+document.documentElement.classList.toggle('reduce-motion', gameSettings.reducedMotion);
+document.documentElement.classList.toggle('large-dialogue', gameSettings.largeDialogue);
 const worldMap = new WorldMap(window.innerWidth / window.innerHeight);
 let mode:
   | 'village' | 'map' | 'slough' | 'morality' | 'wicket' | 'cross'
@@ -502,6 +558,18 @@ const ui = {
   settingsOverlay: document.getElementById('settings-overlay')! as HTMLElement,
   settingsClose: document.getElementById('settings-close')! as HTMLButtonElement,
   soundToggle: document.getElementById('sound-toggle')! as HTMLButtonElement,
+  settingsTab: document.getElementById('settings-tab')! as HTMLButtonElement,
+  aboutTab: document.getElementById('about-tab')! as HTMLButtonElement,
+  settingsPanel: document.getElementById('settings-panel')! as HTMLElement,
+  aboutPanel: document.getElementById('about-panel')! as HTMLElement,
+  musicVolume: document.getElementById('music-volume')! as HTMLInputElement,
+  musicVolumeValue: document.getElementById('music-volume-value')! as HTMLOutputElement,
+  sfxVolume: document.getElementById('sfx-volume')! as HTMLInputElement,
+  sfxVolumeValue: document.getElementById('sfx-volume-value')! as HTMLOutputElement,
+  textSpeed: document.getElementById('text-speed')! as HTMLSelectElement,
+  motionToggle: document.getElementById('motion-toggle')! as HTMLButtonElement,
+  largeTextToggle: document.getElementById('large-text-toggle')! as HTMLButtonElement,
+  resetSaveBtn: document.getElementById('reset-save-btn')! as HTMLButtonElement,
   talkBtn: document.getElementById('talk-btn')! as HTMLButtonElement,
   joystick: document.getElementById('joystick')!,
   stick: document.querySelector('#joystick .stick')! as HTMLElement,
@@ -537,7 +605,11 @@ function fadeTransition(mid: () => void, holdMs = 420): void {
   window.setTimeout(() => {
     mid();
     requestAnimationFrame(() => ui.fade.classList.remove('show'));
-  }, holdMs);
+  }, gameSettings.reducedMotion ? 80 : holdMs);
+}
+
+function cameraBlend(rate: number, dt: number): number {
+  return gameSettings.reducedMotion ? 1 : Math.min(rate * dt, 1);
 }
 
 const isTouch =
@@ -578,15 +650,47 @@ ui.newJourneyBtn.addEventListener('click', () => {
 });
 
 function updateSoundToggle(): void {
-  ui.soundToggle.setAttribute('aria-checked', String(music.enabled));
+  ui.soundToggle.setAttribute('aria-checked', String(gameSettings.audioEnabled));
   ui.soundToggle.setAttribute(
     'aria-label',
-    `Music and sound ${music.enabled ? 'on' : 'off'}`,
+    `Audio ${gameSettings.audioEnabled ? 'on' : 'off'}`,
   );
+}
+
+function updateSettingsUI(): void {
+  updateSoundToggle();
+  ui.musicVolume.value = String(Math.round(gameSettings.musicVolume * 100));
+  ui.musicVolumeValue.value = `${ui.musicVolume.value}%`;
+  ui.sfxVolume.value = String(Math.round(gameSettings.sfxVolume * 100));
+  ui.sfxVolumeValue.value = `${ui.sfxVolume.value}%`;
+  ui.textSpeed.value = gameSettings.textSpeed;
+  ui.motionToggle.setAttribute('aria-checked', String(gameSettings.reducedMotion));
+  ui.motionToggle.setAttribute('aria-label', `Reduced motion ${gameSettings.reducedMotion ? 'on' : 'off'}`);
+  ui.largeTextToggle.setAttribute('aria-checked', String(gameSettings.largeDialogue));
+  ui.largeTextToggle.setAttribute('aria-label', `Larger dialogue ${gameSettings.largeDialogue ? 'on' : 'off'}`);
+}
+
+function applySettings(): void {
+  music.enabled = gameSettings.audioEnabled;
+  music.setMusicVolume(gameSettings.musicVolume);
+  music.setSfxVolume(gameSettings.sfxVolume);
+  document.documentElement.classList.toggle('reduce-motion', gameSettings.reducedMotion);
+  document.documentElement.classList.toggle('large-dialogue', gameSettings.largeDialogue);
+  updateSettingsUI();
+  saveGameSettings();
+}
+
+function showSettingsPanel(panel: 'settings' | 'about'): void {
+  const showAbout = panel === 'about';
+  ui.settingsTab.setAttribute('aria-selected', String(!showAbout));
+  ui.aboutTab.setAttribute('aria-selected', String(showAbout));
+  ui.settingsPanel.classList.toggle('active', !showAbout);
+  ui.aboutPanel.classList.toggle('active', showAbout);
 }
 
 function openSettings(): void {
   ui.debugPanel.classList.remove('open');
+  showSettingsPanel('settings');
   ui.settingsOverlay.classList.add('open');
   ui.settingsOverlay.setAttribute('aria-hidden', 'false');
   ui.settingsClose.focus();
@@ -598,24 +702,42 @@ function closeSettings(): void {
   ui.settingsBtn.focus();
 }
 
-updateSoundToggle();
+updateSettingsUI();
 ui.settingsBtn.addEventListener('click', openSettings);
 ui.settingsClose.addEventListener('click', closeSettings);
+ui.settingsTab.addEventListener('click', () => showSettingsPanel('settings'));
+ui.aboutTab.addEventListener('click', () => showSettingsPanel('about'));
 ui.settingsOverlay.addEventListener('click', (event) => {
   if (event.target === ui.settingsOverlay) closeSettings();
 });
 ui.soundToggle.addEventListener('click', () => {
   music.start();
-  music.toggle();
-  updateSoundToggle();
-  try {
-    window.localStorage.setItem(
-      'pilgrims-progress-sound',
-      music.enabled ? 'on' : 'off',
-    );
-  } catch {
-    // The setting remains active for this session if storage is unavailable.
-  }
+  gameSettings.audioEnabled = music.toggle();
+  applySettings();
+});
+ui.musicVolume.addEventListener('input', () => {
+  gameSettings.musicVolume = Number(ui.musicVolume.value) / 100;
+  applySettings();
+});
+ui.sfxVolume.addEventListener('input', () => {
+  gameSettings.sfxVolume = Number(ui.sfxVolume.value) / 100;
+  applySettings();
+});
+ui.textSpeed.addEventListener('change', () => {
+  gameSettings.textSpeed = ui.textSpeed.value as TextSpeed;
+  applySettings();
+});
+ui.motionToggle.addEventListener('click', () => {
+  gameSettings.reducedMotion = !gameSettings.reducedMotion;
+  applySettings();
+});
+ui.largeTextToggle.addEventListener('click', () => {
+  gameSettings.largeDialogue = !gameSettings.largeDialogue;
+  applySettings();
+});
+ui.resetSaveBtn.addEventListener('click', () => {
+  if (!window.confirm('Reset the saved journey? Your settings will stay the same.')) return;
+  clearSaveAndReload();
 });
 
 ui.restartBtn.addEventListener('click', () => {
@@ -652,6 +774,7 @@ continueBtn.addEventListener('click', () => {
   setTimeout(() => (ui.ending.style.display = 'none'), 900);
   // close any dialogue left open
   dialogueOpen = false;
+  stopDialogueTyping(false);
   dialogueNPC = null;
   scriptDone = null;
   ui.dialogue.style.display = 'none';
@@ -1640,6 +1763,9 @@ let dialogueIndex = 0;
 let dialogueOpen = false;
 let dialogueNPC: NPC | null = null;
 let scriptDone: (() => void) | null = null;
+let dialogueTypingTimer: number | null = null;
+let dialogueTyping = false;
+let dialogueFullText = '';
 
 // Mrs. Bramble's honey-bun is a real voxel prop, passed from her paw into
 // Christian's rather than existing only in the dialogue.
@@ -1739,11 +1865,38 @@ function renderDialogueText(text: string): void {
   }
 }
 
+function stopDialogueTyping(showFullText = true): void {
+  if (dialogueTypingTimer !== null) window.clearInterval(dialogueTypingTimer);
+  dialogueTypingTimer = null;
+  dialogueTyping = false;
+  ui.dialogue.classList.remove('is-typing');
+  if (showFullText && dialogueFullText) renderDialogueText(dialogueFullText);
+}
+
+function showDialogueText(text: string): void {
+  stopDialogueTyping(false);
+  dialogueFullText = text;
+  if (gameSettings.textSpeed === 'instant' || gameSettings.reducedMotion) {
+    renderDialogueText(text);
+    return;
+  }
+  dialogueTyping = true;
+  ui.dialogue.classList.add('is-typing');
+  ui.dialogueText.textContent = '';
+  let visibleCharacters = 0;
+  const interval = gameSettings.textSpeed === 'storybook' ? 34 : 19;
+  dialogueTypingTimer = window.setInterval(() => {
+    visibleCharacters += 1;
+    ui.dialogueText.textContent = text.slice(0, visibleCharacters);
+    if (visibleCharacters >= text.length) stopDialogueTyping(true);
+  }, interval);
+}
+
 function showLine(): void {
   const line = dialogueLines[dialogueIndex];
   const portrait = getDialoguePortrait(line.speaker);
   ui.dialogueName.textContent = line.speaker;
-  renderDialogueText(line.text);
+  showDialogueText(line.text);
   ui.dialogue.classList.toggle('has-portrait', portrait !== null);
   ui.dialoguePortrait.style.display = portrait ? 'block' : 'none';
   if (portrait) {
@@ -1760,6 +1913,10 @@ function showLine(): void {
 }
 
 function advanceDialogue(): void {
+  if (dialogueTyping) {
+    stopDialogueTyping(true);
+    return;
+  }
   // Let the visible handoff finish before the final line can be dismissed.
   if (bunHandoffActive) return;
   music.blip();
@@ -1770,6 +1927,7 @@ function advanceDialogue(): void {
   }
   // finished
   dialogueOpen = false;
+  stopDialogueTyping(false);
   ui.dialogue.style.display = 'none';
   const npc = dialogueNPC;
   dialogueNPC = null;
@@ -1908,6 +2066,7 @@ function debugJumpToWorldMap(): void {
   // A debug jump can happen during any overlay or locked minigame. Clear all
   // of them so none remains above the map or keeps consuming touch input.
   dialogueOpen = false;
+  stopDialogueTyping(false);
   dialogueNPC = null;
   scriptDone = null;
   endingOpen = false;
@@ -1981,6 +2140,7 @@ ui.debugPanel.addEventListener('click', (e) => {
   ui.debugPanel.classList.remove('open');
   debugEnsureStarted();
   dialogueOpen = false;
+  stopDialogueTyping(false);
   dialogueNPC = null;
   scriptDone = null;
   endingOpen = false;
@@ -2541,11 +2701,11 @@ function tick(): void {
     const titleLegLength = 20;
     const titleLeg = Math.floor((t % (titleLegLength * titleCompanions.length)) / titleLegLength);
     const titleLegTime = t % titleLegLength;
-    const titleWalking = titleLegTime < 18;
+    const titleWalking = !gameSettings.reducedMotion && titleLegTime < 18;
     const journeyP = Math.min(titleLegTime / 18, 1);
     const titleX = -14.5 + journeyP * 34;
-    titleChristian.root.visible = titleWalking;
-    titleChristian.root.position.set(titleX, 0, 0);
+    titleChristian.root.visible = gameSettings.reducedMotion || titleWalking;
+    titleChristian.root.position.set(gameSettings.reducedMotion ? -1.2 : titleX, 0, 0);
     titleChristian.root.rotation.y = Math.PI / 2;
     animateBear(titleChristian, t * 0.62, titleWalking);
     for (let i = 0; i < titleCompanions.length; i++) {
@@ -2725,7 +2885,7 @@ function tick(): void {
       ui.talkBtn.style.display = 'none';
     }
 
-    camTarget.lerp(sc.root.position, Math.min(4 * dt, 1));
+    camTarget.lerp(sc.root.position, cameraBlend(4, dt));
     camera.position.copy(camTarget).add(camOffset);
     camera.lookAt(camTarget.x, camTarget.y + 1.4, camTarget.z);
     renderer.render(slough.scene, camera);
@@ -2775,7 +2935,7 @@ function tick(): void {
       if (isTouch && !dialogueOpen) ui.talkBtn.style.display = 'none';
     }
 
-    camTarget.lerp(mc.root.position, Math.min(4 * dt, 1));
+    camTarget.lerp(mc.root.position, cameraBlend(4, dt));
     camera.position.copy(camTarget).add(camOffset);
     camera.lookAt(camTarget.x, camTarget.y + 1.4, camTarget.z);
     renderer.render(morality.scene, camera);
@@ -2807,7 +2967,7 @@ function tick(): void {
     wicket.update(dt, t, moving);
 
     const inHouse = wicket.phase === 'house' || wicket.phase === 'houseGreet' || wicket.phase === 'houseExit';
-    camTarget.lerp(wc.root.position, Math.min(4 * dt, 1));
+    camTarget.lerp(wc.root.position, cameraBlend(4, dt));
     camera.position.copy(camTarget).add(inHouse ? HOUSE_CAM_OFFSET : camOffset);
     camera.lookAt(camTarget.x, camTarget.y + 1.4, camTarget.z);
     renderer.render(wicket.scene, camera);
@@ -2851,7 +3011,7 @@ function tick(): void {
       ui.talkBtn.style.display = 'none';
     }
 
-    camTarget.lerp(cc.root.position, Math.min(4 * dt, 1));
+    camTarget.lerp(cc.root.position, cameraBlend(4, dt));
     camera.position.copy(camTarget).add(camOffset);
     camera.lookAt(camTarget.x, camTarget.y + 1.4, camTarget.z);
     renderer.render(cross.scene, camera);
@@ -2882,7 +3042,7 @@ function tick(): void {
     highway.afterMove();
     highway.update(dt, t, moving);
 
-    camTarget.lerp(hc.root.position, Math.min(4 * dt, 1));
+    camTarget.lerp(hc.root.position, cameraBlend(4, dt));
     camera.position.copy(camTarget).add(camOffset);
     camera.lookAt(camTarget.x, camTarget.y + 1.4, camTarget.z);
     renderer.render(highway.scene, camera);
@@ -2927,7 +3087,7 @@ function tick(): void {
       ui.talkBtn.style.display = 'none';
     }
 
-    camTarget.lerp(lc.root.position, Math.min(4 * dt, 1));
+    camTarget.lerp(lc.root.position, cameraBlend(4, dt));
     camera.position.copy(camTarget).add(camOffset);
     camera.lookAt(camTarget.x, camTarget.y + 1.4, camTarget.z);
     renderer.render(hill.scene, camera);
@@ -2978,7 +3138,7 @@ function tick(): void {
       ui.talkBtn.style.display = 'none';
     }
 
-    camTarget.lerp(pc.root.position, Math.min(4 * dt, 1));
+    camTarget.lerp(pc.root.position, cameraBlend(4, dt));
     camera.position.copy(camTarget).add(camOffset);
     camera.lookAt(camTarget.x, camTarget.y + 1.4, camTarget.z);
     renderer.render(palace.scene, camera);
@@ -3022,7 +3182,7 @@ function tick(): void {
     }
 
     const frameBattle = valley.battleCameraFocus(valleyBattleFocus);
-    camTarget.lerp(frameBattle ? valleyBattleFocus : vc.root.position, Math.min(4 * dt, 1));
+    camTarget.lerp(frameBattle ? valleyBattleFocus : vc.root.position, cameraBlend(4, dt));
     const mobileBattle = frameBattle && window.innerWidth <= 700 && camera.aspect < 0.8;
     const targetBattleZoom = mobileBattle ? 1.75 : 1;
     // Ease both into the wide duel framing and back into the normal follow
@@ -3076,7 +3236,7 @@ function tick(): void {
       ui.talkBtn.style.display = 'none';
     }
 
-    camTarget.lerp(shc.root.position, Math.min(4 * dt, 1));
+    camTarget.lerp(shc.root.position, cameraBlend(4, dt));
     camera.position.copy(camTarget).add(camOffset);
     camera.lookAt(camTarget.x, camTarget.y + 1.4, camTarget.z);
     renderer.render(shadow.scene, camera);
@@ -3123,7 +3283,7 @@ function tick(): void {
       ui.talkBtn.style.display = 'none';
     }
 
-    camTarget.lerp(vfc.root.position, Math.min(4 * dt, 1));
+    camTarget.lerp(vfc.root.position, cameraBlend(4, dt));
     camera.position.copy(camTarget).add(camOffset);
     camera.lookAt(camTarget.x, camTarget.y + 1.4, camTarget.z);
     renderer.render(vanity.scene, camera);
@@ -3169,7 +3329,7 @@ function tick(): void {
       ui.talkBtn.style.display = 'none';
     }
 
-    camTarget.lerp(luc.root.position, Math.min(4 * dt, 1));
+    camTarget.lerp(luc.root.position, cameraBlend(4, dt));
     camera.position.copy(camTarget).add(camOffset);
     camera.lookAt(camTarget.x, camTarget.y + 1.4, camTarget.z);
     renderer.render(lucre.scene, camera);
@@ -3215,7 +3375,7 @@ function tick(): void {
     keyGameOpen = showKeyGame;
     keyGameBox.classList.toggle('open', showKeyGame);
 
-    camTarget.lerp(cc.root.position, Math.min(4 * dt, 1));
+    camTarget.lerp(cc.root.position, cameraBlend(4, dt));
     camera.position.copy(camTarget).add(inDungeon ? DUNGEON_CAM_OFFSET : camOffset);
     camera.lookAt(camTarget.x, camTarget.y + 1.4, camTarget.z);
     renderer.render(castle.scene, camera);
@@ -3259,7 +3419,7 @@ function tick(): void {
       ui.talkBtn.style.display = 'none';
     }
 
-    camTarget.lerp(mc.root.position, Math.min(4 * dt, 1));
+    camTarget.lerp(mc.root.position, cameraBlend(4, dt));
     camera.position.copy(camTarget).add(camOffset);
     camera.lookAt(camTarget.x, camTarget.y + 1.4, camTarget.z);
     renderer.render(mountain.scene, camera);
@@ -3302,7 +3462,7 @@ function tick(): void {
       if (isTouch && !dialogueOpen) ui.talkBtn.style.display = 'none';
     }
 
-    camTarget.lerp(ec.root.position, Math.min(4 * dt, 1));
+    camTarget.lerp(ec.root.position, cameraBlend(4, dt));
     camera.position.copy(camTarget).add(camOffset);
     camera.lookAt(camTarget.x, camTarget.y + 1.4, camTarget.z);
     renderer.render(enchanted.scene, camera);
@@ -3348,7 +3508,7 @@ function tick(): void {
       if (isTouch && !dialogueOpen) ui.talkBtn.style.display = 'none';
     }
 
-    camTarget.lerp(bc.root.position, Math.min(4 * dt, 1));
+    camTarget.lerp(bc.root.position, cameraBlend(4, dt));
     camera.position.copy(camTarget).add(camOffset);
     camera.lookAt(camTarget.x, camTarget.y + 1.4, camTarget.z);
     renderer.render(beulah.scene, camera);
@@ -3396,7 +3556,7 @@ function tick(): void {
     // emphasising its towering scale; the epilogue follows Ignorance instead
     const focus = celestial.focus();
     const pull = 1 + THREE.MathUtils.clamp((focus.position.y) / 10, 0, 1) * 0.55;
-    camTarget.lerp(focus.position, Math.min(3 * dt, 1));
+    camTarget.lerp(focus.position, cameraBlend(3, dt));
     camera.position.copy(camTarget).add(camOffset.clone().multiplyScalar(pull)).add(new THREE.Vector3(0, focus.position.y * 0.15, 0));
     camera.lookAt(camTarget.x, camTarget.y + 1.6, camTarget.z);
     renderer.render(celestial.scene, camera);
@@ -3437,7 +3597,7 @@ function tick(): void {
   }
 
   // camera follows with a soft lag
-  camTarget.lerp(christian.root.position, Math.min(4 * dt, 1));
+  camTarget.lerp(christian.root.position, cameraBlend(4, dt));
   camera.position.copy(camTarget).add(camOffset);
   camera.lookAt(camTarget.x, camTarget.y + 1.4, camTarget.z);
 

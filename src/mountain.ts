@@ -167,7 +167,7 @@ export class MountainScene {
     // bright, open-sky lighting — this is the light, safe chapter
     this.hemi = new THREE.HemisphereLight(0xeaf6ff, 0xbfe6a8, 1.15);
     this.sun = new THREE.DirectionalLight(0xfff6e0, 1.7);
-    this.sun.position.set(-24, 48, 26);
+    this.sun.position.set(24, 48, 26);
     setupSunShadow(this.sun);
   }
 

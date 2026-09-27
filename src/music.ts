@@ -132,12 +132,15 @@ const STYLES: Record<MusicStyle, StyleDef> = {
 export class Music {
   private ctx: AudioContext | null = null;
   private master: GainNode | null = null;
+  private musicBus: GainNode | null = null;
+  private sfxBus: GainNode | null = null;
   private timer: number | null = null;
   private nextBarTime = 0;
   private bar = 0;
   private style: MusicStyle = 'village';
   private noiseBuf: AudioBuffer | null = null;
-  private volume = 0.5;
+  private musicVolume = 0.5;
+  private sfxVolume = 0.72;
   enabled = true;
 
   start(): void {
@@ -147,7 +150,13 @@ export class Music {
     }
     this.ctx = new AudioContext();
     this.master = this.ctx.createGain();
-    this.master.gain.value = this.enabled ? this.volume : 0;
+    this.musicBus = this.ctx.createGain();
+    this.sfxBus = this.ctx.createGain();
+    this.master.gain.value = this.enabled ? 1 : 0;
+    this.musicBus.gain.value = this.musicVolume;
+    this.sfxBus.gain.value = this.sfxVolume;
+    this.musicBus.connect(this.master);
+    this.sfxBus.connect(this.master);
     this.master.connect(this.ctx.destination);
     // soft white-noise buffer for the shaker
     const len = this.ctx.sampleRate * 0.25;
@@ -162,11 +171,29 @@ export class Music {
     this.enabled = !this.enabled;
     if (this.ctx && this.master) {
       this.master.gain.linearRampToValueAtTime(
-        this.enabled ? this.volume : 0,
+        this.enabled ? 1 : 0,
         this.ctx.currentTime + 0.2,
       );
     }
     return this.enabled;
+  }
+
+  setMusicVolume(value: number): void {
+    this.musicVolume = Math.min(1, Math.max(0, value));
+    if (this.ctx && this.musicBus) {
+      const t = this.ctx.currentTime;
+      this.musicBus.gain.cancelScheduledValues(t);
+      this.musicBus.gain.linearRampToValueAtTime(this.musicVolume, t + 0.12);
+    }
+  }
+
+  setSfxVolume(value: number): void {
+    this.sfxVolume = Math.min(1, Math.max(0, value));
+    if (this.ctx && this.sfxBus) {
+      const t = this.ctx.currentTime;
+      this.sfxBus.gain.cancelScheduledValues(t);
+      this.sfxBus.gain.linearRampToValueAtTime(this.sfxVolume, t + 0.12);
+    }
   }
 
   // fade out, switch mood, fade back in. Leaving the world map's roaming
@@ -180,33 +207,31 @@ export class Music {
     const fadeOutMs = leavingMap ? 0.35 : 1.4;
     const holdMs = leavingMap ? 380 : 1500;
     const fadeInMs = leavingMap ? 0.9 : 2.0;
-    if (!this.ctx || !this.master) {
+    if (!this.ctx || !this.musicBus) {
       this.style = style;
       return;
     }
     const t = this.ctx.currentTime;
-    this.master.gain.cancelScheduledValues(t);
-    this.master.gain.setValueAtTime(this.master.gain.value, t);
-    this.master.gain.linearRampToValueAtTime(0.0001, t + fadeOutMs);
+    this.musicBus.gain.cancelScheduledValues(t);
+    this.musicBus.gain.setValueAtTime(this.musicBus.gain.value, t);
+    this.musicBus.gain.linearRampToValueAtTime(0.0001, t + fadeOutMs);
     window.setTimeout(() => {
       this.style = style;
       this.bar = 0;
-      if (this.ctx && this.master) {
+      if (this.ctx && this.musicBus) {
         // drop anything still queued far ahead, restart clean
         this.nextBarTime = this.ctx.currentTime + 0.15;
         const t2 = this.ctx.currentTime;
-        this.master.gain.cancelScheduledValues(t2);
-        this.master.gain.setValueAtTime(0.0001, t2);
-        this.master.gain.linearRampToValueAtTime(
-          this.enabled ? this.volume : 0, t2 + fadeInMs,
-        );
+        this.musicBus.gain.cancelScheduledValues(t2);
+        this.musicBus.gain.setValueAtTime(0.0001, t2);
+        this.musicBus.gain.linearRampToValueAtTime(this.musicVolume, t2 + fadeInMs);
       }
     }, holdMs);
   }
 
   // one-shot cute blip for UI (dialogue advance)
   blip(): void {
-    if (!this.ctx || !this.master || !this.enabled) return;
+    if (!this.ctx || !this.sfxBus || !this.enabled) return;
     const t = this.ctx.currentTime;
     const osc = this.ctx.createOscillator();
     const g = this.ctx.createGain();
@@ -215,14 +240,14 @@ export class Music {
     osc.frequency.exponentialRampToValueAtTime(880, t + 0.07);
     g.gain.setValueAtTime(0.12, t);
     g.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
-    osc.connect(g).connect(this.master);
+    osc.connect(g).connect(this.sfxBus);
     osc.start(t);
     osc.stop(t + 0.15);
   }
 
   // muddy splash for the slough
   splash(): void {
-    if (!this.ctx || !this.master || !this.enabled || !this.noiseBuf) return;
+    if (!this.ctx || !this.sfxBus || !this.enabled || !this.noiseBuf) return;
     const t = this.ctx.currentTime;
     const src = this.ctx.createBufferSource();
     src.buffer = this.noiseBuf;
@@ -233,13 +258,13 @@ export class Music {
     const g = this.ctx.createGain();
     g.gain.setValueAtTime(0.25, t);
     g.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
-    src.connect(f).connect(g).connect(this.master);
+    src.connect(f).connect(g).connect(this.sfxBus);
     src.start(t);
   }
 
   // deep mountain rumble for Mount Sinai's fire and thunder
   rumble(): void {
-    if (!this.ctx || !this.master || !this.enabled || !this.noiseBuf) return;
+    if (!this.ctx || !this.sfxBus || !this.enabled || !this.noiseBuf) return;
     const t = this.ctx.currentTime;
     const src = this.ctx.createBufferSource();
     src.buffer = this.noiseBuf;
@@ -251,7 +276,7 @@ export class Music {
     g.gain.setValueAtTime(0.0001, t);
     g.gain.exponentialRampToValueAtTime(0.4, t + 0.08);
     g.gain.exponentialRampToValueAtTime(0.001, t + 1.0);
-    src.connect(f).connect(g).connect(this.master);
+    src.connect(f).connect(g).connect(this.sfxBus);
     src.start(t);
     // a low ominous tone underneath
     const osc = this.ctx.createOscillator();
@@ -261,7 +286,7 @@ export class Music {
     osc.frequency.exponentialRampToValueAtTime(38, t + 0.9);
     og.gain.setValueAtTime(0.12, t);
     og.gain.exponentialRampToValueAtTime(0.001, t + 1.0);
-    osc.connect(og).connect(this.master);
+    osc.connect(og).connect(this.sfxBus);
     osc.start(t);
     osc.stop(t + 1.1);
   }
@@ -287,7 +312,7 @@ export class Music {
     osc.frequency.value = freq;
     g.gain.setValueAtTime(vol, t);
     g.gain.exponentialRampToValueAtTime(0.001, t + dur);
-    osc.connect(g).connect(this.master!);
+    osc.connect(g).connect(this.musicBus!);
     osc.start(t);
     osc.stop(t + dur + 0.1);
     // faint octave shimmer
@@ -297,7 +322,7 @@ export class Music {
     o2.frequency.value = freq * 2;
     g2.gain.setValueAtTime(vol * 0.22, t);
     g2.gain.exponentialRampToValueAtTime(0.001, t + dur * 0.55);
-    o2.connect(g2).connect(this.master!);
+    o2.connect(g2).connect(this.musicBus!);
     o2.start(t);
     o2.stop(t + dur);
   }
@@ -313,7 +338,7 @@ export class Music {
       g.gain.setValueAtTime(0.0001, t);
       g.gain.linearRampToValueAtTime(vol, t + barLen * 0.3);
       g.gain.linearRampToValueAtTime(0.0001, t + barLen * 1.05);
-      osc.connect(g).connect(this.master!);
+      osc.connect(g).connect(this.musicBus!);
       osc.start(t);
       osc.stop(t + barLen * 1.1);
     }
@@ -327,7 +352,7 @@ export class Music {
     osc.frequency.value = freq;
     g.gain.setValueAtTime(vol, t);
     g.gain.exponentialRampToValueAtTime(0.001, t + dur);
-    osc.connect(g).connect(this.master!);
+    osc.connect(g).connect(this.musicBus!);
     osc.start(t);
     osc.stop(t + dur + 0.05);
   }
@@ -343,7 +368,7 @@ export class Music {
     const g = ctx.createGain();
     g.gain.setValueAtTime(vol, t);
     g.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
-    src.connect(f).connect(g).connect(this.master!);
+    src.connect(f).connect(g).connect(this.musicBus!);
     src.start(t);
     src.stop(t + 0.1);
   }
@@ -399,7 +424,7 @@ export class Music {
         osc.frequency.exponentialRampToValueAtTime(240, td + 0.18);
         g.gain.setValueAtTime(0.05, td);
         g.gain.exponentialRampToValueAtTime(0.001, td + 0.22);
-        osc.connect(g).connect(this.master!);
+        osc.connect(g).connect(this.musicBus!);
         osc.start(td);
         osc.stop(td + 0.25);
       }

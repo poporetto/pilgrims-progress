@@ -92,7 +92,7 @@ export class SloughScene {
 
     s.add(new THREE.HemisphereLight(0xd7e4ec, 0xa8b8a0, 0.85));
     const sun = new THREE.DirectionalLight(0xf2ead2, 1.1);
-    sun.position.set(-25, 40, 20);
+    sun.position.set(25, 40, 20);
     setupSunShadow(sun);
     sun.shadow.mapSize.set(2048, 2048);
     sun.shadow.camera.left = -45;

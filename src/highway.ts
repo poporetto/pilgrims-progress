@@ -147,7 +147,7 @@ export class HighwayScene {
     this.hemi = new THREE.HemisphereLight(0xfff0d8, 0xc4b898, 1.0);
     s.add(this.hemi);
     const sun = new THREE.DirectionalLight(0xffc27a, 1.3);
-    sun.position.set(-30, 22, 18); // low in the west
+    sun.position.set(30, 22, 18); // low eastern light; shadows keep the shared direction
     setupSunShadow(sun);
     sun.shadow.mapSize.set(2048, 2048);
     sun.shadow.camera.left = -50;

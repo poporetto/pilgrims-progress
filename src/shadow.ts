@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { PALETTE } from './palette';
 import { makeBear, animateBear, addPilgrimArmorDetails, BearParts, block, mat } from './bear';
-import { makeShiningLight, animateShiningLight, ShiningLight } from './light';
+import { makeShiningLight, animateShiningLight, ShiningLight, setupSunShadow } from './light';
 import { DialogueLine } from './npcs';
 
 // Chapter X — the Valley of the Shadow of Death.
@@ -62,6 +62,7 @@ export class ShadowScene {
   private lamp: THREE.PointLight;
   private hemi: THREE.HemisphereLight | null = null;
   private groundMat: THREE.MeshLambertMaterial | null = null;
+  private moonSun: THREE.DirectionalLight | null = null;
   private dawnP = 0;
   private sink = 0;
   private sinkWarned = false;
@@ -143,6 +144,13 @@ export class ShadowScene {
 
     this.hemi = new THREE.HemisphereLight(0x2a3450, 0x141a2c, 0.35);
     s.add(this.hemi);
+    // A very faint eastern moonlight keeps Christian's real voxel silhouette
+    // readable in the darkness; it warms into the same soft morning shadow as
+    // the other chapters when dawn arrives.
+    this.moonSun = new THREE.DirectionalLight(0xaec8ee, 0.16);
+    this.moonSun.position.set(42, 46, 20);
+    setupSunShadow(this.moonSun);
+    s.add(this.moonSun);
 
     // a dedicated (uncached) material so the valley floor can lighten at dawn
     this.groundMat = new THREE.MeshLambertMaterial({ color: 0x2c3242 });
@@ -357,6 +365,10 @@ export class ShadowScene {
     if (this.hemi) {
       this.hemi.intensity = 0.35 + this.dawnP * 0.75;
       this.hemi.color.set(this.dawnP > 0.5 ? 0xdfe9f2 : 0x2a3450);
+    }
+    if (this.moonSun) {
+      this.moonSun.intensity = 0.16 + this.dawnP * 1.05;
+      this.moonSun.color.set(0xaec8ee).lerp(new THREE.Color(0xffd9aa), this.dawnP);
     }
     if (this.groundMat) {
       this.groundMat.color.set(0x2c3242).lerp(new THREE.Color(0x7f9472), this.dawnP);

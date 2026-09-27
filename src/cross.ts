@@ -64,7 +64,6 @@ export class CrossScene {
   private notes: Array<{ mesh: THREE.Mesh; m: THREE.MeshBasicMaterial; life: number }> = [];
   private noteTimer = 0;
   private footDust: Array<{ mesh: THREE.Mesh; mat: THREE.MeshBasicMaterial; life: number; vx: number; vz: number }> = [];
-  private footDustTimer = 0;
   private revisit = false;
   private built = false;
 
@@ -169,7 +168,7 @@ export class CrossScene {
 
     s.add(new THREE.HemisphereLight(0xf0f8ff, 0xc4e2b8, 1.05));
     const sun = new THREE.DirectionalLight(PALETTE.sun, 1.5);
-    sun.position.set(-24, 40, 22);
+    sun.position.set(24, 40, 22);
     setupSunShadow(sun);
     sun.shadow.mapSize.set(2048, 2048);
     sun.shadow.camera.left = -50;
@@ -306,7 +305,8 @@ export class CrossScene {
       s.add(mesh);
       this.notes.push({ mesh, m, life: 1 });
     }
-    // foot dust pool, same as the other chapters
+    // Dust reserved for the burden rolling down the hill. Christian's feet
+    // use the shared rig dust so his trail matches every other chapter.
     for (let i = 0; i < 16; i++) {
       const m = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0 });
       const mesh = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.22, 0.22), m);
@@ -573,22 +573,6 @@ export class CrossScene {
       if (n.life >= 1) n.mesh.visible = false;
     }
 
-    // ---------- foot dust while walking ----------
-    if (moving && this.moveFactor() > 0) {
-      this.footDustTimer -= dt;
-      if (this.footDustTimer <= 0) {
-        this.footDustTimer = 0.13;
-        const cp = this.christian.root.position;
-        const fd = this.footDust.find((d) => d.life >= 1);
-        if (fd) {
-          fd.life = 0;
-          fd.vx = (Math.random() - 0.5) * 0.8;
-          fd.vz = (Math.random() - 0.5) * 0.8;
-          fd.mesh.position.set(cp.x + (Math.random() - 0.5) * 0.5, cp.y + 0.12, cp.z + (Math.random() - 0.5) * 0.5);
-          fd.mesh.visible = true;
-        }
-      }
-    }
     for (const fd of this.footDust) {
       if (fd.life >= 1) continue;
       fd.life = Math.min(1, fd.life + dt * 2.2);

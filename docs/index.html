@@ -44,7 +44,7 @@
     }
     #settings-btn {
       position: fixed; top: calc(12px + env(safe-area-inset-top));
-      right: calc(12px + env(safe-area-inset-right)); z-index: 20;
+      right: calc(12px + env(safe-area-inset-right)); z-index: 55;
       width: 46px; height: 46px; border-radius: 50%;
       border: 3px solid var(--accent2); background: var(--paper);
       font-size: 20px; cursor: pointer;
@@ -57,7 +57,7 @@
     /* ---------- Journey Book chapter select ---------- */
     #debug-btn {
       position: fixed; top: calc(12px + env(safe-area-inset-top));
-      right: calc(66px + env(safe-area-inset-right)); z-index: 20;
+      right: calc(66px + env(safe-area-inset-right)); z-index: 55;
       display: grid; place-items: center;
       width: 46px; height: 46px; padding: 0; border-radius: 15px;
       border: 3px solid #a8cde0; background: #fff8ef;
@@ -72,10 +72,12 @@
     #debug-btn .book-page { fill: #fffaf0; stroke: #5f879a; stroke-width: 1.5; }
     #debug-btn .book-line { stroke: #d89aad; stroke-width: 1.6; stroke-linecap: round; }
     #debug-panel {
-      position: fixed; top: 64px; right: 12px; z-index: 25;
+      position: fixed; top: 64px; right: 12px; z-index: 56;
       background: var(--paper); border: 3px solid #a8cde0; border-radius: 16px;
       padding: 10px; display: none; flex-direction: column; gap: 6px;
       box-shadow: 0 4px 0 rgba(91, 74, 63, 0.15); max-width: 230px;
+      max-height: calc(100dvh - 82px - env(safe-area-inset-bottom)); overflow-y: auto;
+      overscroll-behavior: contain;
     }
     #debug-panel.open { display: flex; }
     #debug-panel .label {
@@ -91,7 +93,7 @@
 
     /* ---------- Settings & About ---------- */
     #settings-overlay {
-      position: fixed; inset: 0; z-index: 45;
+      position: fixed; inset: 0; z-index: 65;
       display: none; align-items: center; justify-content: center;
       padding: calc(18px + env(safe-area-inset-top))
                calc(18px + env(safe-area-inset-right))
@@ -103,7 +105,7 @@
     }
     #settings-overlay.open { display: flex; opacity: 1; }
     #settings-dialog {
-      position: relative; width: min(430px, 100%);
+      position: relative; width: min(520px, 100%);
       max-height: min(620px, calc(100dvh - 36px));
       overflow-y: auto; padding: 25px;
       border: 4px solid #9bcce4; border-radius: 24px;
@@ -129,9 +131,24 @@
       transition: transform .18s ease, background .18s ease;
     }
     #settings-close:hover { background: #ffe7ec; transform: rotate(6deg); }
+    .settings-tabs {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 6px;
+      margin: 0 0 18px; padding: 5px; border-radius: 16px;
+      background: #e9f2f3;
+    }
+    .settings-tab {
+      min-height: 40px; border: 0; border-radius: 12px; cursor: pointer;
+      background: transparent; color: #7c6b60; font: 800 14px/1 inherit;
+      transition: background .2s ease, color .2s ease, box-shadow .2s ease;
+    }
+    .settings-tab[aria-selected="true"] {
+      color: #5d4b40; background: #fffaf2; box-shadow: 0 3px 0 rgba(91,74,63,.12);
+    }
+    .settings-panel { display: none; }
+    .settings-panel.active { display: grid; gap: 11px; }
     .settings-row {
       display: flex; align-items: center; justify-content: space-between; gap: 18px;
-      padding: 15px 16px; border: 2px solid #d7e8df; border-radius: 16px;
+      padding: 13px 15px; border: 2px solid #d7e8df; border-radius: 16px;
       background: rgba(255,255,255,.72);
     }
     .settings-row-copy { display: flex; align-items: center; gap: 11px; min-width: 0; }
@@ -142,39 +159,63 @@
     }
     .settings-row strong { display: block; font-size: 15px; color: #654f42; }
     .settings-row small { display: block; margin-top: 2px; color: #907e72; font-size: 11px; }
-    #sound-toggle {
+    .pastel-toggle {
       position: relative; flex: 0 0 auto; width: 62px; height: 34px;
       border: 0; border-radius: 999px; padding: 0; cursor: pointer;
       background: #d8d4ce; box-shadow: inset 0 2px 4px rgba(91,74,63,.14);
       transition: background .28s ease, box-shadow .28s ease;
     }
-    #sound-toggle::before {
+    .pastel-toggle::before {
       content: ''; position: absolute; left: 4px; top: 4px;
       width: 26px; height: 26px; border-radius: 50%;
       background: #fffaf1; box-shadow: 0 3px 5px rgba(91,74,63,.22);
       transition: transform .32s cubic-bezier(.2,.9,.25,1.25), background .25s ease;
     }
-    #sound-toggle[aria-checked="true"] {
+    .pastel-toggle[aria-checked="true"] {
       background: linear-gradient(90deg, #a9d8f0, #a8d9bd);
       box-shadow: inset 0 2px 4px rgba(72,115,119,.12), 0 0 0 3px rgba(169,216,240,.18);
     }
-    #sound-toggle[aria-checked="true"]::before {
+    .pastel-toggle[aria-checked="true"]::before {
       transform: translateX(28px); background: #fffdf4;
     }
-    #sound-toggle:active::before { width: 29px; }
-    #sound-toggle[aria-checked="true"]:active::before { transform: translateX(25px); }
-    .about-section {
-      margin-top: 20px; padding-top: 18px; border-top: 2px dashed #d9cbb9;
-      text-align: center;
+    .pastel-toggle:active::before { width: 29px; }
+    .pastel-toggle[aria-checked="true"]:active::before { transform: translateX(25px); }
+    .settings-control { flex: 0 0 min(180px, 42%); }
+    .settings-slider { display: grid; grid-template-columns: 1fr 38px; align-items: center; gap: 8px; }
+    .settings-slider output { color: #826d60; font-size: 12px; text-align: right; }
+    .settings-slider input[type="range"] {
+      width: 100%; height: 7px; appearance: none; border-radius: 999px;
+      background: linear-gradient(90deg, #acd7ec, #c8dfc8); cursor: pointer;
     }
+    .settings-slider input[type="range"]::-webkit-slider-thumb {
+      appearance: none; width: 20px; height: 20px; border: 3px solid #fffaf2;
+      border-radius: 50%; background: #8bbbd1; box-shadow: 0 2px 0 #638ca0;
+    }
+    .settings-select {
+      width: 100%; min-height: 38px; padding: 7px 32px 7px 11px;
+      border: 2px solid #b9d9e5; border-radius: 11px; background: #f8fdff;
+      color: #65544a; font: 750 13px/1.2 inherit; cursor: pointer;
+    }
+    .settings-danger {
+      width: 100%; min-height: 44px; border: 2px solid #e7bdc5; border-radius: 14px;
+      background: #fff5f6; color: #8b5360; font: 800 13px/1 inherit; cursor: pointer;
+    }
+    .settings-danger:hover { background: #ffecef; }
+    .about-section { text-align: left; }
     .about-section h3 {
       margin: 0 0 8px; font-family: Georgia, "Times New Roman", serif;
       color: #6f6254; font-size: 19px;
     }
     .about-section p {
-      margin: 0 auto 14px; max-width: 340px; color: #806f64;
+      margin: 0 0 14px; color: #806f64;
       font-size: 12px; line-height: 1.55;
     }
+    .credit-card {
+      padding: 14px 15px; border: 2px solid #dce7df; border-radius: 15px;
+      background: rgba(255,255,255,.72); color: #76675e; font-size: 12px; line-height: 1.55;
+    }
+    .credit-card strong { display: block; margin-bottom: 3px; color: #614f44; font-size: 13px; }
+    .privacy-note { border-color: #c9dfeb; background: #f3fbff; }
     #kofi-btn {
       display: inline-flex; align-items: center; justify-content: center; gap: 8px;
       min-height: 42px; padding: 9px 18px; border: 3px solid #e8aebc;
@@ -185,6 +226,12 @@
     }
     #kofi-btn:hover { background: #ffe5eb; transform: translateY(-2px); box-shadow: 0 6px 0 #d79aa9; }
     #kofi-btn:active { transform: translateY(3px); box-shadow: 0 1px 0 #d79aa9; }
+    @media (max-width: 520px) {
+      #settings-dialog { padding: 21px 17px; border-radius: 21px; }
+      .settings-row { align-items: flex-start; gap: 12px; padding: 12px; }
+      .settings-row-icon { width: 34px; height: 34px; }
+      .settings-control { flex-basis: 40%; }
+    }
 
     /* ---------- Interact prompt ---------- */
     #prompt {
@@ -249,10 +296,25 @@
     #dialogue .text { font-size: 17px; line-height: 1.5; min-height: 52px; }
     #dialogue .text strong { color: #4f3c32; font-weight: 850; }
     #dialogue .next {
-      position: absolute; right: 18px; bottom: 10px; font-size: 13px; opacity: 0.55;
-      animation: bob 1s ease-in-out infinite;
+      position: absolute; right: 18px; bottom: 10px; display: flex; align-items: center; gap: 7px;
+      font-size: 12px; font-weight: 700; letter-spacing: .015em; opacity: 0.58;
     }
-    @keyframes bob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+    #dialogue .continue-mark {
+      width: 9px; height: 9px; border-right: 3px solid currentColor; border-bottom: 3px solid currentColor;
+      transform: rotate(45deg); animation: continue-breathe 1.35s ease-in-out infinite;
+    }
+    #dialogue.is-typing .next { opacity: 0; }
+    @keyframes continue-breathe {
+      0%, 100% { transform: translateY(-2px) rotate(45deg); opacity: .42; }
+      50% { transform: translateY(2px) rotate(45deg); opacity: 1; }
+    }
+    html.large-dialogue #dialogue .text { font-size: 20px; line-height: 1.58; }
+    html.reduce-motion #dialogue .continue-mark,
+    html.reduce-motion .loader-dots i,
+    html.reduce-motion .title-landscape { animation: none !important; }
+    html.reduce-motion #settings-overlay *,
+    html.reduce-motion #dialogue *,
+    html.reduce-motion .screen * { transition-duration: .01ms !important; }
 
     /* ---------- Touch controls ---------- */
     #joystick {
@@ -887,7 +949,7 @@
     #finale.end #finale-scroll { opacity: 0; transition: opacity 1.0s ease; }
     #finale.end #finale-end { opacity: 1; }
   </style>
-  <script type="module" crossorigin src="./assets/index-KoDNQ4Ab.js"></script>
+  <script type="module" crossorigin src="./assets/index-hGW1jx_d.js"></script>
 </head>
 <body>
   <div id="app"></div>
@@ -931,20 +993,50 @@
     <section id="settings-dialog" role="dialog" aria-modal="true" aria-labelledby="settings-title">
       <button id="settings-close" aria-label="Close settings">×</button>
       <h2 id="settings-title">Settings</h2>
-      <p class="settings-lead">Make the journey comfortable for you.</p>
-      <div class="settings-row">
-        <div class="settings-row-copy">
-          <span class="settings-row-icon" aria-hidden="true">🎵</span>
-          <span><strong>Music &amp; sound</strong><small>Story music and gentle sound effects</small></span>
-        </div>
-        <button id="sound-toggle" role="switch" aria-checked="true" aria-label="Music and sound on"></button>
+      <p class="settings-lead" id="settings-lead">Make the journey comfortable for you.</p>
+      <div class="settings-tabs" role="tablist" aria-label="Settings sections">
+        <button class="settings-tab" id="settings-tab" role="tab" aria-selected="true" aria-controls="settings-panel">Settings</button>
+        <button class="settings-tab" id="about-tab" role="tab" aria-selected="false" aria-controls="about-panel">About &amp; credits</button>
       </div>
-      <div class="about-section">
-        <h3>About this adventure</h3>
+      <div class="settings-panel active" id="settings-panel" role="tabpanel" aria-labelledby="settings-tab">
+        <div class="settings-row">
+          <div class="settings-row-copy">
+            <span class="settings-row-icon" aria-hidden="true">♪</span>
+            <span><strong>Audio</strong><small>Music and gentle sound effects</small></span>
+          </div>
+          <button id="sound-toggle" class="pastel-toggle" role="switch" aria-checked="true" aria-label="Audio on"></button>
+        </div>
+        <div class="settings-row">
+          <div class="settings-row-copy"><span class="settings-row-icon" aria-hidden="true">♫</span><span><strong>Music volume</strong><small>The storybook soundtrack</small></span></div>
+          <div class="settings-control settings-slider"><input id="music-volume" type="range" min="0" max="100" step="5" value="50" aria-label="Music volume"><output id="music-volume-value">50%</output></div>
+        </div>
+        <div class="settings-row">
+          <div class="settings-row-copy"><span class="settings-row-icon" aria-hidden="true">•</span><span><strong>Sound effects</strong><small>Dialogue, water and story cues</small></span></div>
+          <div class="settings-control settings-slider"><input id="sfx-volume" type="range" min="0" max="100" step="5" value="70" aria-label="Sound effects volume"><output id="sfx-volume-value">70%</output></div>
+        </div>
+        <div class="settings-row">
+          <div class="settings-row-copy"><span class="settings-row-icon" aria-hidden="true">Aa</span><span><strong>Text speed</strong><small>How quickly dialogue appears</small></span></div>
+          <div class="settings-control"><select id="text-speed" class="settings-select" aria-label="Dialogue text speed"><option value="instant">Instant</option><option value="gentle" selected>Gentle</option><option value="storybook">Storybook</option></select></div>
+        </div>
+        <div class="settings-row">
+          <div class="settings-row-copy"><span class="settings-row-icon" aria-hidden="true">◌</span><span><strong>Reduced motion</strong><small>Calmer transitions and camera movement</small></span></div>
+          <button id="motion-toggle" class="pastel-toggle" role="switch" aria-checked="false" aria-label="Reduced motion off"></button>
+        </div>
+        <div class="settings-row">
+          <div class="settings-row-copy"><span class="settings-row-icon" aria-hidden="true">A+</span><span><strong>Larger dialogue</strong><small>Increase story text size</small></span></div>
+          <button id="large-text-toggle" class="pastel-toggle" role="switch" aria-checked="false" aria-label="Larger dialogue off"></button>
+        </div>
+        <button id="reset-save-btn" class="settings-danger">Reset saved journey</button>
+      </div>
+      <div class="settings-panel about-section" id="about-panel" role="tabpanel" aria-labelledby="about-tab">
+        <h3>The Pilgrim’s Progress</h3>
         <p>
-          An illustrated storybook journey inspired by John Bunyan’s
-          <em>The Pilgrim’s Progress</em>, retold in friendly modern English.
+          An illustrated storybook adventure based on John Bunyan’s 1678 work,
+          <em>The Pilgrim’s Progress</em>, retold in kid-friendly modern English.
         </p>
+        <div class="credit-card"><strong>Created by Poporetto · Version 0.1.0</strong>Story adaptation, game design, code, voxel environments and character art created for this game.</div>
+        <div class="credit-card"><strong>Music &amp; assets</strong>The original soundtrack and sound effects are generated in the browser with Web Audio. Voxel models and environments are built procedurally with Three.js. Character portraits were created for this storybook.</div>
+        <div class="credit-card privacy-note"><strong>Your progress stays with you</strong>Chapter progress and settings are stored only on this device. The game does not upload your save or ask for personal information.</div>
         <a id="kofi-btn" href="https://ko-fi.com/poporetto" target="_blank" rel="noopener noreferrer">
           <span aria-hidden="true">☕</span> Support on Ko-fi
         </a>
@@ -976,7 +1068,7 @@
     <div class="portrait" aria-hidden="true"></div>
     <div class="name"></div>
     <div class="text"></div>
-    <div class="next">▼ continue</div>
+    <div class="next"><span class="continue-mark" aria-hidden="true"></span><span>continue</span></div>
   </div>
 
   <div id="choice">

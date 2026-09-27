@@ -239,7 +239,7 @@ export class WicketGateScene {
 
     s.add(new THREE.HemisphereLight(0xe2eef2, 0xb2c8a6, 0.9));
     const sun = new THREE.DirectionalLight(0xf7eed8, 1.2);
-    sun.position.set(-22, 38, 18);
+    sun.position.set(22, 38, 18);
     setupSunShadow(sun);
     sun.shadow.mapSize.set(2048, 2048);
     sun.shadow.camera.left = -70;
