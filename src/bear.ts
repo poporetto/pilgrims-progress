@@ -9,6 +9,8 @@ export type Species = 'bear' | 'pig' | 'frog' | 'rabbit' | 'cat' | 'lion' | 'owl
 export type Outfit = 'shirt' | 'dress' | 'apron' | 'robe' | 'overalls' | 'none';
 
 export interface CharacterOptions {
+  /** travels with Christian: never picked as the talk partner to turn */
+  companion?: boolean;
   species?: Species;
   fur?: number;
   scale?: number;
@@ -119,7 +121,17 @@ const BELLY: Record<Species, number> = {
 
 const LION_MANE = 0xb0793a;
 
+/** Every character rig built so far (chapters own their scenes; the dialogue
+ * system uses this to turn whoever is talking toward the player). */
+export const liveBears = new Set<BearParts>();
+
 export function makeBear(opts: CharacterOptions = {}): BearParts {
+  const parts = buildBear(opts);
+  if (!opts.companion) liveBears.add(parts);
+  return parts;
+}
+
+function buildBear(opts: CharacterOptions = {}): BearParts {
   const species = opts.species ?? 'bear';
   const fur = opts.fur ?? DEFAULT_FUR[species];
   const belly = BELLY[species];

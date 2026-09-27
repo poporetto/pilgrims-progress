@@ -129,7 +129,7 @@ export class ShadowScene {
     this.lamp = new THREE.PointLight(0xffeec4, 22, 13);
 
     // Faithful — the white sheep from the City of Destruction
-    this.faithful = makeBear({
+    this.faithful = makeBear({ companion: true,
       species: 'sheep', fur: 0xf3efe4, outfit: 'shirt', outfitColor: 0xa8c4a2,
     });
   }

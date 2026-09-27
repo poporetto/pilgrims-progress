@@ -1,7 +1,7 @@
 import { inject as injectAnalytics } from '@vercel/analytics';
 import * as THREE from 'three';
 import { PALETTE } from './palette';
-import { makeBear, animateBear, block, mat } from './bear';
+import { makeBear, animateBear, block, mat, liveBears, BearParts } from './bear';
 import { buildWorld, WALL, Interactable } from './world';
 import { createNPCs, NPC, QuestState, DialogueLine } from './npcs';
 import { EnchantedScene } from './enchanted';
@@ -2969,6 +2969,31 @@ function applyPrompt(p: ChapterPrompt | null): void {
 const moveInput = { x: 0, z: 0 };
 const chapterFrame: CameraFrame = { focus: new THREE.Vector3(), offset: camOffset };
 
+// When a conversation opens, the nearest upright character turns (eased) to
+// face Christian — chapters script their own talkers, so this is found
+// spatially rather than per NPC.
+let talkPartner: BearParts | null = null;
+let talkWasOpen = false;
+function faceTalkPartner(sc: THREE.Scene, actor: Actor, dt: number): void {
+  if (dialogueOpen && !talkWasOpen) {
+    talkPartner = null;
+    let best = 3.4;
+    const p = actor.root.position;
+    for (const b of liveBears) {
+      const r = b.root;
+      if (r === actor.root || !r.visible || Math.abs(r.rotation.x) + Math.abs(r.rotation.z) > 0.05) continue;
+      if (r.parent !== sc) continue;
+      const d = Math.hypot(r.position.x - p.x, r.position.z - p.z);
+      if (d < best) { best = d; talkPartner = b; }
+    }
+  }
+  talkWasOpen = dialogueOpen;
+  if (!dialogueOpen || !talkPartner) return;
+  const r = talkPartner.root;
+  const yaw = Math.atan2(actor.root.position.x - r.position.x, actor.root.position.z - r.position.z);
+  r.rotation.y = lerpAngle(r.rotation.y, yaw, Math.min(1, 7 * dt));
+}
+
 function runChapter(a: ChapterAdapter, dt: number, t: number): boolean {
   const actor = a.actor();
   if (!actor) return false;
@@ -2990,6 +3015,7 @@ function runChapter(a: ChapterAdapter, dt: number, t: number): boolean {
   }
   a.afterMove(dt, moving);
   a.update(dt, t, moving);
+  faceTalkPartner(a.scene(), actor, dt);
 
   const idle = !dialogueOpen && !endingOpen;
   applyPrompt(idle && a.prompt ? a.prompt(choiceOpen) : null);

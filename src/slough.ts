@@ -365,7 +365,7 @@ export class SloughScene {
     }
     if (this.lightBeam) this.lightBeam.visible = false;
     if (withPliable) {
-      this.pliable = makeBear({ species: 'rabbit', outfit: 'shirt', outfitColor: 0xffd6a5, scale: 0.95 });
+      this.pliable = makeBear({ companion: true, species: 'rabbit', outfit: 'shirt', outfitColor: 0xffd6a5, scale: 0.95 });
       // keep him north of Christian so the dialogue panel never hides him
       this.pliable.root.position.set(-26, 0, -1.4);
       this.scene.add(this.pliable.root);

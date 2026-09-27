@@ -120,12 +120,12 @@ export class VanityScene {
     this.christian.armR.add(sword);
 
     // Faithful the white sheep
-    this.faithful = makeBear({
+    this.faithful = makeBear({ companion: true,
       species: 'sheep', fur: 0xf3efe4, outfit: 'shirt', outfitColor: 0xa8c4a2,
     });
 
     // Hopeful: a bright-eyed young dog of the fair
-    this.hopeful = makeBear({
+    this.hopeful = makeBear({ companion: true,
       species: 'dog', fur: 0xd9b088, outfit: 'shirt', outfitColor: 0x7fb8a2,
     });
 

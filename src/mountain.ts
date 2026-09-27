@@ -128,7 +128,7 @@ export class MountainScene {
     this.christian.armR.add(sword);
 
     // Hopeful the young dog
-    this.hopeful = makeBear({
+    this.hopeful = makeBear({ companion: true,
       species: 'dog', fur: 0xd9b088, outfit: 'shirt', outfitColor: 0x7fb8a2,
     });
 

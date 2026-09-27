@@ -99,7 +99,7 @@ update the checklist as phases land.
 ### Open visual bugs to catch during environment passes
 - [x] "Random torchlight" — was a lone bog-rim cattail in the Slough
       (green pole + tan head beside the highway); replaced by reed clumps
-- [ ] NPCs visually face the player when talking (spec §7)
+- [x] NPCs visually face the player when talking (eased; companions excluded)
 
 ### Environment passes
 - [x] I Village
