@@ -91,7 +91,10 @@ export function voxelGeometry(w: number, h: number, d: number): THREE.BufferGeom
   const key = `${w},${h},${d}`;
   let g = geoCache.get(key);
   if (!g) {
-    g = chamferBoxGeometry(w, h, d, bevelFor(w, h, d));
+    // bevels on tiny parts are invisible at game distance: use a plain box
+    g = Math.min(w, h, d) < 0.1
+      ? new THREE.BoxGeometry(w, h, d).toNonIndexed().deleteAttribute('uv')
+      : chamferBoxGeometry(w, h, d, bevelFor(w, h, d));
     geoCache.set(key, g);
   }
   return g;

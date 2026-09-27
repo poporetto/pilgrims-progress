@@ -25,6 +25,7 @@ import { CelestialScene } from './celestial';
 import { makeAlpineMountain } from './alpine';
 import { CameraController, type CameraFrame } from './core/camera';
 import { Atmosphere, configureRenderer } from './render/atmosphere';
+import { windUniforms } from './world/voxels';
 import { getDialogueCharacterNames, getDialoguePortrait, preloadAllPortraits } from './dialoguePortraits';
 
 // ---------------------------------------------------------------- setup
@@ -3016,6 +3017,7 @@ function tick(): void {
   requestAnimationFrame(tick);
   const dt = Math.min(clock.getDelta(), 0.05);
   const t = clock.elapsedTime;
+  windUniforms.uWindTime.value = gameSettings.reducedMotion ? 0 : t;
 
   if (!started) {
     // Three repeating crossings: Pliable, then Faithful, then Hopeful. Each

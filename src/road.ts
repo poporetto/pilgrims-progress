@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { block } from './bear';
+import { voxelMesh, Voxel, rng, vary } from './world/voxels';
 
 export interface HighwayPavingOptions {
   z?: number;
@@ -11,13 +11,14 @@ export interface HighwayPavingOptions {
 }
 
 // A consistent King's Highway treatment: three staggered rows of individually
-// raised voxel stones, with small gaps and warm pastel color variation.
+// raised, bevelled stones with small gaps and warm pastel colour variation.
+// All stones are merged into a single mesh (one draw call per stretch).
 export function addHighwayPaving(
-  scene: THREE.Scene,
+  scene: THREE.Object3D,
   startX: number,
   endX: number,
   options: HighwayPavingOptions = {},
-): void {
+): THREE.Mesh {
   const centerZ = options.z ?? 0;
   const width = options.width ?? 3.15;
   const step = options.step ?? 1.42;
@@ -28,6 +29,8 @@ export function addHighwayPaving(
   const rowStep = width / rows;
   const first = Math.min(startX, endX);
   const last = Math.max(startX, endX);
+  const r = rng(Math.round(first * 13 + last * 7 + centerZ * 3));
+  const stones: Voxel[] = [];
 
   for (let row = 0; row < rows; row++) {
     const z = centerZ + (row - 1) * rowStep;
@@ -35,20 +38,23 @@ export function addHighwayPaving(
     let column = 0;
     for (let x = first + stagger; x <= last; x += step) {
       const baseY = options.yAt?.(x, z) ?? 0;
-      const tile = block(
-        step - 0.13,
-        height + ((column + row) % 3) * 0.012,
-        rowDepth,
-        colors[(column + row * 2) % colors.length],
-        x,
-        baseY + height / 2 + 0.018,
-        z,
-      );
-      tile.rotation.y = ((column + row) % 5 - 2) * 0.012;
-      tile.castShadow = false;
-      tile.receiveShadow = true;
-      scene.add(tile);
+      const h = height + ((column + row) % 3) * 0.012;
+      stones.push({
+        w: step - 0.13 - r() * 0.08,
+        h,
+        d: rowDepth - r() * 0.06,
+        x: x + (r() - 0.5) * 0.05,
+        y: baseY + h / 2 + 0.018,
+        z: z + (r() - 0.5) * 0.05,
+        ry: ((column + row) % 5 - 2) * 0.012 + (r() - 0.5) * 0.03,
+        color: vary(colors[(column + row * 2) % colors.length], r, 0.03),
+      });
       column++;
     }
   }
+  const mesh = voxelMesh(stones);
+  mesh.castShadow = false;
+  mesh.receiveShadow = true;
+  scene.add(mesh);
+  return mesh;
 }
