@@ -4,6 +4,10 @@ import { makeBear, animateBear, addPilgrimArmorDetails, BearParts, block, mat } 
 import { makeShiningLight, animateShiningLight, ShiningLight, setupSunShadow } from './light';
 import { DialogueLine } from './npcs';
 import { addHighwayPaving } from './road';
+import { dressExterior } from './world/dress';
+import { band } from './world/terrain';
+import { createRock } from './world/props';
+import { voxelMesh, Voxel, rng as seeded, vary, bakeStatic } from './world/voxels';
 
 // Chapter XII — the Plain of Ease and the Hill Lucre.
 // Christian and Hopeful, fresh out of Vanity Fair, overtake MR. BY-ENDS of
@@ -167,27 +171,28 @@ export class LucreScene {
     s.add(sun);
 
     // the Plain of Ease: broad, bright, easy underfoot
-    const ground = new THREE.Mesh(new THREE.BoxGeometry(180, 1, 90), mat(0x9ecf8c));
-    ground.position.y = -0.5;
-    ground.receiveShadow = true;
-    s.add(ground);
-    for (let i = 0; i < 40; i++) {
-      const x = -50 + Math.random() * 100;
-      const z = -35 + Math.random() * 70;
-      const p = block(0.9 + Math.random() * 1.6, 0.1, 0.9 + Math.random() * 1.6,
-        Math.random() > 0.5 ? 0x8fc47d : 0xaede9c, x, 0.04 + Math.random() * 0.03, z);
-      p.castShadow = false;
-      s.add(p);
-    }
-    for (let i = 0; i < 24; i++) {
-      const fx = -30 + Math.random() * 70;
-      const fz = (Math.random() > 0.5 ? 1 : -1) * (2.5 + Math.random() * 8);
-      const f = block(0.16, 0.16, 0.16,
-        [PALETTE.flowerYellow, PALETTE.flowerPink, PALETTE.flowerBlue][i % 3],
-        fx, 0.12, fz);
-      f.castShadow = false;
-      s.add(f);
-    }
+    dressExterior(s, {
+      seed: 121,
+      bounds: { minX: -78, maxX: 88, minZ: -56, maxZ: 56 },
+      flat: (x, z) => Math.max(
+        band(Math.max(0, Math.abs(z) - 12), 0, 6),
+        band(Math.hypot(x - DEMAS_X, z + 7.5), 7, 10),
+      ) * band(Math.max(0, -34 - x, x - 46), 0, 8),
+      hills: 2.8,
+      blocked: (x, z) => (Math.abs(z) < 2.2 && x > -34 && x < 44) || Math.hypot(x - DEMAS_X, z + 7.5) < 5.6
+        || Math.hypot(x - (BYENDS_X + 5), z + 9) < 2.4 || Math.hypot(x - PILLAR_X, z) < 1.6,
+      palette: {
+        grass: [0xace094, 0xa3d98b, 0xb6e79f, 0x9ad284],
+        highGrass: 0xc6eeab,
+        blossom: true,
+        flowers: [0xfff0a8, 0xffd1dc, 0xcfe3ff, 0xffffff, 0xffd5b0],
+      },
+      grass: 3000,
+      flowers: 560,
+      trees: 55,
+      shrubs: 45,
+      treeZone: (_x, z) => Math.abs(z) > 13 && Math.abs(z) < 42,
+    });
 
     // the King's Highway: proper PAVED stones, straight and sure
     addHighwayPaving(s, -32, 42, {
@@ -198,8 +203,8 @@ export class LucreScene {
     // silver mist clinging to the off-path edges of the plain
     for (let i = 0; i < 14; i++) {
       const m = new THREE.Mesh(
-        new THREE.BoxGeometry(5 + Math.random() * 4, 1.2, 3 + Math.random() * 2),
-        new THREE.MeshStandardMaterial({ color: 0xdfe6ee, transparent: true, opacity: 0.4 }),
+        new THREE.IcosahedronGeometry(1, 1).scale(2.6 + Math.random() * 2, 0.55, 1.5 + Math.random()),
+        new THREE.MeshStandardMaterial({ color: 0xe6ecf2, transparent: true, opacity: 0.32, depthWrite: false, flatShading: true }),
       );
       m.position.set(-28 + Math.random() * 62, 0.8 + Math.random() * 0.6,
         (Math.random() > 0.5 ? 1 : -1) * (7.5 + Math.random() * 4));
@@ -220,7 +225,7 @@ export class LucreScene {
       carriage.add(wheel);
     }
     carriage.position.set(BYENDS_X + 5, 0, -9);
-    s.add(carriage);
+    s.add(bakeStatic(carriage));
     this.carriage = carriage;
     this.friends.forEach((f, i) => {
       f.root.position.set(BYENDS_X + 3.2 + i * 1.4, 0, -8 + (i % 2) * 1.2);
@@ -230,15 +235,37 @@ export class LucreScene {
 
     // ---------- HILL LUCRE: jagged, metallic, glittering ----------
     const hill = new THREE.Group();
-    const silvers = [0x9aa4b2, 0x8a94a2, 0xaab4c2];
+    // metallic silver catches the sun in hard little glints — tempting
+    const silverMat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.28, metalness: 0.08 });
+    const lr = seeded(122);
+    const silvers = [0xd3dae4, 0xc4ccd8, 0xe0e6ee];
+    const hillVox: Voxel[] = [];
     for (const [hx, hy, hw, hh, hz] of [
       [0, 1.6, 7, 3.2, 0], [2.5, 3.2, 4.5, 3.4, -1], [-2.5, 2.8, 4, 2.6, -0.5],
       [0.5, 5.0, 2.6, 2.4, -1.2], [-1.5, 4.4, 2.0, 1.8, -1.5],
     ] as const) {
-      hill.add(block(hw, hh, 4 + Math.random() * 2, silvers[Math.floor(Math.random() * 3)], hx, hy, hz));
+      hillVox.push({ w: hw, h: hh, d: 4 + lr() * 2, x: hx, y: hy, z: hz, ry: (lr() - 0.5) * 0.3, color: vary(silvers[Math.floor(lr() * 3)], lr, 0.03) });
     }
-    // (the scattered white "silver vein" flecks on the hill face were removed —
-    // they read as random floating boxes rather than veins in the rock)
+    // jagged spires and a crown of pale crystal
+    for (let k = 0; k < 9; k++) {
+      const a = lr() * Math.PI * 2;
+      const r0 = 1.2 + lr() * 2.2;
+      const h = 1.2 + lr() * 2.4;
+      hillVox.push({
+        w: 0.5 + lr() * 0.5, h, d: 0.5 + lr() * 0.5,
+        x: Math.cos(a) * r0, y: 3.2 + h / 2 - 0.4, z: Math.sin(a) * r0 * 0.7 - 1,
+        rx: (lr() - 0.5) * 0.5, rz: (lr() - 0.5) * 0.5, color: vary(0xeef4ff, lr, 0.03),
+      });
+    }
+    hill.add(voxelMesh(hillVox, silverMat));
+    // scattered silver nuggets glinting at the hill's foot
+    for (let k = 0; k < 10; k++) {
+      const a = lr() * Math.PI * 2;
+      const nug = createRock({ seed: 1230 + k, size: 0.3 + lr() * 0.25, color: 0xc8d0dc });
+      nug.material = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.25, metalness: 0.08, flatShading: true });
+      nug.position.set(Math.cos(a) * 4.4, nug.position.y, Math.sin(a) * 3.2 + 0.6);
+      hill.add(nug);
+    }
     // the mine mouth, glowing an unwholesome silver-green
     hill.add(block(2.2, 2.4, 0.6, 0x2e2a30, 0, 1.1, 2.2));
     const glow = new THREE.Mesh(

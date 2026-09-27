@@ -113,6 +113,7 @@ update the checklist as phases land.
 - [x] IX Valley of Humiliation
 - [x] X Shadow of Death (merged statics, layered crags)
 - [x] XI Vanity Fair
+- [x] XII Plain of Ease & Hill Lucre
 
 ## Baseline (before remake, dev build, 1 s sample after debug jump)
 
