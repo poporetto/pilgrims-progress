@@ -23,6 +23,7 @@ import { MountainScene } from './mountain';
 import { BeulahScene } from './beulah';
 import { CelestialScene } from './celestial';
 import { makeAlpineMountain } from './alpine';
+import { CameraController, type CameraFrame } from './core/camera';
 import { getDialogueCharacterNames, getDialoguePortrait, preloadAllPortraits } from './dialoguePortraits';
 
 // ---------------------------------------------------------------- setup
@@ -384,10 +385,11 @@ music.setSfxVolume(gameSettings.sfxVolume);
 document.documentElement.classList.toggle('reduce-motion', gameSettings.reducedMotion);
 document.documentElement.classList.toggle('large-dialogue', gameSettings.largeDialogue);
 const worldMap = new WorldMap(window.innerWidth / window.innerHeight);
-let mode:
+type GameMode =
   | 'village' | 'map' | 'slough' | 'morality' | 'wicket' | 'cross'
   | 'highway' | 'hill' | 'palace' | 'valley' | 'shadow' | 'vanity' | 'lucre' | 'castle'
-  | 'mountain' | 'enchanted' | 'beulah' | 'celestial' = 'village';
+  | 'mountain' | 'enchanted' | 'beulah' | 'celestial';
+let mode: GameMode = 'village';
 
 // ---------------------------------------------------------------- chapter save
 
@@ -606,10 +608,6 @@ function fadeTransition(mid: () => void, holdMs = 420): void {
     mid();
     requestAnimationFrame(() => ui.fade.classList.remove('show'));
   }, gameSettings.reducedMotion ? 80 : holdMs);
-}
-
-function cameraBlend(rate: number, dt: number): number {
-  return gameSettings.reducedMotion ? 1 : Math.min(rate * dt, 1);
 }
 
 const isTouch =
@@ -2376,6 +2374,8 @@ const camOffset = new THREE.Vector3(0, 13, 13);
 const HOUSE_CAM_OFFSET = new THREE.Vector3(0, 7.5, 7.5); // closer view inside the Interpreter's House
 const DUNGEON_CAM_OFFSET = new THREE.Vector3(0, 6, -11); // camera looks from outside north wall inward
 const camTarget = new THREE.Vector3();
+// one damped camera shared by the village and every chapter scene
+const cameraRig = new CameraController(camera, camTarget);
 const valleyBattleFocus = new THREE.Vector3();
 const valleyCameraOffset = new THREE.Vector3();
 let valleyBattleZoom = 1;
@@ -2687,6 +2687,312 @@ function updateNPCs(dt: number, t: number): void {
 
 // ---------------------------------------------------------------- loop
 
+// ---------------------------------------------------------------- chapter loop
+//
+// Every chapter scene shares the same per-frame shape: read input, move the
+// scene's own Christian, let the scene resolve collisions/triggers, animate,
+// show a context prompt, frame the camera and render. Each chapter only
+// describes what is *different* about it; `runChapter` does the rest.
+
+type Actor = import('./bear').BearParts;
+
+interface ChapterPrompt {
+  text: string;
+  /** Touch-button label; null hides the touch button. */
+  button: string | null;
+  /** Show the [E] key hint (desktop). Defaults to true. */
+  key?: boolean;
+}
+
+interface ChapterAdapter {
+  scene: () => THREE.Scene;
+  actor: () => Actor | null;
+  moveFactor: () => number;
+  afterMove: (dt: number, moving: boolean) => void;
+  update: (dt: number, t: number, moving: boolean) => void;
+  /** Movement is paused while the choice box is open. */
+  blockOnChoice?: boolean;
+  invertInput?: () => boolean;
+  prompt?: (choiceOpen: boolean) => ChapterPrompt | null;
+  extra?: (choiceOpen: boolean) => void;
+  frame?: (actor: Actor, dt: number) => CameraFrame;
+}
+
+const talk = (text: string, button = 'Talk'): ChapterPrompt => ({ text, button });
+
+const CHAPTERS: Partial<Record<GameMode, ChapterAdapter>> = {
+  slough: {
+    scene: () => slough.scene,
+    actor: () => sloughActors?.christian ?? null,
+    moveFactor: () => slough.moveFactor(),
+    afterMove: (_dt, moving) => slough.afterMove(moving),
+    update: (dt, t, moving) => slough.update(dt, t, moving),
+    prompt: () => (slough.nearHelp() ? talk('Talk to Help') : null),
+  },
+  morality: {
+    scene: () => morality.scene,
+    actor: () => moralityActors?.christian ?? null,
+    moveFactor: () => morality.moveFactor(),
+    afterMove: () => morality.afterMove(),
+    update: (dt, t, moving) => morality.update(dt, t, moving),
+    blockOnChoice: true,
+    prompt: () => (morality.nearEvangelist() ? talk('Speak with Evangelist') : null),
+  },
+  wicket: {
+    scene: () => wicket.scene,
+    actor: () => wicketActors?.christian ?? null,
+    moveFactor: () => wicket.moveFactor(),
+    afterMove: () => wicket.afterMove(),
+    update: (dt, t, moving) => wicket.update(dt, t, moving),
+    frame: (a) => {
+      const inHouse = wicket.phase === 'house' || wicket.phase === 'houseGreet' || wicket.phase === 'houseExit';
+      return { focus: a.root.position, offset: inHouse ? HOUSE_CAM_OFFSET : camOffset };
+    },
+  },
+  cross: {
+    scene: () => cross.scene,
+    actor: () => crossActors?.christian ?? null,
+    moveFactor: () => cross.moveFactor(),
+    afterMove: () => cross.afterMove(),
+    update: (dt, t, moving) => cross.update(dt, t, moving),
+    prompt: () => {
+      if (cross.nearCross()) return talk('The Cross', 'Look');
+      if (cross.nearTomb()) return talk('The empty tomb', 'Look');
+      return null;
+    },
+  },
+  highway: {
+    scene: () => highway.scene,
+    actor: () => highwayActors?.christian ?? null,
+    moveFactor: () => highway.moveFactor(),
+    afterMove: () => highway.afterMove(),
+    update: (dt, t, moving) => highway.update(dt, t, moving),
+  },
+  hill: {
+    scene: () => hill.scene,
+    actor: () => hillActors?.christian ?? null,
+    moveFactor: () => hill.moveFactor(),
+    afterMove: () => hill.afterMove(),
+    update: (dt, t, moving) => hill.update(dt, t, moving),
+    prompt: () => (hill.nearScroll() ? talk('Pick up the scroll', 'Take') : null),
+  },
+  palace: {
+    scene: () => palace.scene,
+    actor: () => palaceActors?.christian ?? null,
+    moveFactor: () => palace.moveFactor(),
+    afterMove: () => palace.afterMove(),
+    update: (dt, t, moving) => palace.update(dt, t, moving),
+    prompt: () => {
+      if (palace.nearWatchful()) return talk('Talk to Watchful');
+      for (let wi = 0; wi < 4; wi++) {
+        if (palace.nearWoman(wi)) return talk(`Talk to ${palace.womanName(wi)}`);
+      }
+      return null;
+    },
+  },
+  valley: {
+    scene: () => valley.scene,
+    actor: () => valleyActors?.christian ?? null,
+    moveFactor: () => valley.moveFactor(),
+    afterMove: () => valley.afterMove(),
+    update: (dt, t, moving) => valley.update(dt, t, moving),
+    prompt: () => (valley.canAttack() ? { text: 'Swing the sword!', button: null } : null),
+    extra: () => swordBtn.classList.toggle('show', !dialogueOpen && !endingOpen),
+    frame: (a, dt) => {
+      const frameBattle = valley.battleCameraFocus(valleyBattleFocus);
+      const mobileBattle = frameBattle && window.innerWidth <= 700 && camera.aspect < 0.8;
+      // ease into the wide duel framing and back out after the victory
+      valleyBattleZoom = THREE.MathUtils.lerp(
+        valleyBattleZoom, mobileBattle ? 1.75 : 1, 1 - Math.exp(-dt * 2.8),
+      );
+      valleyCameraOffset.copy(camOffset).multiplyScalar(valleyBattleZoom);
+      return { focus: frameBattle ? valleyBattleFocus : a.root.position, offset: valleyCameraOffset };
+    },
+  },
+  shadow: {
+    scene: () => shadow.scene,
+    actor: () => shadowActors?.christian ?? null,
+    moveFactor: () => shadow.moveFactor(),
+    afterMove: (dt) => shadow.afterMove(dt),
+    update: (dt, t, moving) => shadow.update(dt, t, moving),
+    prompt: () => (shadow.nearFaithful() ? talk('Talk to Faithful') : null),
+  },
+  vanity: {
+    scene: () => vanity.scene,
+    actor: () => vanityActors?.christian ?? null,
+    moveFactor: () => vanity.moveFactor(),
+    afterMove: () => vanity.afterMove(),
+    update: (dt, t, moving) => vanity.update(dt, t, moving),
+    prompt: () => {
+      if (vanity.nearFountain()) return talk('The fountain', 'Look');
+      if (vanity.nearCitizen()) return talk('Talk to a citizen');
+      return null;
+    },
+  },
+  lucre: {
+    scene: () => lucre.scene,
+    actor: () => lucreActors?.christian ?? null,
+    moveFactor: () => lucre.moveFactor(),
+    afterMove: (dt) => lucre.afterMove(dt),
+    update: (dt, t, moving) => lucre.update(dt, t, moving),
+    blockOnChoice: true,
+    prompt: (choiceOpen) => (lucre.nearPillar() && !choiceOpen ? talk('Look at the statue', 'Look') : null),
+  },
+  castle: {
+    scene: () => castle.scene,
+    actor: () => castleActors?.christian ?? null,
+    moveFactor: () => castle.moveFactor(),
+    afterMove: () => castle.afterMove(),
+    update: (dt, t, moving) => castle.update(dt, t, moving),
+    blockOnChoice: true,
+    // the dungeon camera looks from the opposite side (~180° yaw), so invert
+    // both axes to keep on-screen directions matching the pressed keys
+    invertInput: () => castleInDungeon(),
+    extra: (choiceOpen) => {
+      // the drag-the-cross minigame, shown when near the Promise-key door
+      const showKeyGame = castle.nearDoor() && !dialogueOpen && !endingOpen && !choiceOpen;
+      if (showKeyGame && !keyGameOpen) resetKeyGame();
+      keyGameOpen = showKeyGame;
+      keyGameBox.classList.toggle('open', showKeyGame);
+    },
+    frame: (a) => ({ focus: a.root.position, offset: castleInDungeon() ? DUNGEON_CAM_OFFSET : camOffset }),
+  },
+  mountain: {
+    scene: () => mountain.scene,
+    actor: () => mountainActors?.christian ?? null,
+    moveFactor: () => mountain.moveFactor(),
+    afterMove: () => mountain.afterMove(),
+    update: (dt, t, moving) => mountain.update(dt, t, moving),
+    prompt: () => (mountain.nearShepherd() ? talk(`Talk to ${mountain.nearbyShepherdName()}`) : null),
+  },
+  enchanted: {
+    scene: () => enchanted.scene,
+    actor: () => enchantedActors?.christian ?? null,
+    moveFactor: () => enchanted.moveFactor(),
+    afterMove: () => enchanted.afterMove(),
+    update: (dt, t, moving) => enchanted.update(dt, t, moving),
+    prompt: () => (enchanted.canWake()
+      ? talk('Encourage Hopeful, remember Scripture, or sing together', 'Stay Awake')
+      : null),
+  },
+  beulah: {
+    scene: () => beulah.scene,
+    actor: () => beulahActors?.christian ?? null,
+    moveFactor: () => beulah.moveFactor(),
+    afterMove: () => beulah.afterMove(),
+    update: (dt, t, moving) => beulah.update(dt, t, moving),
+    prompt: () => {
+      if (beulah.canPop()) {
+        return {
+          text: isTouch ? 'Tap the balloons of doubt to pop them' : 'Click the balloons of doubt to pop them',
+          button: null,
+          key: false,
+        };
+      }
+      if (beulah.nearAngel()) return talk('Speak with the Shining One');
+      return null;
+    },
+  },
+  celestial: {
+    scene: () => celestial.scene,
+    actor: () => celestialActors?.christian ?? null,
+    moveFactor: () => celestial.moveFactor(),
+    afterMove: () => celestial.afterMove(),
+    update: (dt, t, moving) => celestial.update(dt, t, moving),
+    prompt: () => (celestial.nearSaint() ? talk(`Talk to ${celestial.nearbySaintName()}`) : null),
+    // the camera pulls back and lifts as the pilgrims climb toward the City;
+    // the epilogue follows Ignorance instead
+    frame: () => {
+      const focus = celestial.focus();
+      const pull = 1 + THREE.MathUtils.clamp(focus.position.y / 10, 0, 1) * 0.55;
+      celestialCameraOffset.copy(camOffset).multiplyScalar(pull);
+      celestialCameraOffset.y += focus.position.y * 0.15;
+      return { focus: focus.position, offset: celestialCameraOffset, lookHeight: 1.6, follow: 3 };
+    },
+  },
+};
+
+const celestialCameraOffset = new THREE.Vector3();
+
+function castleInDungeon(): boolean {
+  return castle.phase === 'dungeon' || castle.phase === 'key' || castle.phase === 'exit-door';
+}
+
+/** Keyboard + virtual joystick → a movement vector in camera-space XZ. */
+function readMoveInput(out: { x: number; z: number }): void {
+  let mx = 0;
+  let mz = 0;
+  if (keys.has('KeyW') || keys.has('ArrowUp')) mz -= 1;
+  if (keys.has('KeyS') || keys.has('ArrowDown')) mz += 1;
+  if (keys.has('KeyA') || keys.has('ArrowLeft')) mx -= 1;
+  if (keys.has('KeyD') || keys.has('ArrowRight')) mx += 1;
+  out.x = mx + joy.x;
+  out.z = mz + joy.y;
+}
+
+function applyPrompt(p: ChapterPrompt | null): void {
+  if (!p) {
+    ui.prompt.style.display = 'none';
+    if (isTouch && !dialogueOpen) ui.talkBtn.style.display = 'none';
+    return;
+  }
+  ui.prompt.style.display = 'block';
+  ui.promptKey.style.display = (p.key === false || isTouch) ? 'none' : 'inline-block';
+  ui.promptWho.textContent = p.text;
+  if (isTouch) {
+    if (p.button) {
+      ui.talkBtn.textContent = p.button;
+      ui.talkBtn.style.display = 'block';
+    } else if (!dialogueOpen) {
+      ui.talkBtn.style.display = 'none';
+    }
+  }
+}
+
+const moveInput = { x: 0, z: 0 };
+const chapterFrame: CameraFrame = { focus: new THREE.Vector3(), offset: camOffset };
+
+function runChapter(a: ChapterAdapter, dt: number, t: number): boolean {
+  const actor = a.actor();
+  if (!actor) return false;
+  readMoveInput(moveInput);
+  let mx = moveInput.x;
+  let mz = moveInput.z;
+  if (a.invertInput?.()) { mx = -mx; mz = -mz; }
+  const len = Math.hypot(mx, mz);
+  const factor = a.moveFactor();
+  const choiceOpen = choiceBox.classList.contains('open');
+  const moving = len > 0.15 && !dialogueOpen && !endingOpen
+    && !(a.blockOnChoice && choiceOpen) && factor > 0;
+  if (moving) {
+    mx /= Math.max(len, 1);
+    mz /= Math.max(len, 1);
+    actor.root.position.x += mx * SPEED * factor * dt;
+    actor.root.position.z += mz * SPEED * factor * dt;
+    actor.root.rotation.y = lerpAngle(actor.root.rotation.y, Math.atan2(mx, mz), 12 * dt);
+  }
+  a.afterMove(dt, moving);
+  a.update(dt, t, moving);
+
+  const idle = !dialogueOpen && !endingOpen;
+  applyPrompt(idle && a.prompt ? a.prompt(choiceOpen) : null);
+  a.extra?.(choiceOpen);
+
+  let frame: CameraFrame;
+  if (a.frame) frame = a.frame(actor, dt);
+  else {
+    chapterFrame.focus = actor.root.position;
+    chapterFrame.offset = camOffset;
+    chapterFrame.lookHeight = 1.4;
+    chapterFrame.follow = 4;
+    frame = chapterFrame;
+  }
+  cameraRig.update(dt, frame, gameSettings.reducedMotion);
+  renderer.render(a.scene(), camera);
+  return true;
+}
+
+
 const clock = new THREE.Clock();
 
 function tick(): void {
@@ -2847,721 +3153,8 @@ function tick(): void {
     return;
   }
 
-  if (mode === 'slough' && sloughActors) {
-    // ---- Slough of Despond mode ----
-    const sc = sloughActors.christian;
-    let mx = 0;
-    let mz = 0;
-    if (keys.has('KeyW') || keys.has('ArrowUp')) mz -= 1;
-    if (keys.has('KeyS') || keys.has('ArrowDown')) mz += 1;
-    if (keys.has('KeyA') || keys.has('ArrowLeft')) mx -= 1;
-    if (keys.has('KeyD') || keys.has('ArrowRight')) mx += 1;
-    mx += joy.x;
-    mz += joy.y;
-    const len = Math.hypot(mx, mz);
-    const factor = slough.moveFactor();
-    const moving = len > 0.15 && !dialogueOpen && !endingOpen && factor > 0;
-    if (moving) {
-      mx /= Math.max(len, 1);
-      mz /= Math.max(len, 1);
-      sc.root.position.x += mx * SPEED * factor * dt;
-      sc.root.position.z += mz * SPEED * factor * dt;
-      sc.root.rotation.y = lerpAngle(sc.root.rotation.y, Math.atan2(mx, mz), 12 * dt);
-    }
-    slough.afterMove(moving);
-    slough.update(dt, t, moving);
-
-    // talk prompt when standing near Help after the rescue
-    const canTalkHelp = slough.nearHelp() && !dialogueOpen && !endingOpen;
-    ui.prompt.style.display = canTalkHelp ? 'block' : 'none';
-    if (canTalkHelp) {
-      ui.promptKey.style.display = isTouch ? 'none' : 'inline-block';
-      ui.promptWho.textContent = 'Talk to Help';
-      if (isTouch) {
-        ui.talkBtn.textContent = 'Talk';
-        ui.talkBtn.style.display = 'block';
-      }
-    } else if (isTouch && !dialogueOpen) {
-      ui.talkBtn.style.display = 'none';
-    }
-
-    camTarget.lerp(sc.root.position, cameraBlend(4, dt));
-    camera.position.copy(camTarget).add(camOffset);
-    camera.lookAt(camTarget.x, camTarget.y + 1.4, camTarget.z);
-    renderer.render(slough.scene, camera);
-    return;
-  }
-
-  if (mode === 'morality' && moralityActors) {
-    // ---- Worldly Wiseman & Mount Sinai mode ----
-    const mc = moralityActors.christian;
-    let mx = 0;
-    let mz = 0;
-    if (keys.has('KeyW') || keys.has('ArrowUp')) mz -= 1;
-    if (keys.has('KeyS') || keys.has('ArrowDown')) mz += 1;
-    if (keys.has('KeyA') || keys.has('ArrowLeft')) mx -= 1;
-    if (keys.has('KeyD') || keys.has('ArrowRight')) mx += 1;
-    mx += joy.x;
-    mz += joy.y;
-    const len = Math.hypot(mx, mz);
-    const factor = morality.moveFactor();
-    const moralityChoiceOpen = choiceBox.classList.contains('open');
-    const moving =
-      len > 0.15
-      && !dialogueOpen
-      && !endingOpen
-      && !moralityChoiceOpen
-      && factor > 0;
-    if (moving) {
-      mx /= Math.max(len, 1);
-      mz /= Math.max(len, 1);
-      mc.root.position.x += mx * SPEED * factor * dt;
-      mc.root.position.z += mz * SPEED * factor * dt;
-      mc.root.rotation.y = lerpAngle(mc.root.rotation.y, Math.atan2(mx, mz), 12 * dt);
-    }
-    morality.afterMove();
-    morality.update(dt, t, moving);
-
-    if (morality.nearEvangelist() && !dialogueOpen && !endingOpen) {
-      ui.prompt.style.display = 'block';
-      ui.promptKey.style.display = isTouch ? 'none' : 'inline-block';
-      ui.promptWho.textContent = 'Speak with Evangelist';
-      if (isTouch) {
-        ui.talkBtn.textContent = 'Talk';
-        ui.talkBtn.style.display = 'block';
-      }
-    } else {
-      ui.prompt.style.display = 'none';
-      if (isTouch && !dialogueOpen) ui.talkBtn.style.display = 'none';
-    }
-
-    camTarget.lerp(mc.root.position, cameraBlend(4, dt));
-    camera.position.copy(camTarget).add(camOffset);
-    camera.lookAt(camTarget.x, camTarget.y + 1.4, camTarget.z);
-    renderer.render(morality.scene, camera);
-    return;
-  }
-
-  if (mode === 'wicket' && wicketActors) {
-    // ---- Wicket Gate mode ----
-    const wc = wicketActors.christian;
-    let mx = 0;
-    let mz = 0;
-    if (keys.has('KeyW') || keys.has('ArrowUp')) mz -= 1;
-    if (keys.has('KeyS') || keys.has('ArrowDown')) mz += 1;
-    if (keys.has('KeyA') || keys.has('ArrowLeft')) mx -= 1;
-    if (keys.has('KeyD') || keys.has('ArrowRight')) mx += 1;
-    mx += joy.x;
-    mz += joy.y;
-    const len = Math.hypot(mx, mz);
-    const factor = wicket.moveFactor();
-    const moving = len > 0.15 && !dialogueOpen && !endingOpen && factor > 0;
-    if (moving) {
-      mx /= Math.max(len, 1);
-      mz /= Math.max(len, 1);
-      wc.root.position.x += mx * SPEED * factor * dt;
-      wc.root.position.z += mz * SPEED * factor * dt;
-      wc.root.rotation.y = lerpAngle(wc.root.rotation.y, Math.atan2(mx, mz), 12 * dt);
-    }
-    wicket.afterMove();
-    wicket.update(dt, t, moving);
-
-    const inHouse = wicket.phase === 'house' || wicket.phase === 'houseGreet' || wicket.phase === 'houseExit';
-    camTarget.lerp(wc.root.position, cameraBlend(4, dt));
-    camera.position.copy(camTarget).add(inHouse ? HOUSE_CAM_OFFSET : camOffset);
-    camera.lookAt(camTarget.x, camTarget.y + 1.4, camTarget.z);
-    renderer.render(wicket.scene, camera);
-    return;
-  }
-
-  if (mode === 'cross' && crossActors) {
-    // ---- the Cross mode ----
-    const cc = crossActors.christian;
-    let mx = 0;
-    let mz = 0;
-    if (keys.has('KeyW') || keys.has('ArrowUp')) mz -= 1;
-    if (keys.has('KeyS') || keys.has('ArrowDown')) mz += 1;
-    if (keys.has('KeyA') || keys.has('ArrowLeft')) mx -= 1;
-    if (keys.has('KeyD') || keys.has('ArrowRight')) mx += 1;
-    mx += joy.x;
-    mz += joy.y;
-    const len = Math.hypot(mx, mz);
-    const factor = cross.moveFactor();
-    const moving = len > 0.15 && !dialogueOpen && !endingOpen && factor > 0;
-    if (moving) {
-      mx /= Math.max(len, 1);
-      mz /= Math.max(len, 1);
-      cc.root.position.x += mx * SPEED * factor * dt;
-      cc.root.position.z += mz * SPEED * factor * dt;
-      cc.root.rotation.y = lerpAngle(cc.root.rotation.y, Math.atan2(mx, mz), 12 * dt);
-    }
-    cross.afterMove();
-    cross.update(dt, t, moving);
-
-    const canTalkCross = (cross.nearCross() || cross.nearTomb()) && !dialogueOpen && !endingOpen;
-    ui.prompt.style.display = canTalkCross ? 'block' : 'none';
-    if (canTalkCross) {
-      ui.promptKey.style.display = isTouch ? 'none' : 'inline-block';
-      ui.promptWho.textContent = cross.nearCross() ? 'The Cross' : 'The empty tomb';
-      if (isTouch) {
-        ui.talkBtn.textContent = 'Look';
-        ui.talkBtn.style.display = 'block';
-      }
-    } else if (isTouch && !dialogueOpen) {
-      ui.talkBtn.style.display = 'none';
-    }
-
-    camTarget.lerp(cc.root.position, cameraBlend(4, dt));
-    camera.position.copy(camTarget).add(camOffset);
-    camera.lookAt(camTarget.x, camTarget.y + 1.4, camTarget.z);
-    renderer.render(cross.scene, camera);
-    return;
-  }
-
-  if (mode === 'highway' && highwayActors) {
-    // ---- the King's Highway mode ----
-    const hc = highwayActors.christian;
-    let mx = 0;
-    let mz = 0;
-    if (keys.has('KeyW') || keys.has('ArrowUp')) mz -= 1;
-    if (keys.has('KeyS') || keys.has('ArrowDown')) mz += 1;
-    if (keys.has('KeyA') || keys.has('ArrowLeft')) mx -= 1;
-    if (keys.has('KeyD') || keys.has('ArrowRight')) mx += 1;
-    mx += joy.x;
-    mz += joy.y;
-    const len = Math.hypot(mx, mz);
-    const factor = highway.moveFactor();
-    const moving = len > 0.15 && !dialogueOpen && !endingOpen && factor > 0;
-    if (moving) {
-      mx /= Math.max(len, 1);
-      mz /= Math.max(len, 1);
-      hc.root.position.x += mx * SPEED * factor * dt;
-      hc.root.position.z += mz * SPEED * factor * dt;
-      hc.root.rotation.y = lerpAngle(hc.root.rotation.y, Math.atan2(mx, mz), 12 * dt);
-    }
-    highway.afterMove();
-    highway.update(dt, t, moving);
-
-    camTarget.lerp(hc.root.position, cameraBlend(4, dt));
-    camera.position.copy(camTarget).add(camOffset);
-    camera.lookAt(camTarget.x, camTarget.y + 1.4, camTarget.z);
-    renderer.render(highway.scene, camera);
-    return;
-  }
-
-  if (mode === 'hill' && hillActors) {
-    // ---- the Hill of Difficulty mode ----
-    const lc = hillActors.christian;
-    let mx = 0;
-    let mz = 0;
-    if (keys.has('KeyW') || keys.has('ArrowUp')) mz -= 1;
-    if (keys.has('KeyS') || keys.has('ArrowDown')) mz += 1;
-    if (keys.has('KeyA') || keys.has('ArrowLeft')) mx -= 1;
-    if (keys.has('KeyD') || keys.has('ArrowRight')) mx += 1;
-    mx += joy.x;
-    mz += joy.y;
-    const len = Math.hypot(mx, mz);
-    const factor = hill.moveFactor();
-    const moving = len > 0.15 && !dialogueOpen && !endingOpen && factor > 0;
-    if (moving) {
-      mx /= Math.max(len, 1);
-      mz /= Math.max(len, 1);
-      lc.root.position.x += mx * SPEED * factor * dt;
-      lc.root.position.z += mz * SPEED * factor * dt;
-      lc.root.rotation.y = lerpAngle(lc.root.rotation.y, Math.atan2(mx, mz), 12 * dt);
-    }
-    hill.afterMove();
-    hill.update(dt, t, moving);
-
-    // prompt when the lost scroll is within reach
-    const canPick = hill.nearScroll() && !dialogueOpen && !endingOpen;
-    ui.prompt.style.display = canPick ? 'block' : 'none';
-    if (canPick) {
-      ui.promptKey.style.display = isTouch ? 'none' : 'inline-block';
-      ui.promptWho.textContent = 'Pick up the scroll';
-      if (isTouch) {
-        ui.talkBtn.textContent = 'Take';
-        ui.talkBtn.style.display = 'block';
-      }
-    } else if (isTouch && !dialogueOpen) {
-      ui.talkBtn.style.display = 'none';
-    }
-
-    camTarget.lerp(lc.root.position, cameraBlend(4, dt));
-    camera.position.copy(camTarget).add(camOffset);
-    camera.lookAt(camTarget.x, camTarget.y + 1.4, camTarget.z);
-    renderer.render(hill.scene, camera);
-    return;
-  }
-
-  if (mode === 'palace' && palaceActors) {
-    // ---- Palace Beautiful mode ----
-    const pc = palaceActors.christian;
-    let mx = 0;
-    let mz = 0;
-    if (keys.has('KeyW') || keys.has('ArrowUp')) mz -= 1;
-    if (keys.has('KeyS') || keys.has('ArrowDown')) mz += 1;
-    if (keys.has('KeyA') || keys.has('ArrowLeft')) mx -= 1;
-    if (keys.has('KeyD') || keys.has('ArrowRight')) mx += 1;
-    mx += joy.x;
-    mz += joy.y;
-    const len = Math.hypot(mx, mz);
-    const factor = palace.moveFactor();
-    const moving = len > 0.15 && !dialogueOpen && !endingOpen && factor > 0;
-    if (moving) {
-      mx /= Math.max(len, 1);
-      mz /= Math.max(len, 1);
-      pc.root.position.x += mx * SPEED * factor * dt;
-      pc.root.position.z += mz * SPEED * factor * dt;
-      pc.root.rotation.y = lerpAngle(pc.root.rotation.y, Math.atan2(mx, mz), 12 * dt);
-    }
-    palace.afterMove();
-    palace.update(dt, t, moving);
-
-    let palaceTalkTarget = '';
-    if (palace.nearWatchful()) palaceTalkTarget = 'Talk to Watchful';
-    else {
-      for (let wi = 0; wi < 4; wi++) {
-        if (palace.nearWoman(wi)) { palaceTalkTarget = `Talk to ${palace.womanName(wi)}`; break; }
-      }
-    }
-    const canTalkPalace = !!palaceTalkTarget && !dialogueOpen && !endingOpen;
-    ui.prompt.style.display = canTalkPalace ? 'block' : 'none';
-    if (canTalkPalace) {
-      ui.promptKey.style.display = isTouch ? 'none' : 'inline-block';
-      ui.promptWho.textContent = palaceTalkTarget;
-      if (isTouch) {
-        ui.talkBtn.textContent = 'Talk';
-        ui.talkBtn.style.display = 'block';
-      }
-    } else if (isTouch && !dialogueOpen) {
-      ui.talkBtn.style.display = 'none';
-    }
-
-    camTarget.lerp(pc.root.position, cameraBlend(4, dt));
-    camera.position.copy(camTarget).add(camOffset);
-    camera.lookAt(camTarget.x, camTarget.y + 1.4, camTarget.z);
-    renderer.render(palace.scene, camera);
-    return;
-  }
-
-  if (mode === 'valley' && valleyActors) {
-    // ---- Valley of Humiliation mode ----
-    const vc = valleyActors.christian;
-    let mx = 0;
-    let mz = 0;
-    if (keys.has('KeyW') || keys.has('ArrowUp')) mz -= 1;
-    if (keys.has('KeyS') || keys.has('ArrowDown')) mz += 1;
-    if (keys.has('KeyA') || keys.has('ArrowLeft')) mx -= 1;
-    if (keys.has('KeyD') || keys.has('ArrowRight')) mx += 1;
-    mx += joy.x;
-    mz += joy.y;
-    const len = Math.hypot(mx, mz);
-    const factor = valley.moveFactor();
-    const moving = len > 0.15 && !dialogueOpen && !endingOpen && factor > 0;
-    if (moving) {
-      mx /= Math.max(len, 1);
-      mz /= Math.max(len, 1);
-      vc.root.position.x += mx * SPEED * factor * dt;
-      vc.root.position.z += mz * SPEED * factor * dt;
-      vc.root.rotation.y = lerpAngle(vc.root.rotation.y, Math.atan2(mx, mz), 12 * dt);
-    }
-    valley.afterMove();
-    valley.update(dt, t, moving);
-
-    // battle prompt: strike when it's the player's turn
-    const canStrike = valley.canAttack() && !dialogueOpen && !endingOpen;
-    ui.prompt.style.display = canStrike ? 'block' : 'none';
-    swordBtn.classList.toggle('show', !dialogueOpen && !endingOpen);
-    if (canStrike) {
-      ui.promptKey.style.display = isTouch ? 'none' : 'inline-block';
-      ui.promptWho.textContent = 'Swing the sword!';
-    }
-    if (isTouch && !dialogueOpen) {
-      ui.talkBtn.style.display = 'none';
-    }
-
-    const frameBattle = valley.battleCameraFocus(valleyBattleFocus);
-    camTarget.lerp(frameBattle ? valleyBattleFocus : vc.root.position, cameraBlend(4, dt));
-    const mobileBattle = frameBattle && window.innerWidth <= 700 && camera.aspect < 0.8;
-    const targetBattleZoom = mobileBattle ? 1.75 : 1;
-    // Ease both into the wide duel framing and back into the normal follow
-    // camera after Apollyon is beaten—no sudden mobile camera jump.
-    valleyBattleZoom = THREE.MathUtils.lerp(
-      valleyBattleZoom,
-      targetBattleZoom,
-      1 - Math.exp(-dt * 2.8),
-    );
-    valleyCameraOffset.copy(camOffset).multiplyScalar(valleyBattleZoom);
-    camera.position.copy(camTarget).add(valleyCameraOffset);
-    camera.lookAt(camTarget.x, camTarget.y + 1.4, camTarget.z);
-    renderer.render(valley.scene, camera);
-    return;
-  }
-
-  if (mode === 'shadow' && shadowActors) {
-    // ---- Valley of the Shadow of Death mode ----
-    const shc = shadowActors.christian;
-    let mx = 0;
-    let mz = 0;
-    if (keys.has('KeyW') || keys.has('ArrowUp')) mz -= 1;
-    if (keys.has('KeyS') || keys.has('ArrowDown')) mz += 1;
-    if (keys.has('KeyA') || keys.has('ArrowLeft')) mx -= 1;
-    if (keys.has('KeyD') || keys.has('ArrowRight')) mx += 1;
-    mx += joy.x;
-    mz += joy.y;
-    const len = Math.hypot(mx, mz);
-    const factor = shadow.moveFactor();
-    const moving = len > 0.15 && !dialogueOpen && !endingOpen && factor > 0;
-    if (moving) {
-      mx /= Math.max(len, 1);
-      mz /= Math.max(len, 1);
-      shc.root.position.x += mx * SPEED * factor * dt;
-      shc.root.position.z += mz * SPEED * factor * dt;
-      shc.root.rotation.y = lerpAngle(shc.root.rotation.y, Math.atan2(mx, mz), 12 * dt);
-    }
-    shadow.afterMove(dt);
-    shadow.update(dt, t, moving);
-
-    const canTalkShadow = shadow.nearFaithful() && !dialogueOpen && !endingOpen;
-    ui.prompt.style.display = canTalkShadow ? 'block' : 'none';
-    if (canTalkShadow) {
-      ui.promptKey.style.display = isTouch ? 'none' : 'inline-block';
-      ui.promptWho.textContent = 'Talk to Faithful';
-      if (isTouch) {
-        ui.talkBtn.textContent = 'Talk';
-        ui.talkBtn.style.display = 'block';
-      }
-    } else if (isTouch && !dialogueOpen) {
-      ui.talkBtn.style.display = 'none';
-    }
-
-    camTarget.lerp(shc.root.position, cameraBlend(4, dt));
-    camera.position.copy(camTarget).add(camOffset);
-    camera.lookAt(camTarget.x, camTarget.y + 1.4, camTarget.z);
-    renderer.render(shadow.scene, camera);
-    return;
-  }
-
-  if (mode === 'vanity' && vanityActors) {
-    // ---- Vanity Fair mode ----
-    const vfc = vanityActors.christian;
-    let mx = 0;
-    let mz = 0;
-    if (keys.has('KeyW') || keys.has('ArrowUp')) mz -= 1;
-    if (keys.has('KeyS') || keys.has('ArrowDown')) mz += 1;
-    if (keys.has('KeyA') || keys.has('ArrowLeft')) mx -= 1;
-    if (keys.has('KeyD') || keys.has('ArrowRight')) mx += 1;
-    mx += joy.x;
-    mz += joy.y;
-    const len = Math.hypot(mx, mz);
-    const factor = vanity.moveFactor();
-    const moving = len > 0.15 && !dialogueOpen && !endingOpen && factor > 0;
-    if (moving) {
-      mx /= Math.max(len, 1);
-      mz /= Math.max(len, 1);
-      vfc.root.position.x += mx * SPEED * factor * dt;
-      vfc.root.position.z += mz * SPEED * factor * dt;
-      vfc.root.rotation.y = lerpAngle(vfc.root.rotation.y, Math.atan2(mx, mz), 12 * dt);
-    }
-    vanity.afterMove();
-    vanity.update(dt, t, moving);
-
-    let vanityTalkTarget = '';
-    if (vanity.nearFountain()) vanityTalkTarget = 'The fountain';
-    else if (vanity.nearCitizen()) vanityTalkTarget = 'Talk to a citizen';
-    const canTalkVanity = !!vanityTalkTarget && !dialogueOpen && !endingOpen;
-    ui.prompt.style.display = canTalkVanity ? 'block' : 'none';
-    if (canTalkVanity) {
-      ui.promptKey.style.display = isTouch ? 'none' : 'inline-block';
-      ui.promptWho.textContent = vanityTalkTarget;
-      if (isTouch) {
-        ui.talkBtn.textContent = vanity.nearFountain() ? 'Look' : 'Talk';
-        ui.talkBtn.style.display = 'block';
-      }
-    } else if (isTouch && !dialogueOpen) {
-      ui.talkBtn.style.display = 'none';
-    }
-
-    camTarget.lerp(vfc.root.position, cameraBlend(4, dt));
-    camera.position.copy(camTarget).add(camOffset);
-    camera.lookAt(camTarget.x, camTarget.y + 1.4, camTarget.z);
-    renderer.render(vanity.scene, camera);
-    return;
-  }
-
-  if (mode === 'lucre' && lucreActors) {
-    // ---- Hill Lucre mode ----
-    const luc = lucreActors.christian;
-    let mx = 0;
-    let mz = 0;
-    if (keys.has('KeyW') || keys.has('ArrowUp')) mz -= 1;
-    if (keys.has('KeyS') || keys.has('ArrowDown')) mz += 1;
-    if (keys.has('KeyA') || keys.has('ArrowLeft')) mx -= 1;
-    if (keys.has('KeyD') || keys.has('ArrowRight')) mx += 1;
-    mx += joy.x;
-    mz += joy.y;
-    const len = Math.hypot(mx, mz);
-    const factor = lucre.moveFactor();
-    const choiceOpen = choiceBox.classList.contains('open');
-    const moving = len > 0.15 && !dialogueOpen && !endingOpen && !choiceOpen && factor > 0;
-    if (moving) {
-      mx /= Math.max(len, 1);
-      mz /= Math.max(len, 1);
-      luc.root.position.x += mx * SPEED * factor * dt;
-      luc.root.position.z += mz * SPEED * factor * dt;
-      luc.root.rotation.y = lerpAngle(luc.root.rotation.y, Math.atan2(mx, mz), 12 * dt);
-    }
-    lucre.afterMove(dt);
-    lucre.update(dt, t, moving);
-
-    // prompt at the pillar of salt
-    const canTouch = lucre.nearPillar() && !dialogueOpen && !endingOpen && !choiceOpen;
-    ui.prompt.style.display = canTouch ? 'block' : 'none';
-    if (canTouch) {
-      ui.promptKey.style.display = isTouch ? 'none' : 'inline-block';
-      ui.promptWho.textContent = 'Look at the statue';
-      if (isTouch) {
-        ui.talkBtn.textContent = 'Look';
-        ui.talkBtn.style.display = 'block';
-      }
-    } else if (isTouch && !dialogueOpen) {
-      ui.talkBtn.style.display = 'none';
-    }
-
-    camTarget.lerp(luc.root.position, cameraBlend(4, dt));
-    camera.position.copy(camTarget).add(camOffset);
-    camera.lookAt(camTarget.x, camTarget.y + 1.4, camTarget.z);
-    renderer.render(lucre.scene, camera);
-    return;
-  }
-
-  if (mode === 'castle' && castleActors) {
-    // ---- Doubting Castle mode ----
-    const cc = castleActors.christian;
-    const inDungeon = castle.phase === 'dungeon' || castle.phase === 'key' || castle.phase === 'exit-door';
-    let mx = 0;
-    let mz = 0;
-    if (keys.has('KeyW') || keys.has('ArrowUp')) mz -= 1;
-    if (keys.has('KeyS') || keys.has('ArrowDown')) mz += 1;
-    if (keys.has('KeyA') || keys.has('ArrowLeft')) mx -= 1;
-    if (keys.has('KeyD') || keys.has('ArrowRight')) mx += 1;
-    mx += joy.x;
-    mz += joy.y;
-    // the dungeon camera looks from the opposite side (see DUNGEON_CAM_OFFSET),
-    // a ~180° yaw from the usual view — invert both axes so on-screen left/right
-    // and forward/back still match the pressed keys
-    if (inDungeon) {
-      mx = -mx;
-      mz = -mz;
-    }
-    const len = Math.hypot(mx, mz);
-    const factor = castle.moveFactor();
-    const choiceOpen = choiceBox.classList.contains('open');
-    const moving = len > 0.15 && !dialogueOpen && !endingOpen && !choiceOpen && factor > 0;
-    if (moving) {
-      mx /= Math.max(len, 1);
-      mz /= Math.max(len, 1);
-      cc.root.position.x += mx * SPEED * factor * dt;
-      cc.root.position.z += mz * SPEED * factor * dt;
-      cc.root.rotation.y = lerpAngle(cc.root.rotation.y, Math.atan2(mx, mz), 12 * dt);
-    }
-    castle.afterMove();
-    castle.update(dt, t, moving);
-
-    // the drag-the-cross minigame, shown when near the Promise-key door
-    const showKeyGame = castle.nearDoor() && !dialogueOpen && !endingOpen && !choiceOpen;
-    if (showKeyGame && !keyGameOpen) resetKeyGame();
-    keyGameOpen = showKeyGame;
-    keyGameBox.classList.toggle('open', showKeyGame);
-
-    camTarget.lerp(cc.root.position, cameraBlend(4, dt));
-    camera.position.copy(camTarget).add(inDungeon ? DUNGEON_CAM_OFFSET : camOffset);
-    camera.lookAt(camTarget.x, camTarget.y + 1.4, camTarget.z);
-    renderer.render(castle.scene, camera);
-    return;
-  }
-
-  if (mode === 'mountain' && mountainActors) {
-    // ---- Delectable Mountains mode (outdoor, standard camera) ----
-    const mc = mountainActors.christian;
-    let mx = 0;
-    let mz = 0;
-    if (keys.has('KeyW') || keys.has('ArrowUp')) mz -= 1;
-    if (keys.has('KeyS') || keys.has('ArrowDown')) mz += 1;
-    if (keys.has('KeyA') || keys.has('ArrowLeft')) mx -= 1;
-    if (keys.has('KeyD') || keys.has('ArrowRight')) mx += 1;
-    mx += joy.x;
-    mz += joy.y;
-    const len = Math.hypot(mx, mz);
-    const factor = mountain.moveFactor();
-    const moving = len > 0.15 && !dialogueOpen && !endingOpen && factor > 0;
-    if (moving) {
-      mx /= Math.max(len, 1);
-      mz /= Math.max(len, 1);
-      mc.root.position.x += mx * SPEED * factor * dt;
-      mc.root.position.z += mz * SPEED * factor * dt;
-      mc.root.rotation.y = lerpAngle(mc.root.rotation.y, Math.atan2(mx, mz), 12 * dt);
-    }
-    mountain.afterMove();
-    mountain.update(dt, t, moving);
-
-    const canTalkShepherd = mountain.nearShepherd() && !dialogueOpen && !endingOpen;
-    ui.prompt.style.display = canTalkShepherd ? 'block' : 'none';
-    if (canTalkShepherd) {
-      ui.promptKey.style.display = isTouch ? 'none' : 'inline-block';
-      ui.promptWho.textContent = `Talk to ${mountain.nearbyShepherdName()}`;
-      if (isTouch) {
-        ui.talkBtn.textContent = 'Talk';
-        ui.talkBtn.style.display = 'block';
-      }
-    } else if (isTouch && !dialogueOpen) {
-      ui.talkBtn.style.display = 'none';
-    }
-
-    camTarget.lerp(mc.root.position, cameraBlend(4, dt));
-    camera.position.copy(camTarget).add(camOffset);
-    camera.lookAt(camTarget.x, camTarget.y + 1.4, camTarget.z);
-    renderer.render(mountain.scene, camera);
-    return;
-  }
-
-  if (mode === 'enchanted' && enchantedActors) {
-    const ec = enchantedActors.christian;
-    let mx = 0;
-    let mz = 0;
-    if (keys.has('KeyW') || keys.has('ArrowUp')) mz -= 1;
-    if (keys.has('KeyS') || keys.has('ArrowDown')) mz += 1;
-    if (keys.has('KeyA') || keys.has('ArrowLeft')) mx -= 1;
-    if (keys.has('KeyD') || keys.has('ArrowRight')) mx += 1;
-    mx += joy.x;
-    mz += joy.y;
-    const len = Math.hypot(mx, mz);
-    const factor = enchanted.moveFactor();
-    const moving = len > 0.15 && !dialogueOpen && !endingOpen && factor > 0;
-    if (moving) {
-      mx /= Math.max(len, 1);
-      mz /= Math.max(len, 1);
-      ec.root.position.x += mx * SPEED * factor * dt;
-      ec.root.position.z += mz * SPEED * factor * dt;
-      ec.root.rotation.y = lerpAngle(ec.root.rotation.y, Math.atan2(mx, mz), 12 * dt);
-    }
-    enchanted.afterMove();
-    enchanted.update(dt, t, moving);
-
-    if (enchanted.canWake() && !dialogueOpen && !endingOpen) {
-      ui.prompt.style.display = 'block';
-      ui.promptKey.style.display = isTouch ? 'none' : 'inline-block';
-      ui.promptWho.textContent = 'Encourage Hopeful, remember Scripture, or sing together';
-      if (isTouch) {
-        ui.talkBtn.textContent = 'Stay Awake';
-        ui.talkBtn.style.display = 'block';
-      }
-    } else {
-      ui.prompt.style.display = 'none';
-      if (isTouch && !dialogueOpen) ui.talkBtn.style.display = 'none';
-    }
-
-    camTarget.lerp(ec.root.position, cameraBlend(4, dt));
-    camera.position.copy(camTarget).add(camOffset);
-    camera.lookAt(camTarget.x, camTarget.y + 1.4, camTarget.z);
-    renderer.render(enchanted.scene, camera);
-    return;
-  }
-
-  if (mode === 'beulah' && beulahActors) {
-    // ---- Beulah Land mode (outdoor, standard camera) ----
-    const bc = beulahActors.christian;
-    let mx = 0;
-    let mz = 0;
-    if (keys.has('KeyW') || keys.has('ArrowUp')) mz -= 1;
-    if (keys.has('KeyS') || keys.has('ArrowDown')) mz += 1;
-    if (keys.has('KeyA') || keys.has('ArrowLeft')) mx -= 1;
-    if (keys.has('KeyD') || keys.has('ArrowRight')) mx += 1;
-    mx += joy.x;
-    mz += joy.y;
-    const len = Math.hypot(mx, mz);
-    const factor = beulah.moveFactor();
-    const moving = len > 0.15 && !dialogueOpen && !endingOpen && factor > 0;
-    if (moving) {
-      mx /= Math.max(len, 1);
-      mz /= Math.max(len, 1);
-      bc.root.position.x += mx * SPEED * factor * dt;
-      bc.root.position.z += mz * SPEED * factor * dt;
-      bc.root.rotation.y = lerpAngle(bc.root.rotation.y, Math.atan2(mx, mz), 12 * dt);
-    }
-    beulah.afterMove();
-    beulah.update(dt, t, moving);
-
-    // prompt while the doubts can be popped, or near a Shining One
-    if (beulah.canPop() && !dialogueOpen && !endingOpen) {
-      ui.prompt.style.display = 'block';
-      ui.promptKey.style.display = 'none';
-      ui.promptWho.textContent = isTouch ? '👆 Tap the balloons of doubt to pop them' : '👆 Click the balloons of doubt to pop them';
-    } else if (beulah.nearAngel() && !dialogueOpen && !endingOpen) {
-      ui.prompt.style.display = 'block';
-      ui.promptKey.style.display = isTouch ? 'none' : 'inline-block';
-      ui.promptWho.textContent = 'Speak with the Shining One';
-      if (isTouch) { ui.talkBtn.textContent = 'Talk'; ui.talkBtn.style.display = 'block'; }
-    } else if (mode === 'beulah') {
-      ui.prompt.style.display = 'none';
-      if (isTouch && !dialogueOpen) ui.talkBtn.style.display = 'none';
-    }
-
-    camTarget.lerp(bc.root.position, cameraBlend(4, dt));
-    camera.position.copy(camTarget).add(camOffset);
-    camera.lookAt(camTarget.x, camTarget.y + 1.4, camTarget.z);
-    renderer.render(beulah.scene, camera);
-    return;
-  }
-
-  if (mode === 'celestial' && celestialActors) {
-    // ---- The Celestial City mode (outdoor; camera pulls back as they ascend) ----
-    const cc = celestialActors.christian;
-    let mx = 0;
-    let mz = 0;
-    if (keys.has('KeyW') || keys.has('ArrowUp')) mz -= 1;
-    if (keys.has('KeyS') || keys.has('ArrowDown')) mz += 1;
-    if (keys.has('KeyA') || keys.has('ArrowLeft')) mx -= 1;
-    if (keys.has('KeyD') || keys.has('ArrowRight')) mx += 1;
-    mx += joy.x;
-    mz += joy.y;
-    const len = Math.hypot(mx, mz);
-    const factor = celestial.moveFactor();
-    const moving = len > 0.15 && !dialogueOpen && !endingOpen && factor > 0;
-    if (moving) {
-      mx /= Math.max(len, 1);
-      mz /= Math.max(len, 1);
-      cc.root.position.x += mx * SPEED * factor * dt;
-      cc.root.position.z += mz * SPEED * factor * dt;
-      cc.root.rotation.y = lerpAngle(cc.root.rotation.y, Math.atan2(mx, mz), 12 * dt);
-    }
-    celestial.afterMove();
-    celestial.update(dt, t, moving);
-
-    if (celestial.nearSaint() && !dialogueOpen && !endingOpen) {
-      ui.prompt.style.display = 'block';
-      ui.promptKey.style.display = isTouch ? 'none' : 'inline-block';
-      ui.promptWho.textContent = `Talk to ${celestial.nearbySaintName()}`;
-      if (isTouch) {
-        ui.talkBtn.textContent = 'Talk';
-        ui.talkBtn.style.display = 'block';
-      }
-    } else {
-      ui.prompt.style.display = 'none';
-      if (isTouch && !dialogueOpen) ui.talkBtn.style.display = 'none';
-    }
-
-    // the camera pulls back and lifts as the pilgrims climb toward the City,
-    // emphasising its towering scale; the epilogue follows Ignorance instead
-    const focus = celestial.focus();
-    const pull = 1 + THREE.MathUtils.clamp((focus.position.y) / 10, 0, 1) * 0.55;
-    camTarget.lerp(focus.position, cameraBlend(3, dt));
-    camera.position.copy(camTarget).add(camOffset.clone().multiplyScalar(pull)).add(new THREE.Vector3(0, focus.position.y * 0.15, 0));
-    camera.lookAt(camTarget.x, camTarget.y + 1.6, camTarget.z);
-    renderer.render(celestial.scene, camera);
-    return;
-  }
+  const chapter = CHAPTERS[mode];
+  if (chapter && runChapter(chapter, dt, t)) return;
 
   // ---- village mode ----
   if (started) {
@@ -3597,9 +3190,11 @@ function tick(): void {
   }
 
   // camera follows with a soft lag
-  camTarget.lerp(christian.root.position, cameraBlend(4, dt));
-  camera.position.copy(camTarget).add(camOffset);
-  camera.lookAt(camTarget.x, camTarget.y + 1.4, camTarget.z);
+  chapterFrame.focus = christian.root.position;
+  chapterFrame.offset = camOffset;
+  chapterFrame.lookHeight = 1.4;
+  chapterFrame.follow = 4;
+  cameraRig.update(dt, chapterFrame, gameSettings.reducedMotion);
 
   renderer.render(scene, camera);
 }
@@ -3643,7 +3238,7 @@ requestAnimationFrame(() => {
   wicket, enterWicket, cross, enterCross, highway, enterHighway, hill, enterHill,
   palace, enterPalace, valley, enterValley, shadow, enterShadow,
   vanity, enterVanity, lucre, enterLucre, playScript, goToMap,
-  castle, enterCastle, mountain, enterMountain, beulah, enterBeulah, celestial, enterCelestial, renderer, camera, camOffset, DUNGEON_CAM_OFFSET,
+  castle, enterCastle, mountain, enterMountain, enchanted, enterEnchanted, beulah, enterBeulah, celestial, enterCelestial, renderer, camera, camOffset, DUNGEON_CAM_OFFSET, cameraRig,
   get mode() { return mode; },
   get castleActors() { return castleActors; },
   get keys() { return keys; },
