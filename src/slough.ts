@@ -4,6 +4,11 @@ import { makeBear, animateBear, BearParts, block, mat } from './bear';
 import { setupSunShadow } from './light';
 import { DialogueLine } from './npcs';
 import { addHighwayPaving } from './road';
+import { dressExterior, hideLegacyGround } from './world/dress';
+import { band } from './world/terrain';
+import { createTree, createBush, createSign, scatterFlowers } from './world/props';
+import { voxelMesh, Voxel, rng as seeded, vary, foliageMaterial } from './world/voxels';
+import { marshWaterMaterial } from './world/water';
 
 // Chapter II — The Slough of Despond.
 // Christian (and Pliable, if he came) fall into the mire. Pliable scrambles
@@ -101,23 +106,41 @@ export class SloughScene {
     sun.shadow.camera.bottom = -40;
     s.add(sun);
 
-    // marshy ground
-    const ground = new THREE.Mesh(new THREE.BoxGeometry(140, 1, 90), mat(0x93b98a));
-    ground.position.y = -0.5;
-    ground.receiveShadow = true;
-    s.add(ground);
-
-    // scraggly grass patches
-    for (let i = 0; i < 70; i++) {
-      const x = -45 + Math.random() * 90;
-      const z = -35 + Math.random() * 70;
-      if (this.inBog(x, z)) continue;
-      // tiny random height offsets so overlapping patches never share a face
-      const p = block(0.9 + Math.random() * 1.6, 0.1, 0.9 + Math.random() * 1.6,
-        Math.random() > 0.5 ? 0x86ad7d : 0xa4c69a, x, 0.04 + Math.random() * 0.03, z);
-      p.castShadow = false;
-      s.add(p);
-    }
+    // ---------- the marsh land: flat where the pilgrims walk, soft hills beyond
+    hideLegacyGround(s);
+    const MARSH_GRASS = [0x9fbc90, 0x97b488, 0xa8c49a, 0x90ad84];
+    const bogBlocked = (x: number, z: number): boolean => {
+      const dx = (x - BOG_CX) / (BOG_RX + 1.2);
+      const dz = z / (BOG_RZ + 1.2);
+      return dx * dx + dz * dz < 1;
+    };
+    const onHighway = (x: number, z: number): boolean =>
+      Math.abs(z) < 2.3 && ((x > -31 && x < -13) || (x > 17 && x < 44));
+    const east = (x: number) => THREE.MathUtils.smoothstep(x, 14, 26); // marsh → meadow
+    dressExterior(s, {
+      seed: 22,
+      bounds: { minX: -70, maxX: 80, minZ: -60, maxZ: 60 },
+      flat: (x, z) => band(Math.max(0, Math.abs(z) - 17), 0, 7) * band(Math.max(0, -30 - x, x - 46), 0, 7),
+      hills: 3.4,
+      blocked: (x, z) => bogBlocked(x, z) || onHighway(x, z) || this.nearStep(x, z),
+      palette: {
+        grass: MARSH_GRASS,
+        highGrass: 0xb3c9a2,
+        leaves: [0x86ab7a, 0x7ea272, 0x94b886],
+        pine: [0x5f8f73, 0x6b9a7d, 0x587f69],
+        flowers: [0xe8e4f4, 0xfff4c4, 0xd9e8ff, 0xf6dbe4],
+      },
+      grass: 2600,
+      flowers: 260,
+      trees: 55,
+      shrubs: 40,
+      treeZone: (x, z) => Math.abs(z) > 19 && Math.abs(z) < 42,
+    });
+    // brighter, flower-strewn meadow near the shining light
+    s.add(scatterFlowers({
+      minX: 18, maxX: 46, minZ: -15, maxZ: 15,
+      allow: (x, z) => !onHighway(x, z) && Math.hypot(x - LIGHT_X, z) > 3 && east(x) > 0.5,
+    }, 320, 25));
 
     // King's Highway entering from the west and continuing beyond the east
     // bank. A low foundation prevents grass showing through the tiled paving.
@@ -126,67 +149,107 @@ export class SloughScene {
       path.castShadow = false;
       s.add(path);
     }
-    addHighwayPaving(s, -30, -14, {
-      width: 3.4,
-      height: 0.1,
-      yAt: () => 0.12,
-    });
-    addHighwayPaving(s, 18, 43, {
-      width: 3.4,
-      height: 0.1,
-      yAt: () => 0.12,
-    });
+    addHighwayPaving(s, -30, -14, { width: 3.4, height: 0.1, yAt: () => 0.12 });
+    addHighwayPaving(s, 18, 43, { width: 3.4, height: 0.1, yAt: () => 0.12 });
 
-    // ---------- the bog itself: layered mud blobs ----------
-    const mudColors = [0x8a7355, 0x7c674c, 0x6f5a42];
-    for (let ring = 0; ring < 3; ring++) {
-      const rx = BOG_RX - ring * 1.6;
-      const rz = BOG_RZ - ring * 1.3;
-      for (let i = 0; i < 14; i++) {
-        const a = (i / 14) * Math.PI * 2;
-        const bx = BOG_CX + Math.cos(a) * rx * (0.55 + 0.35 * Math.random());
-        const bz = Math.sin(a) * rz * (0.55 + 0.35 * Math.random());
-        const b = block(3 + Math.random() * 3, 0.1 + ring * 0.03, 2.5 + Math.random() * 2.5,
-          mudColors[ring], bx, 0.1 + ring * 0.03 + Math.random() * 0.02, bz);
-        b.castShadow = false;
-        s.add(b);
+    // ---------- the bog: layered organic mud, wet and glossy toward the middle
+    const bogShape = (scale: number, seed: number): THREE.Shape => {
+      const r = seeded(seed);
+      const shape = new THREE.Shape();
+      const n = 30;
+      for (let i = 0; i < n; i++) {
+        const a = (i / n) * Math.PI * 2;
+        const wob = 1 + Math.sin(a * 3 + seed) * 0.06 + (r() - 0.5) * 0.08;
+        const x = BOG_CX + Math.cos(a) * BOG_RX * scale * wob;
+        const y = Math.sin(a) * BOG_RZ * scale * wob;
+        if (i === 0) shape.moveTo(x, y); else shape.lineTo(x, y);
       }
+      shape.closePath();
+      return shape;
+    };
+    const mudLayers: Array<[number, number, number, number]> = [
+      // scale, colour, y, roughness
+      [1.08, 0x9a8466, 0.03, 0.95],
+      [0.96, 0x8a7355, 0.06, 0.7],
+      [0.78, 0x7c674c, 0.09, 0.45],
+      [0.55, 0x6f5a42, 0.12, 0.3],
+    ];
+    mudLayers.forEach(([scale, color, y, rough], i) => {
+      const mud = new THREE.Mesh(
+        new THREE.ShapeGeometry(bogShape(scale, 5 + i * 3), 2),
+        new THREE.MeshStandardMaterial({ color, roughness: rough, metalness: 0.02 }),
+      );
+      mud.rotation.x = -Math.PI / 2;
+      mud.position.y = y;
+      mud.receiveShadow = true;
+      s.add(mud);
+    });
+    // murky, rippling puddles pooled in the deepest mud
+    for (const [px, pz, pr] of [[-2, -3.5, 2.1], [8, 3.8, 2.4], [2.5, 5.5, 1.4], [11.5, -3.8, 1.6]] as const) {
+      const pool = new THREE.Mesh(new THREE.CircleGeometry(pr, 12), marshWaterMaterial);
+      pool.rotation.x = -Math.PI / 2;
+      pool.position.set(px, 0.135, pz);
+      pool.receiveShadow = true;
+      s.add(pool);
     }
-    const mudCore = block(BOG_RX * 1.85, 0.14, BOG_RZ * 1.7, 0x7c674c, BOG_CX, 0.1, 0);
-    mudCore.castShadow = false;
-    s.add(mudCore);
 
     // mud bubbles that pop
+    const bubbleGeo = new THREE.IcosahedronGeometry(0.14, 0);
+    const bubbleMat = new THREE.MeshStandardMaterial({ color: 0xb09a78, roughness: 0.3, flatShading: true });
     for (let i = 0; i < 10; i++) {
-      const m = block(0.22, 0.22, 0.22, 0xa79272,
-        BOG_CX - 9 + Math.random() * 18, 0.28, -6 + Math.random() * 12);
+      const m = new THREE.Mesh(bubbleGeo, bubbleMat);
+      m.position.set(BOG_CX - 9 + Math.random() * 18, 0.28, -6 + Math.random() * 12);
       m.castShadow = false;
       s.add(m);
       this.bubbles.push({ mesh: m, phase: Math.random() * 6.28 });
     }
 
-    // ---------- the Steps: pale solid stones through the midst ----------
+    // ---------- the Steps: pale, solid stones through the midst ----------
+    const stepVox: Voxel[] = [];
+    const sr = seeded(77);
     for (const [sx, sz] of this.steps) {
-      s.add(block(1.5, 0.28, 1.5, 0xd8d3cc, sx, 0.16, sz));
-      s.add(block(1.7, 0.1, 1.7, 0xc4beb5, sx, 0.04, sz));
+      stepVox.push({ w: 1.7, h: 0.12, d: 1.7, x: sx, y: 0.06, z: sz, color: 0xbfb8ad, ry: sr() * 0.4 });
+      stepVox.push({ w: 1.45, h: 0.24, d: 1.4, x: sx, y: 0.2, z: sz, color: vary(0xdcd6cc, sr, 0.03), ry: sr() * 0.5 });
+      stepVox.push({ w: 0.5, h: 0.06, d: 0.35, x: sx + 0.35, y: 0.34, z: sz - 0.3, color: 0x9cc98a });
     }
+    s.add(voxelMesh(stepVox));
 
-    // reeds and cattails around the rim
-    for (let i = 0; i < 26; i++) {
-      const a = (i / 26) * Math.PI * 2;
-      const rx = BOG_CX + Math.cos(a) * (BOG_RX + 1.5 + Math.random() * 2);
-      const rz = Math.sin(a) * (BOG_RZ + 1.2 + Math.random() * 2);
-      s.add(block(0.14, 1.3 + Math.random() * 0.7, 0.14, 0x7ba05f, rx, 0.8, rz));
-      if (i % 2 === 0) s.add(block(0.22, 0.45, 0.22, 0xc9a865, rx, 1.75, rz));
+    // ---------- reed clumps around the rim (clustered, never lone poles) ----------
+    const reedVox: Voxel[] = [];
+    const rr = seeded(31);
+    for (let i = 0; i < 16; i++) {
+      const a = (i / 16) * Math.PI * 2 + rr() * 0.25;
+      const cx = BOG_CX + Math.cos(a) * (BOG_RX + 0.6 + rr() * 1.2);
+      const cz = Math.sin(a) * (BOG_RZ + 0.5 + rr() * 1.0);
+      if (onHighway(cx, cz)) continue;
+      const stems = 5 + Math.floor(rr() * 4);
+      for (let k = 0; k < stems; k++) {
+        const x = cx + (rr() - 0.5) * 0.9;
+        const z = cz + (rr() - 0.5) * 0.9;
+        const h = 0.7 + rr() * 0.9;
+        const lean = (rr() - 0.5) * 0.25;
+        reedVox.push({ w: 0.06, h, d: 0.06, x, y: h / 2, z, rz: lean, color: vary(0x86ab6c, rr, 0.06) });
+        if (k % 3 === 0) {
+          reedVox.push({ w: 0.1, h: 0.26, d: 0.1, x: x - Math.sin(lean) * h * 0.5, y: h * 0.96, z, rz: lean, color: 0x7a5a42 });
+        }
+      }
+      // broad leaves at the base of each clump
+      reedVox.push({ w: 0.8, h: 0.2, d: 0.6, x: cx, y: 0.1, z: cz, ry: rr(), color: vary(0x8fb07a, rr, 0.05) });
     }
+    s.add(voxelMesh(reedVox, foliageMaterial));
 
-    // dead trees
-    for (const [tx, tz, ry] of [[-12, -10, 0.4], [16, 9, 1.2], [-8, 11, 2.2], [20, -9, 0.9]] as const) {
-      const dead = new THREE.Group();
-      dead.add(block(0.45, 2.6, 0.45, 0x9a8f86, 0, 1.3, 0));
-      dead.add(block(1.6, 0.3, 0.3, 0x9a8f86, 0.5, 2.3, 0));
-      dead.add(block(0.3, 1.1, 0.3, 0x9a8f86, 1.2, 2.9, 0));
-      dead.add(block(1.1, 0.25, 0.25, 0x8a7f76, -0.6, 1.7, 0.1));
+    // ---------- silvery dead trees brooding over the mire ----------
+    for (const [tx, tz, ry] of [[-12, -10, 0.4], [16, 9, 1.2], [-8, 11, 2.2], [20, -9, 0.9], [-16, 13, 2.8], [13, -12, 0.2]] as const) {
+      const bark = 0xa39a92;
+      const dead = voxelMesh([
+        { w: 0.5, h: 0.3, d: 0.5, x: 0, y: 0.15, z: 0, color: 0x8f867e },
+        { w: 0.42, h: 2.4, d: 0.42, x: 0, y: 1.3, z: 0, color: bark },
+        { w: 1.5, h: 0.24, d: 0.26, x: 0.55, y: 2.2, z: 0, color: bark, rz: 0.25 },
+        { w: 0.26, h: 1.0, d: 0.26, x: 1.15, y: 2.75, z: 0, color: bark, rz: -0.15 },
+        { w: 1.0, h: 0.22, d: 0.22, x: -0.55, y: 1.65, z: 0.1, color: 0x958c84, rz: -0.35 },
+        { w: 0.2, h: 0.6, d: 0.2, x: -0.95, y: 1.95, z: 0.1, color: 0x958c84 },
+        { w: 0.46, h: 0.12, d: 0.3, x: 0.05, y: 1.0, z: 0.22, color: 0x9cc98a },
+      ]);
       dead.position.set(tx, 0, tz);
       dead.rotation.y = ry;
       s.add(dead);
@@ -195,8 +258,8 @@ export class SloughScene {
     // drifting marsh mist
     for (let i = 0; i < 9; i++) {
       const m = new THREE.Mesh(
-        new THREE.BoxGeometry(4 + Math.random() * 4, 0.8, 2.5 + Math.random() * 2),
-        new THREE.MeshStandardMaterial({ color: 0xe8eef0, transparent: true, opacity: 0.35 }),
+        new THREE.IcosahedronGeometry(1, 1).scale(2.2 + Math.random() * 2, 0.45, 1.3 + Math.random()),
+        new THREE.MeshStandardMaterial({ color: 0xf0f4f4, transparent: true, opacity: 0.28, depthWrite: false, flatShading: true }),
       );
       m.position.set(-20 + Math.random() * 45, 0.9 + Math.random() * 0.8, -12 + Math.random() * 24);
       m.castShadow = false;
@@ -221,11 +284,7 @@ export class SloughScene {
     }
 
     // a warning sign by the west path
-    const sign = new THREE.Group();
-    sign.add(block(0.16, 1.6, 0.16, PALETTE.woodDark, 0, 0.8, 0));
-    sign.add(block(1.6, 0.8, 0.12, PALETTE.wood, 0, 1.5, 0));
-    sign.add(block(1.2, 0.1, 0.14, 0x8a6f52, 0, 1.62, 0));
-    sign.add(block(1.2, 0.1, 0.14, 0x8a6f52, 0, 1.38, 0));
+    const sign = createSign({ seed: 12 });
     sign.position.set(-11, 0, 4);
     sign.rotation.y = -0.5;
     s.add(sign);
@@ -237,17 +296,17 @@ export class SloughScene {
     this.help.armR.add(block(0.14, 2.2, 0.14, PALETTE.woodDark, 0.1, -0.6, 0.2));
     s.add(this.help.root);
 
-    // The tiled King's Highway above continues through this eastern meadow.
     // the marsh gives way to green, sunlit meadow near the light
-    for (const [tx, tz, blossom] of [
-      [26, -5, true], [30, 5, false], [34, -6, false], [37, 6, true],
-    ] as const) {
-      const tree = new THREE.Group();
-      tree.add(block(0.5, 1.6, 0.5, PALETTE.trunk, 0, 0.8, 0));
-      tree.add(block(1.9, 1.3, 1.9, blossom ? PALETTE.leafPink : PALETTE.leaf, 0, 2.2, 0));
-      tree.add(block(1.2, 0.9, 1.2, blossom ? PALETTE.leafPink : PALETTE.leaf, 0, 3.1, 0));
-      tree.position.set(tx, 0, tz);
-      s.add(tree);
+    ([[26, -5, 'blossom'], [30, 5, 'leafy'], [34, -6, 'fruit'], [37, 6, 'blossom'], [24, 7, 'leafy'], [41, -5, 'leafy']] as const)
+      .forEach(([tx, tz, kind], i) => {
+        const tree = createTree({ seed: 220 + i * 7, kind });
+        tree.position.set(tx, 0, tz);
+        s.add(tree);
+      });
+    for (const [bx, bz] of [[22, -4.2], [28, 3.6], [32, -3.8], [36, 4.2]] as const) {
+      const bush = createBush({ seed: Math.round(bx * 9), flowers: true });
+      bush.position.set(bx, 0, bz);
+      s.add(bush);
     }
 
     // the shining light at the far end — the way onward, as at the Wicket Gate

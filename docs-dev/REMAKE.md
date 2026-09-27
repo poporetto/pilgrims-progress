@@ -97,8 +97,13 @@ update the checklist as phases land.
       Ignorance epilogue, Bunyan's warning scroll, The End
 
 ### Open visual bugs to catch during environment passes
-- [ ] "Random torchlight" — stray green pole with a tan cap standing alone
-      in grass beside tan paving and a cottage (chapter unknown)
+- [x] "Random torchlight" — was a lone bog-rim cattail in the Slough
+      (green pole + tan head beside the highway); replaced by reed clumps
+- [ ] NPCs visually face the player when talking (spec §7)
+
+### Environment passes
+- [x] I Village
+- [x] II Slough
 
 ## Baseline (before remake, dev build, 1 s sample after debug jump)
 

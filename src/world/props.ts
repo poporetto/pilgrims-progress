@@ -35,6 +35,9 @@ export interface TreeOptions {
   canopy?: number;        // canopy size
   kind?: 'leafy' | 'blossom' | 'autumn' | 'fruit';
   shadow?: boolean;       // add a soft contact blob
+  /** mood palette override for the canopy (e.g. dusky or wintry greens) */
+  leaves?: readonly number[];
+  trunk?: readonly number[];
 }
 
 /** A cute round deciduous tree: tapered trunk + clustered chunky canopy. */
@@ -45,7 +48,7 @@ export function createTree(o: TreeOptions = {}): THREE.Group {
   const canopy = o.canopy ?? 1.7 + r() * 0.8;
   const g = new THREE.Group();
 
-  const trunkColor = vary(pick(WORLD.trunk, r), r, 0.04);
+  const trunkColor = vary(pick(o.trunk ?? WORLD.trunk, r), r, 0.04);
   const trunk: Voxel[] = [
     { w: 0.46, h: trunkH * 0.55, d: 0.46, x: 0, y: trunkH * 0.275, z: 0, color: trunkColor },
     { w: 0.36, h: trunkH * 0.55, d: 0.36, x: (r() - 0.5) * 0.08, y: trunkH * 0.72, z: (r() - 0.5) * 0.08, color: trunkColor },
@@ -60,7 +63,7 @@ export function createTree(o: TreeOptions = {}): THREE.Group {
   }
   g.add(voxelMesh(trunk));
 
-  const palette = kind === 'blossom' ? WORLD.blossom : kind === 'autumn' ? WORLD.autumn : WORLD.leaf;
+  const palette = o.leaves ?? (kind === 'blossom' ? WORLD.blossom : kind === 'autumn' ? WORLD.autumn : WORLD.leaf);
   const cy = trunkH + canopy * 0.42;
   const leaves: Voxel[] = [];
   const base = pick(palette, r);
@@ -77,7 +80,8 @@ export function createTree(o: TreeOptions = {}): THREE.Group {
     leaves.push({
       w: s, h: s * 0.8, d: s,
       x: Math.cos(a) * rad, y: cy + up * canopy * 0.6, z: Math.sin(a) * rad,
-      color: vary(light ? pick(palette, r) : (kind === 'leafy' ? pick(WORLD.leafDeep, r) : base), r, 0.05),
+      color: vary(light ? pick(palette, r) : (kind === 'leafy' && !o.leaves ? pick(WORLD.leafDeep, r) : base), r, 0.05)
+        .offsetHSL(0, 0, !light && o.leaves ? -0.04 : 0),
       ry: r() * 1.2,
     });
   }
@@ -99,7 +103,7 @@ export function createTree(o: TreeOptions = {}): THREE.Group {
 }
 
 /** A tiered storybook conifer. */
-export function createPine(o: { seed?: number; height?: number } = {}): THREE.Group {
+export function createPine(o: { seed?: number; height?: number; colors?: readonly number[] } = {}): THREE.Group {
   const r = rng(o.seed ?? 7);
   const h = o.height ?? 2.6 + r() * 1.6;
   const g = new THREE.Group();
@@ -114,20 +118,20 @@ export function createPine(o: { seed?: number; height?: number } = {}): THREE.Gr
       w: s, h: h * 0.22, d: s,
       x: 0, y: 0.7 + i * h * 0.19, z: 0,
       ry: Math.PI / 4 + (i % 2) * 0.35,
-      color: vary(WORLD.pine[i % WORLD.pine.length], r, 0.04),
+      color: vary((o.colors ?? WORLD.pine)[i % (o.colors ?? WORLD.pine).length], r, 0.04),
     });
   }
-  vox.push({ w: 0.22, h: 0.3, d: 0.22, x: 0, y: 0.7 + tiers * h * 0.19, z: 0, color: vary(WORLD.pine[0], r) });
+  vox.push({ w: 0.22, h: 0.3, d: 0.22, x: 0, y: 0.7 + tiers * h * 0.19, z: 0, color: vary((o.colors ?? WORLD.pine)[0], r) });
   g.add(voxelMesh(vox, foliageMaterial));
   g.add(makeContactShadow(h * 0.55, 0.2));
   return g;
 }
 
 /** A rounded shrub, optionally dotted with flowers. */
-export function createBush(o: { seed?: number; size?: number; flowers?: boolean; color?: number } = {}): THREE.Group {
+export function createBush(o: { seed?: number; size?: number; flowers?: boolean; color?: number; colors?: readonly number[] } = {}): THREE.Group {
   const r = rng(o.seed ?? 3);
   const s = o.size ?? 0.9 + r() * 0.5;
-  const base = o.color ?? pick(WORLD.leaf, r);
+  const base = o.color ?? pick(o.colors ?? WORLD.leaf, r);
   const vox: Voxel[] = [{ w: s, h: s * 0.7, d: s, x: 0, y: s * 0.35, z: 0, color: vary(base, r), ry: r() }];
   const n = 3 + Math.floor(r() * 2);
   for (let i = 0; i < n; i++) {
