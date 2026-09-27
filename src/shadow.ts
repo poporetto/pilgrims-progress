@@ -3,6 +3,7 @@ import { PALETTE } from './palette';
 import { makeBear, animateBear, addPilgrimArmorDetails, BearParts, block, mat } from './bear';
 import { makeShiningLight, animateShiningLight, ShiningLight, setupSunShadow } from './light';
 import { DialogueLine } from './npcs';
+import { voxelMesh, Voxel, rng as seeded, vary, voxelMaterial } from './world/voxels';
 
 // Chapter X — the Valley of the Shadow of Death.
 // "Yea, though I walk through the valley of the shadow of death, I will
@@ -159,88 +160,92 @@ export class ShadowScene {
     ground.receiveShadow = true;
     s.add(ground);
 
+    // Everything static below is merged into a few meshes (it was ~150
+    // separate blocks). Positions and colours match the tuned layout exactly.
+    const sr = seeded(101);
+    const flat: Voxel[] = [];     // path, ditch, mud: receive shadow only
+    const solid: Voxel[] = [];    // cliffs, trees, reeds, traps, bones
+    const glowCaps: Voxel[] = []; // faintly luminous mushroom caps
+
     // the path: a single narrow line of pale stones
     for (let i = 0; i <= 62; i++) {
       const px = -30 + i * 1.05;
-      const stone = block(0.9, 0.14, 1.6, 0x8a90a2, px, 0.07, 0);
-      stone.castShadow = false;
-      s.add(stone);
-      // Pale centre chips keep the safe way legible even before dawn.
+      flat.push({ w: 0.9, h: 0.14, d: 1.6, x: px, y: 0.07, z: 0, color: vary(0x8a90a2, sr, 0.03), ry: (sr() - 0.5) * 0.08 });
+      // pale centre chips keep the safe way legible even before dawn
       if (i % 3 === 0) {
-        const chip = block(0.34, 0.035, 0.42, i % 2 ? 0xaeb5c6 : 0x9fa8bb, px, 0.155, 0);
-        chip.castShadow = false;
-        s.add(chip);
+        flat.push({ w: 0.34, h: 0.035, d: 0.42, x: px, y: 0.155, z: 0, color: i % 2 ? 0xaeb5c6 : 0x9fa8bb });
       }
     }
-
-    // the DITCH, north: a black gash beside the path
+    // the DITCH, north: a black gash beside the path, with a crumbling lip
     for (let i = 0; i < 20; i++) {
       const px = -29 + i * 3.1;
-      s.add(block(3.4, 0.06, 3.6, 0x05070f, px, 0.03, -3.4));
-      s.add(block(3.6, 0.4, 0.5, 0x1a2032, px, 0.2, -1.7)); // crumbling lip
+      flat.push({ w: 3.4, h: 0.06, d: 3.6, x: px, y: 0.03, z: -3.4, color: 0x05070f });
+      solid.push({ w: 3.6, h: 0.4, d: 0.5, x: px, y: 0.2, z: -1.7, color: vary(0x1a2032, sr, 0.03) });
+      if (i % 2 === 0) solid.push({ w: 0.6, h: 0.3, d: 0.4, x: px + 1.1, y: 0.35, z: -1.75, color: 0x222a3e });
     }
-    // the QUAGMIRE, south: pale sick mud
+    // the QUAGMIRE, south: pale sick mud with bubbles
     for (let i = 0; i < 20; i++) {
       const px = -29 + i * 3.1;
-      const mud = block(3.4, 0.12, 4.0, 0x3a3a30, px, 0.06, 3.6);
-      mud.castShadow = false;
-      s.add(mud);
-      if (i % 3 === 0) s.add(block(0.3, 0.2, 0.3, 0x4a4a3c, px, 0.2, 3 + Math.random() * 1.5));
+      flat.push({ w: 3.4, h: 0.12, d: 4.0, x: px, y: 0.06, z: 3.6, color: vary(0x3a3a30, sr, 0.03) });
+      if (i % 3 === 0) solid.push({ w: 0.3, h: 0.2, d: 0.3, x: px, y: 0.2, z: 3 + sr() * 1.5, color: 0x4a4a3c });
     }
-
-    // Layered cliff walls frame the valley and give the darkness real depth.
+    // layered crag walls frame the valley and give the darkness real depth
     const cliffColors = [0x242b3d, 0x2d3448, 0x353d50];
     for (const side of [-1, 1]) {
       for (let i = 0; i < 13; i++) {
         const x = -28 + i * 5.1;
-        const h = 2.8 + (i % 4) * 0.75;
-        const crag = block(
-          4.8, h, 2.6 + (i % 2) * 0.7, cliffColors[(i + (side > 0 ? 1 : 0)) % cliffColors.length],
-          x, h / 2 - 0.1, side * (7.1 + (i % 3) * 0.45),
-        );
-        crag.rotation.y = side * ((i % 3) - 1) * 0.04;
-        s.add(crag);
-        if (i % 2 === 0) {
-          s.add(block(1.2, 0.65, 1.1, 0x41495a, x + 1.1, 0.32, side * 5.65));
-        }
+        // the near (camera-side) wall stays low so it never hides the path
+        const h = (2.8 + (i % 4) * 0.75) * (side > 0 ? 0.55 : 1);
+        const z = side * (7.1 + (i % 3) * 0.45);
+        const col = cliffColors[(i + (side > 0 ? 1 : 0)) % cliffColors.length];
+        solid.push({ w: 4.8, h, d: 2.6 + (i % 2) * 0.7, x, y: h / 2 - 0.1, z, ry: side * ((i % 3) - 1) * 0.04, color: col });
+        // stepped shoulders and a taller crown make a jagged skyline
+        if (side < 0) solid.push({ w: 3.2, h: h * 0.55, d: 2.0, x: x + 0.8, y: h + h * 0.22 - 0.1, z: z + side * 0.4, color: vary(col, sr, 0.03) });
+        solid.push({ w: 2.4, h: 1.2, d: 1.8, x: x - 1.4, y: 0.5, z: z - side * 1.1, color: vary(0x2a3144, sr, 0.03) });
+        if (i % 2 === 0) solid.push({ w: 1.2, h: 0.65, d: 1.1, x: x + 1.1, y: 0.32, z: side * 5.65, color: 0x41495a });
       }
     }
-    // Dead voxel trees, mire reeds, and dim mushrooms make the route feel
-    // inhabited without obscuring the one-stride-wide path.
+    // dead trees, mire reeds and dim mushrooms
     for (const [x, z, h] of [
       [-25, -5.2, 2.7], [-16, 5.8, 2.2], [-7, -5.5, 3.1],
       [3, 5.6, 2.5], [12, -5.4, 2.8], [24, 5.5, 2.3],
     ] as const) {
-      s.add(block(0.22, h, 0.22, 0x494757, x, h / 2, z));
-      const branch = block(1.15, 0.16, 0.16, 0x494757, x + 0.28, h * 0.72, z);
-      branch.rotation.z = z > 0 ? 0.42 : -0.42;
-      s.add(branch);
+      solid.push({ w: 0.24, h, d: 0.24, x, y: h / 2, z, color: 0x494757 });
+      solid.push({ w: 1.15, h: 0.16, d: 0.16, x: x + 0.28, y: h * 0.72, z, rz: z > 0 ? 0.42 : -0.42, color: 0x494757 });
+      solid.push({ w: 0.12, h: 0.7, d: 0.12, x: x - 0.25, y: h * 0.85, z, rz: z > 0 ? -0.5 : 0.5, color: 0x423f4e });
     }
     for (let i = 0; i < 18; i++) {
       const x = -27 + i * 3.25;
       const side = i % 2 ? 1 : -1;
-      s.add(block(0.08, 0.65 + (i % 3) * 0.18, 0.08, 0x596052, x, 0.34, side * 4.2));
+      for (let k = 0; k < 3; k++) {
+        solid.push({ w: 0.07, h: 0.65 + (i % 3) * 0.18 - k * 0.12, d: 0.07, x: x + (k - 1) * 0.16, y: 0.34, z: side * 4.2 + k * 0.1, rz: (k - 1) * 0.12, color: 0x596052 });
+      }
       if (i % 3 === 0) {
-        const cap = block(0.3, 0.16, 0.3, i % 2 ? 0xa9b6d2 : 0xc1b4d3, x + 0.45, 0.25, side * 2.85);
-        const capMat = cap.material as THREE.MeshStandardMaterial;
-        capMat.emissive = new THREE.Color(0x4d5268);
-        capMat.emissiveIntensity = 0.45;
-        s.add(cap);
+        glowCaps.push({ w: 0.3, h: 0.16, d: 0.3, x: x + 0.45, y: 0.25, z: side * 2.85, color: i % 2 ? 0xa9b6d2 : 0xc1b4d3 });
+        glowCaps.push({ w: 0.2, h: 0.12, d: 0.2, x: x + 0.72, y: 0.2, z: side * 2.95, color: 0xb8c0dc });
       }
     }
-
     // the dangers he passes in the dark — invisible until dawn lights them
     for (const [dx, dz] of [[-22, -2.4], [-14, 2.3], [-8, -2.5], [-2, 2.5], [4, -2.3]] as const) {
-      // snares and claw-traps
-      s.add(block(0.7, 0.35, 0.7, 0x3f3b3a, dx, 0.18, dz));
-      s.add(block(0.12, 0.6, 0.12, 0x4a4440, dx - 0.25, 0.5, dz));
-      s.add(block(0.12, 0.6, 0.12, 0x4a4440, dx + 0.25, 0.5, dz));
+      solid.push({ w: 0.7, h: 0.35, d: 0.7, x: dx, y: 0.18, z: dz, color: 0x3f3b3a });
+      solid.push({ w: 0.12, h: 0.6, d: 0.12, x: dx - 0.25, y: 0.5, z: dz, color: 0x4a4440 });
+      solid.push({ w: 0.12, h: 0.6, d: 0.12, x: dx + 0.25, y: 0.5, z: dz, color: 0x4a4440 });
     }
     for (const [bx, bz] of [[-18, 2.6], [-5, -2.6], [7, 2.4]] as const) {
-      // old bones
-      s.add(block(0.8, 0.18, 0.24, 0xb8b4a8, bx, 0.1, bz));
-      s.add(block(0.42, 0.32, 0.36, 0xb8b4a8, bx + 0.6, 0.16, bz + 0.1));
+      solid.push({ w: 0.8, h: 0.18, d: 0.24, x: bx, y: 0.1, z: bz, color: 0xb8b4a8 });
+      solid.push({ w: 0.42, h: 0.32, d: 0.36, x: bx + 0.6, y: 0.16, z: bz + 0.1, color: 0xb8b4a8 });
     }
+    const flatMesh = voxelMesh(flat);
+    flatMesh.castShadow = false;
+    s.add(flatMesh);
+    s.add(voxelMesh(solid));
+    const capMat = voxelMaterial.clone();
+    capMat.emissive = new THREE.Color(0x4d5268);
+    capMat.emissiveIntensity = 0.55;
+    const caps = voxelMesh(glowCaps, capMat);
+    caps.castShadow = false;
+    s.add(caps);
+
     // a hulking THING crouched by the ditch, mercifully asleep
     const lurker = new THREE.Group();
     lurker.add(block(2.2, 1.3, 1.6, 0x232838, 0, 0.65, 0));
