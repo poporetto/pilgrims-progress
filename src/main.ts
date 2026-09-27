@@ -1165,7 +1165,7 @@ function enterValley(revisit: boolean): void {
   // restore the second HP bar to Apollyon — Doubting Castle repurposes this same
   // bar for Hopeful and leaves the label changed, so reset it here
   const apoName = document.querySelector('#battle-ui .brow.apo .bname') as HTMLElement | null;
-  if (apoName) apoName.textContent = '🐉 Apollyon';
+  if (apoName) apoName.textContent = 'Apollyon';
   valleyActors = valley.enter(revisit);
   camTarget.copy(valleyActors.christian.root.position);
 }
@@ -1480,7 +1480,7 @@ function enterCastle(revisit: boolean): void {
   ui.talkBtn.style.display = 'none';
   // repurpose the Apollyon bar to show Hopeful's HP
   const apoName = document.querySelector('#battle-ui .brow.apo .bname') as HTMLElement | null;
-  if (apoName) apoName.textContent = '🐕 Hopeful';
+  if (apoName) apoName.textContent = 'Hopeful';
   castleActors = castle.enter(revisit);
   camTarget.copy(castleActors.christian.root.position);
 }
@@ -1754,7 +1754,13 @@ function enterVillage(): void {
 // codebase, but the hint bar itself now shows plain text only.
 const LEADING_EMOJI = /^(?:\p{Extended_Pictographic}️?‍?)+\s*/u;
 function setObjective(text: string): void {
-  ui.objective.textContent = text.replace(LEADING_EMOJI, '');
+  const clean = text.replace(LEADING_EMOJI, '');
+  if (ui.objective.textContent === clean) return;
+  ui.objective.textContent = clean;
+  // a gentle pop so a new goal is noticed without a modal interruption
+  ui.objective.classList.remove('objective-bump');
+  void ui.objective.offsetWidth;
+  ui.objective.classList.add('objective-bump');
 }
 
 // ---------------------------------------------------------------- dialogue
@@ -3152,6 +3158,7 @@ function tick(): void {
         ? '👑 Return to the Celestial City'
         : '👑 Climb the shining hill to the Celestial City';
     }
+    ui.promptWho.textContent = (ui.promptWho.textContent ?? '').replace(LEADING_EMOJI, '');
     if (spot !== 'road' && spot !== 'fork') {
       ui.promptKey.style.display = isTouch ? 'none' : 'inline-block';
       if (isTouch) {
