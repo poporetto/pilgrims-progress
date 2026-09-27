@@ -81,7 +81,7 @@ function makeLamp(): THREE.Group {
   const g = new THREE.Group();
   g.add(block(0.18, 2.4, 0.18, PALETTE.woodDark, 0, 1.2, 0));
   const bulb = block(0.4, 0.4, 0.4, PALETTE.light, 0, 2.5, 0);
-  bulb.material = new THREE.MeshLambertMaterial({
+  bulb.material = new THREE.MeshStandardMaterial({
     color: PALETTE.light,
     emissive: 0xfff0b0,
     emissiveIntensity: 0.6,
@@ -586,7 +586,7 @@ export function buildWorld(scene: THREE.Scene): World {
     for (let i = 0; i < 3; i++) {
       const m = new THREE.Mesh(
         new THREE.BoxGeometry(0.5, 0.5, 0.5),
-        new THREE.MeshLambertMaterial({ color: 0xf5f2ec, transparent: true, opacity: 0.7 }),
+        new THREE.MeshStandardMaterial({ color: 0xf5f2ec, transparent: true, opacity: 0.7 }),
       );
       m.castShadow = false;
       group.add(m);
@@ -602,7 +602,7 @@ export function buildWorld(scene: THREE.Scene): World {
   bflySpots.forEach(([cx, cz], i) => {
     const g = new THREE.Group();
     const c = bflyColors[i % bflyColors.length];
-    const wingL = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.05, 0.24), new THREE.MeshLambertMaterial({ color: c }));
+    const wingL = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.05, 0.24), new THREE.MeshStandardMaterial({ color: c }));
     wingL.position.x = -0.16;
     const wingR = wingL.clone();
     wingR.position.x = 0.16;
@@ -644,7 +644,7 @@ export function buildWorld(scene: THREE.Scene): World {
       );
       const s = 0.5 + cycle * 0.9;
       p.mesh.scale.setScalar(s);
-      (p.mesh.material as THREE.MeshLambertMaterial).opacity = 0.65 * (1 - cycle);
+      (p.mesh.material as THREE.MeshStandardMaterial).opacity = 0.65 * (1 - cycle);
     }
     for (const b of butterflies) {
       const a = t * b.sp + b.ph;

@@ -586,7 +586,7 @@ export class WorldMap {
     for (let i = 0; i < 7; i++) {
       const m = new THREE.Mesh(
         new THREE.BoxGeometry(2.2 + Math.random() * 1.6, 1.0 + Math.random() * 0.8, 1.6),
-        new THREE.MeshLambertMaterial({ color: 0xf2f6f8, transparent: true, opacity: 0.55 }),
+        new THREE.MeshStandardMaterial({ color: 0xf2f6f8, transparent: true, opacity: 0.55 }),
       );
       m.position.set(BEYOND.x - 3 + Math.random() * 6, 1.0 + Math.random() * 1.4, BEYOND.z - 2 + Math.random() * 4);
       m.castShadow = false;
@@ -863,12 +863,12 @@ export class WorldMap {
       [-1.1, 3.2, -0.9], [0.0, 4.4, -1.2], [1.1, 3.0, -0.8], [0.2, 2.4, 0.4],
     ] as const) {
       const tw = block(0.85, ch, 0.85, gold, cx, 0.6 + ch / 2, cz);
-      const m = tw.material as THREE.MeshLambertMaterial;
+      const m = tw.material as THREE.MeshStandardMaterial;
       m.emissive = new THREE.Color(0xffd76a); m.emissiveIntensity = 0.75;
       celIsle.add(tw);
       const cap = block(0.5, 0.5, 0.5, 0xfffdf4, cx, 0.6 + ch + 0.2, cz);
-      (cap.material as THREE.MeshLambertMaterial).emissive = new THREE.Color(0xfff0c0);
-      (cap.material as THREE.MeshLambertMaterial).emissiveIntensity = 0.6;
+      (cap.material as THREE.MeshStandardMaterial).emissive = new THREE.Color(0xfff0c0);
+      (cap.material as THREE.MeshStandardMaterial).emissiveIntensity = 0.6;
       celIsle.add(cap);
     }
     // the pearl gates at the front, with pillars, pearls, and an arch.
@@ -883,7 +883,7 @@ export class WorldMap {
     celIsle.add(block(1.15, 1.8, 0.18, 0xfff4d0, 0, 1.62, 1.52));
     // A tiny radiant throne silhouette at the heart of the City.
     const throne = block(0.72, 1.15, 0.62, 0xffcf62, 0.1, 1.35, -0.05);
-    const throneMat = throne.material as THREE.MeshLambertMaterial;
+    const throneMat = throne.material as THREE.MeshStandardMaterial;
     throneMat.emissive = new THREE.Color(0xffd76a);
     throneMat.emissiveIntensity = 0.75;
     celIsle.add(throne);
@@ -1287,7 +1287,7 @@ export class WorldMap {
     for (let i = 0; i < this.mist.length; i++) {
       const m = this.mist[i];
       m.position.x += Math.sin(t * 0.4 + i) * dt * 0.15;
-      (m.material as THREE.MeshLambertMaterial).opacity =
+      (m.material as THREE.MeshStandardMaterial).opacity =
         0.45 + 0.15 * Math.sin(t * 0.5 + i * 1.3);
     }
     if (this.sinaiGlow) {

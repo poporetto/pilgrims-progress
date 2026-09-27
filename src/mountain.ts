@@ -487,7 +487,7 @@ export class MountainScene {
 
     const haze = new THREE.Mesh(
       new THREE.BoxGeometry(LIGHT_X - WEST_EDGE + 40, 4, 2),
-      new THREE.MeshLambertMaterial({ color: 0xd8f0ff, transparent: true, opacity: 0.35 }),
+      new THREE.MeshStandardMaterial({ color: 0xd8f0ff, transparent: true, opacity: 0.35 }),
     );
     haze.position.set((WEST_EDGE + LIGHT_X) / 2, 3.5, -27);
     haze.castShadow = false;
@@ -602,8 +602,8 @@ export class MountainScene {
       g.add(block(0.35, 0.28, 0.35, 0x8a7a6a, Math.cos(a) * 0.9, 0.14, 5.2 + Math.sin(a) * 0.7));
     }
     const ember = block(0.5, 0.3, 0.5, 0xff6a20, 0, 0.35, 5.2);
-    (ember.material as THREE.MeshLambertMaterial).emissive = new THREE.Color(0xff5a10);
-    (ember.material as THREE.MeshLambertMaterial).emissiveIntensity = 0.8;
+    (ember.material as THREE.MeshStandardMaterial).emissive = new THREE.Color(0xff5a10);
+    (ember.material as THREE.MeshStandardMaterial).emissiveIntensity = 0.8;
     g.add(ember);
 
     const fire = new THREE.PointLight(0xffa040, 1.6, 10);
@@ -626,7 +626,7 @@ export class MountainScene {
   // Soft drifting clouds and gentle birds — life in the bright sky.
   private buildSkyLife(): void {
     const s = this.scene;
-    const cloudMat = new THREE.MeshLambertMaterial({ color: 0xffffff, emissive: 0x888888 });
+    const cloudMat = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0x888888 });
     const rng = mulberry(88);
     for (let i = 0; i < 9; i++) {
       const c = new THREE.Group();
@@ -686,8 +686,8 @@ export class MountainScene {
     lake.rotation.x = -Math.PI / 2;
     lake.scale.set(w, d, 1);
     lake.position.set(x, 0.03, z);
-    (lake.material as THREE.MeshLambertMaterial).transparent = true;
-    (lake.material as THREE.MeshLambertMaterial).opacity = 0.9;
+    (lake.material as THREE.MeshStandardMaterial).transparent = true;
+    (lake.material as THREE.MeshStandardMaterial).opacity = 0.9;
     this.scene.add(lake);
     this.water.push(lake);
     const rim = new THREE.Mesh(new THREE.RingGeometry(0.9, 1.05, 20), mat(0xbfe6f2));
@@ -718,8 +718,8 @@ export class MountainScene {
       const tile = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 2.2), mat(0x7ec8ea));
       tile.rotation.x = -Math.PI / 2;
       tile.position.set(rx, 0.04, rz);
-      (tile.material as THREE.MeshLambertMaterial).transparent = true;
-      (tile.material as THREE.MeshLambertMaterial).opacity = 0.85;
+      (tile.material as THREE.MeshStandardMaterial).transparent = true;
+      (tile.material as THREE.MeshStandardMaterial).opacity = 0.85;
       this.scene.add(tile);
       this.water.push(tile);
     }
@@ -830,14 +830,14 @@ export class MountainScene {
     }
     // the mouth: a black opening with a fiery interior
     const mouth = block(2.6, 3.0, 1.0, 0x140805, 0, 1.5, -4.0);
-    (mouth.material as THREE.MeshLambertMaterial).emissive = new THREE.Color(0xff4a10);
-    (mouth.material as THREE.MeshLambertMaterial).emissiveIntensity = 0.9;
+    (mouth.material as THREE.MeshStandardMaterial).emissive = new THREE.Color(0xff4a10);
+    (mouth.material as THREE.MeshStandardMaterial).emissiveIntensity = 0.9;
     g.add(mouth);
     this.hellMouth = mouth;
     // molten cracks glowing on the rock beside the mouth
     for (const [cx, cy] of [[-1.9, 2.2], [2.0, 1.4], [-1.4, 0.5]] as const) {
       const crack = block(0.16, rng(0.7, 1.3), 0.06, 0x2a140a, cx, cy, -3.45);
-      const cm = crack.material as THREE.MeshLambertMaterial;
+      const cm = crack.material as THREE.MeshStandardMaterial;
       cm.emissive = new THREE.Color(0xff5a1e); cm.emissiveIntensity = 1.1;
       crack.rotation.z = rng(-0.5, 0.5);
       g.add(crack);
@@ -856,8 +856,8 @@ export class MountainScene {
     for (let i = 0; i < 12; i++) {
       const sz = rng(0.5, 1.1);
       const puff = block(sz, sz, sz, i % 3 ? 0x4a4038 : 0x342c26, x + rng(-1, 1), 3 + i * 0.5, -4);
-      (puff.material as THREE.MeshLambertMaterial).transparent = true;
-      (puff.material as THREE.MeshLambertMaterial).opacity = rng(0.4, 0.6);
+      (puff.material as THREE.MeshStandardMaterial).transparent = true;
+      (puff.material as THREE.MeshStandardMaterial).opacity = rng(0.4, 0.6);
       puff.userData.baseX = x + rng(-1, 1);
       puff.userData.speed = 0.5 + Math.random() * 0.7;
       this.scene.add(puff);
@@ -866,7 +866,7 @@ export class MountainScene {
     // glowing embers drifting up from the mouth
     for (let i = 0; i < 10; i++) {
       const ember = block(0.12, 0.12, 0.12, 0xff7a2a, x + rng(-1, 1), rng(1.5, 5), -3.8);
-      const em = ember.material as THREE.MeshLambertMaterial;
+      const em = ember.material as THREE.MeshStandardMaterial;
       em.emissive = new THREE.Color(0xff8a2a); em.emissiveIntensity = 1.3;
       ember.userData.baseX = x + rng(-1.2, 1.2);
       ember.userData.speed = 1.0 + Math.random() * 1.2;
@@ -916,8 +916,8 @@ export class MountainScene {
     barrel.add(block(0.3, 0.5, 0.3, BRASS_DK, 0, -1.15, 0));     // eyepiece
     barrel.add(block(0.46, 0.2, 0.46, BRASS, 0, 1.0, 0));        // objective housing
     const lens = block(0.42, 0.12, 0.42, 0x9fe0f0, 0, 1.14, 0);  // glass
-    (lens.material as THREE.MeshLambertMaterial).emissive = new THREE.Color(0x9fe0f0);
-    (lens.material as THREE.MeshLambertMaterial).emissiveIntensity = 0.35;
+    (lens.material as THREE.MeshStandardMaterial).emissive = new THREE.Color(0x9fe0f0);
+    (lens.material as THREE.MeshStandardMaterial).emissiveIntensity = 0.35;
     barrel.add(lens);
     barrel.position.set(0.1, 2.3, 0);
     barrel.rotation.z = -Math.PI / 2.4; // tilt up toward the east
@@ -949,14 +949,14 @@ export class MountainScene {
     for (let i = 0; i < 9; i++) {
       const h = 6 + Math.random() * 8;
       const tower = block(1.8, h, 1.8, gold, (i - 4) * 2.6, h / 2 + 1, (Math.random() - 0.5) * 4);
-      const m = tower.material as THREE.MeshLambertMaterial;
+      const m = tower.material as THREE.MeshStandardMaterial;
       m.emissive = new THREE.Color(0xffd76a);
       m.emissiveIntensity = 0.75;
       g.add(tower);
       // a bright cap
       const cap = block(0.7, 0.9, 0.7, 0xfff4c8, (i - 4) * 2.6, h + 1.5, 0);
-      (cap.material as THREE.MeshLambertMaterial).emissive = new THREE.Color(0xfff0c0);
-      (cap.material as THREE.MeshLambertMaterial).emissiveIntensity = 0.7;
+      (cap.material as THREE.MeshStandardMaterial).emissive = new THREE.Color(0xfff0c0);
+      (cap.material as THREE.MeshStandardMaterial).emissiveIntensity = 0.7;
       g.add(cap);
     }
     // sits east of the exit light, raised on its rise, drawn without fog so it
@@ -965,7 +965,7 @@ export class MountainScene {
     g.scale.setScalar(1.05);
     g.traverse((o) => {
       const mesh = o as THREE.Mesh;
-      if (mesh.isMesh) (mesh.material as THREE.MeshLambertMaterial).fog = false;
+      if (mesh.isMesh) (mesh.material as THREE.MeshStandardMaterial).fog = false;
     });
     this.cityGlow = g;
     this.scene.add(g);
@@ -1122,7 +1122,7 @@ export class MountainScene {
   private lessonDoorIntoHell(): void {
     this.cb.setObjective('🔥 A door in the hillside — smoke and fire rise from it');
     if (this.hellGlow) this.hellGlow.intensity = 3.2;
-    if (this.hellMouth) (this.hellMouth.material as THREE.MeshLambertMaterial).emissiveIntensity = 1.6;
+    if (this.hellMouth) (this.hellMouth.material as THREE.MeshStandardMaterial).emissiveIntensity = 1.6;
     this.cb.rumbleSound();
     this.cb.playScript([
       { speaker: 'Watchful',   text: 'There is one more hard sight. Come to this hillside — but be ready. Do you hear it?' },
@@ -1132,7 +1132,7 @@ export class MountainScene {
       { speaker: 'Knowledge',  text: 'Let it warn you — never become careless. Keep watch over your own heart to the very end.' },
     ], () => {
       if (this.hellGlow) this.hellGlow.intensity = 1.4;
-      if (this.hellMouth) (this.hellMouth.material as THREE.MeshLambertMaterial).emissiveIntensity = 0.9;
+      if (this.hellMouth) (this.hellMouth.material as THREE.MeshStandardMaterial).emissiveIntensity = 0.9;
       this.resumeTour();
     });
   }
@@ -1223,7 +1223,7 @@ export class MountainScene {
       this.cityGlow.traverse((o) => {
         const mesh = o as THREE.Mesh;
         if (mesh.isMesh) {
-          const mm = mesh.material as THREE.MeshLambertMaterial;
+          const mm = mesh.material as THREE.MeshStandardMaterial;
           if (mm.emissive) mm.emissiveIntensity = pulse;
         }
       });

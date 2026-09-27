@@ -151,7 +151,7 @@ export class BeulahScene {
       b.popT = 0;
       b.group.visible = false;
       b.group.scale.setScalar(1);
-      (b.body.material as THREE.MeshLambertMaterial).opacity = 1;
+      (b.body.material as THREE.MeshStandardMaterial).opacity = 1;
     }
     for (const p of this.popParticles) p.mesh.visible = false;
     this.popParticles.length = 0;
@@ -246,21 +246,21 @@ export class BeulahScene {
     const clear = new THREE.Mesh(new THREE.PlaneGeometry(RW, 62), mat(0x7cc3e6));
     clear.rotation.x = -Math.PI / 2;
     clear.position.set(RCX, 0.12, 0);
-    (clear.material as THREE.MeshLambertMaterial).transparent = true;
-    (clear.material as THREE.MeshLambertMaterial).opacity = 0.92;
+    (clear.material as THREE.MeshStandardMaterial).transparent = true;
+    (clear.material as THREE.MeshStandardMaterial).opacity = 0.92;
     s.add(clear);
     // a mid indigo band, then the deepest channel down the centre line
     const mid = new THREE.Mesh(new THREE.PlaneGeometry(RW - 4, 62), mat(0x3f6bb8));
     mid.rotation.x = -Math.PI / 2;
     mid.position.set(RCX, 0.14, 0);
-    (mid.material as THREE.MeshLambertMaterial).transparent = true;
-    (mid.material as THREE.MeshLambertMaterial).opacity = 0.85;
+    (mid.material as THREE.MeshStandardMaterial).transparent = true;
+    (mid.material as THREE.MeshStandardMaterial).opacity = 0.85;
     s.add(mid);
     const deep = new THREE.Mesh(new THREE.PlaneGeometry(9, 62), mat(0x243a86));
     deep.rotation.x = -Math.PI / 2;
     deep.position.set(RCX, 0.16, 0);
-    (deep.material as THREE.MeshLambertMaterial).transparent = true;
-    (deep.material as THREE.MeshLambertMaterial).opacity = 0.85;
+    (deep.material as THREE.MeshStandardMaterial).transparent = true;
+    (deep.material as THREE.MeshStandardMaterial).opacity = 0.85;
     s.add(deep);
 
     // drifting ripple lines, to read as flowing water (animated in update)
@@ -401,25 +401,25 @@ export class BeulahScene {
     const gold = 0xffe08a;
     // the golden cliffs it stands on
     const cliff = block(30, 8, 20, 0xe6c878, 0, 4, -2);
-    (cliff.material as THREE.MeshLambertMaterial).emissive = new THREE.Color(0xffd060);
-    (cliff.material as THREE.MeshLambertMaterial).emissiveIntensity = 0.25;
+    (cliff.material as THREE.MeshStandardMaterial).emissive = new THREE.Color(0xffd060);
+    (cliff.material as THREE.MeshStandardMaterial).emissiveIntensity = 0.25;
     g.add(cliff);
     for (let i = 0; i < 11; i++) {
       const h = 6 + Math.random() * 10;
       const tower = block(2.0, h, 2.0, gold, (i - 5) * 2.8, 8 + h / 2, (Math.random() - 0.5) * 6);
-      const m = tower.material as THREE.MeshLambertMaterial;
+      const m = tower.material as THREE.MeshStandardMaterial;
       m.emissive = new THREE.Color(0xffdc70);
       m.emissiveIntensity = 0.8;
       g.add(tower);
       const cap = block(0.8, 1.0, 0.8, 0xfff4c8, (i - 5) * 2.8, 8 + h + 0.6, 0);
-      (cap.material as THREE.MeshLambertMaterial).emissive = new THREE.Color(0xfff0c0);
-      (cap.material as THREE.MeshLambertMaterial).emissiveIntensity = 0.7;
+      (cap.material as THREE.MeshStandardMaterial).emissive = new THREE.Color(0xfff0c0);
+      (cap.material as THREE.MeshStandardMaterial).emissiveIntensity = 0.7;
       g.add(cap);
     }
     g.position.set(LIGHT_X + 18, 0, 4);
     g.traverse((o) => {
       const mesh = o as THREE.Mesh;
-      if (mesh.isMesh) (mesh.material as THREE.MeshLambertMaterial).fog = false;
+      if (mesh.isMesh) (mesh.material as THREE.MeshStandardMaterial).fog = false;
     });
     this.cityGlow = g;
     this.scene.add(g);
@@ -442,7 +442,7 @@ export class BeulahScene {
       // the single raycast body — a rounded-off cube (a chamfered voxel balloon)
       const body = new THREE.Mesh(
         new THREE.BoxGeometry(1.15, 1.3, 1.15),
-        new THREE.MeshLambertMaterial({ color: col, transparent: true, opacity: 1 }),
+        new THREE.MeshStandardMaterial({ color: col, transparent: true, opacity: 1 }),
       );
       group.add(body);
       // blocky bands so it reads as a plump balloon, not a plain box. They
@@ -566,7 +566,7 @@ export class BeulahScene {
     b.popT = 0.001;
     this.cb.blipSound();
     // burst particles
-    const col = (b.body.material as THREE.MeshLambertMaterial).color.getHex();
+    const col = (b.body.material as THREE.MeshStandardMaterial).color.getHex();
     for (let i = 0; i < 8; i++) {
       const bit = block(0.14, 0.14, 0.14, col,
         b.group.position.x, b.group.position.y, b.group.position.z);
@@ -617,7 +617,7 @@ export class BeulahScene {
     for (const b of this.balloons) {
       b.group.visible = true;
       b.popped = false;
-      (b.body.material as THREE.MeshLambertMaterial).opacity = 0;
+      (b.body.material as THREE.MeshStandardMaterial).opacity = 0;
     }
     this.cb.rumbleSound();
     this.cb.setObjective('😰 Christian is sinking — fear closes over him');
@@ -708,7 +708,7 @@ export class BeulahScene {
       this.cityGlow.traverse((o) => {
         const mesh = o as THREE.Mesh;
         if (mesh.isMesh) {
-          const mm = mesh.material as THREE.MeshLambertMaterial;
+          const mm = mesh.material as THREE.MeshStandardMaterial;
           if (mm.emissive && mm.emissiveIntensity > 0.3) mm.emissiveIntensity = pulse;
         }
       });
@@ -729,7 +729,7 @@ export class BeulahScene {
       this.sinkT = Math.min(1, this.sinkT + dt * 0.5);
       chr.root.position.y = THREE.MathUtils.lerp(-0.9, -1.6, this.sinkT);
       for (const b of this.balloons) {
-        const mm = b.body.material as THREE.MeshLambertMaterial;
+        const mm = b.body.material as THREE.MeshStandardMaterial;
         mm.opacity = Math.min(1, mm.opacity + dt * 0.8);
       }
     }
@@ -760,7 +760,7 @@ export class BeulahScene {
           b.popT += dt;
           const k = b.popT / 0.28;
           b.group.scale.setScalar(1 + k * 1.4);
-          (b.body.material as THREE.MeshLambertMaterial).opacity = Math.max(0, 1 - k);
+          (b.body.material as THREE.MeshStandardMaterial).opacity = Math.max(0, 1 - k);
           if (k >= 1) { b.group.visible = false; b.popT = 0; }
         }
       }

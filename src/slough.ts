@@ -196,7 +196,7 @@ export class SloughScene {
     for (let i = 0; i < 9; i++) {
       const m = new THREE.Mesh(
         new THREE.BoxGeometry(4 + Math.random() * 4, 0.8, 2.5 + Math.random() * 2),
-        new THREE.MeshLambertMaterial({ color: 0xe8eef0, transparent: true, opacity: 0.35 }),
+        new THREE.MeshStandardMaterial({ color: 0xe8eef0, transparent: true, opacity: 0.35 }),
       );
       m.position.set(-20 + Math.random() * 45, 0.9 + Math.random() * 0.8, -12 + Math.random() * 24);
       m.castShadow = false;
@@ -655,7 +655,7 @@ export class SloughScene {
       const m = this.wisps[i];
       m.position.x += dt * 0.3;
       if (m.position.x > 30) m.position.x = -25;
-      (m.material as THREE.MeshLambertMaterial).opacity = 0.25 + 0.12 * Math.sin(t * 0.6 + i);
+      (m.material as THREE.MeshStandardMaterial).opacity = 0.25 + 0.12 * Math.sin(t * 0.6 + i);
     }
     for (const b of this.bubbles) {
       const c = (t * 0.5 + b.phase) % 2;

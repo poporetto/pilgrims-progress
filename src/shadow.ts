@@ -61,7 +61,7 @@ export class ShadowScene {
   private faithfulJoined = false;
   private lamp: THREE.PointLight;
   private hemi: THREE.HemisphereLight | null = null;
-  private groundMat: THREE.MeshLambertMaterial | null = null;
+  private groundMat: THREE.MeshStandardMaterial | null = null;
   private moonSun: THREE.DirectionalLight | null = null;
   private dawnP = 0;
   private sink = 0;
@@ -153,7 +153,7 @@ export class ShadowScene {
     s.add(this.moonSun);
 
     // a dedicated (uncached) material so the valley floor can lighten at dawn
-    this.groundMat = new THREE.MeshLambertMaterial({ color: 0x2c3242 });
+    this.groundMat = new THREE.MeshStandardMaterial({ color: 0x2c3242 });
     const ground = new THREE.Mesh(new THREE.BoxGeometry(140, 1, 90), this.groundMat);
     ground.position.y = -0.5;
     ground.receiveShadow = true;
@@ -222,7 +222,7 @@ export class ShadowScene {
       s.add(block(0.08, 0.65 + (i % 3) * 0.18, 0.08, 0x596052, x, 0.34, side * 4.2));
       if (i % 3 === 0) {
         const cap = block(0.3, 0.16, 0.3, i % 2 ? 0xa9b6d2 : 0xc1b4d3, x + 0.45, 0.25, side * 2.85);
-        const capMat = cap.material as THREE.MeshLambertMaterial;
+        const capMat = cap.material as THREE.MeshStandardMaterial;
         capMat.emissive = new THREE.Color(0x4d5268);
         capMat.emissiveIntensity = 0.45;
         s.add(cap);
@@ -277,7 +277,7 @@ export class ShadowScene {
       // Pastel wall panel and a small golden memory lamp.
       hall.add(block(3.4, 1.65, 0.12, alcoveColors[i], ax, 2.6, -7.52));
       const lamp = block(0.28, 0.38, 0.22, 0xffe9a3, ax, 4.0, -7.15);
-      const lampMat = lamp.material as THREE.MeshLambertMaterial;
+      const lampMat = lamp.material as THREE.MeshStandardMaterial;
       lampMat.emissive = new THREE.Color(0xffd77a);
       lampMat.emissiveIntensity = 0.7;
       hall.add(lamp);

@@ -399,8 +399,8 @@ export class PalaceScene {
       const lamp = new THREE.Group();
       lamp.add(block(0.16, 2.6, 0.16, PALETTE.woodDark, 0, 1.3, 0));
       const bulb = block(0.38, 0.38, 0.38, PALETTE.light, 0, 2.7, 0);
-      (bulb.material as THREE.MeshLambertMaterial).emissive = new THREE.Color(0xfff0b0);
-      (bulb.material as THREE.MeshLambertMaterial).emissiveIntensity = 0.5;
+      (bulb.material as THREE.MeshStandardMaterial).emissive = new THREE.Color(0xfff0b0);
+      (bulb.material as THREE.MeshStandardMaterial).emissiveIntensity = 0.5;
       lamp.add(bulb);
       lamp.position.set(lx, 0, lz);
       palace.add(lamp);
@@ -431,8 +431,8 @@ export class PalaceScene {
     // a lantern each side of the door
     for (const dz of [-1, 1]) {
       const lamp = block(0.34, 0.34, 0.34, PALETTE.light, 8 + dz * 2.6, 3.4, 5.9);
-      (lamp.material as THREE.MeshLambertMaterial).emissive = new THREE.Color(0xffe0a0);
-      (lamp.material as THREE.MeshLambertMaterial).emissiveIntensity = 0.7;
+      (lamp.material as THREE.MeshStandardMaterial).emissive = new THREE.Color(0xffe0a0);
+      (lamp.material as THREE.MeshStandardMaterial).emissiveIntensity = 0.7;
       palace.add(lamp);
     }
 
@@ -498,8 +498,8 @@ export class PalaceScene {
         const arm = block(0.5, 0.08, 0.08, GOLD, Math.cos(a) * 0.35, 4.75, Math.sin(a) * 0.35);
         ch.add(arm);
         const flame = block(0.14, 0.2, 0.14, 0xffe08a, Math.cos(a) * 0.55, 4.65, Math.sin(a) * 0.55);
-        (flame.material as THREE.MeshLambertMaterial).emissive = new THREE.Color(0xffd070);
-        (flame.material as THREE.MeshLambertMaterial).emissiveIntensity = 0.6;
+        (flame.material as THREE.MeshStandardMaterial).emissive = new THREE.Color(0xffd070);
+        (flame.material as THREE.MeshStandardMaterial).emissiveIntensity = 0.6;
         ch.add(flame);
       }
       ch.position.set(cx, 0, 0);
@@ -562,8 +562,8 @@ export class PalaceScene {
     hall.add(block(0.14, 1.55, 0.14, WOOD, recordsX - 1.55, 0.78, recordsZ));
     hall.add(block(0.48, 0.12, 0.48, GOLD, recordsX - 1.55, 1.48, recordsZ));
     const deskLamp = block(0.3, 0.3, 0.3, 0xffe08a, recordsX - 1.55, 1.68, recordsZ);
-    (deskLamp.material as THREE.MeshLambertMaterial).emissive = new THREE.Color(0xffd070);
-    (deskLamp.material as THREE.MeshLambertMaterial).emissiveIntensity = 0.7;
+    (deskLamp.material as THREE.MeshStandardMaterial).emissive = new THREE.Color(0xffd070);
+    (deskLamp.material as THREE.MeshStandardMaterial).emissiveIntensity = 0.7;
     hall.add(deskLamp);
     const recordsGlow = new THREE.Mesh(
       new THREE.SphereGeometry(1.5, 14, 12),
@@ -619,8 +619,8 @@ export class PalaceScene {
     hall.add(block(2.8, 2.2, 0.6, 0xd8d0c4, -3.5, 1.1, -9.3));
     hall.add(block(1.6, 1.0, 0.4, 0x2a2018, -3.5, 0.7, -9.0));
     const ember = block(0.8, 0.2, 0.3, 0xff6a20, -3.5, 0.45, -9.0);
-    (ember.material as THREE.MeshLambertMaterial).emissive = new THREE.Color(0xff5010);
-    (ember.material as THREE.MeshLambertMaterial).emissiveIntensity = 0.7;
+    (ember.material as THREE.MeshStandardMaterial).emissive = new THREE.Color(0xff5010);
+    (ember.material as THREE.MeshStandardMaterial).emissiveIntensity = 0.7;
     hall.add(ember);
 
     // empty armor stands (filled during the arming ceremony)
@@ -785,8 +785,8 @@ export class PalaceScene {
     barrel.add(block(0.28, 0.46, 0.28, BRASS_DK, 0, -1.08, 0));  // eyepiece
     barrel.add(block(0.44, 0.18, 0.44, BRASS, 0, 0.95, 0));      // objective housing
     const lens = block(0.4, 0.11, 0.4, 0x9fe0f0, 0, 1.08, 0);   // glass
-    (lens.material as THREE.MeshLambertMaterial).emissive = new THREE.Color(0x9fe0f0);
-    (lens.material as THREE.MeshLambertMaterial).emissiveIntensity = 0.35;
+    (lens.material as THREE.MeshStandardMaterial).emissive = new THREE.Color(0x9fe0f0);
+    (lens.material as THREE.MeshStandardMaterial).emissiveIntensity = 0.35;
     barrel.add(lens);
     barrel.position.set(0.1, 2.2, 0);
     barrel.rotation.z = -Math.PI / 3.2; // tilt up toward the east

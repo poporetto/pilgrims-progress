@@ -24,6 +24,7 @@ import { BeulahScene } from './beulah';
 import { CelestialScene } from './celestial';
 import { makeAlpineMountain } from './alpine';
 import { CameraController, type CameraFrame } from './core/camera';
+import { Atmosphere, configureRenderer } from './render/atmosphere';
 import { getDialogueCharacterNames, getDialoguePortrait, preloadAllPortraits } from './dialoguePortraits';
 
 // ---------------------------------------------------------------- setup
@@ -48,8 +49,7 @@ const app = document.getElementById('app')!;
 const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+configureRenderer(renderer);
 app.appendChild(renderer.domElement);
 
 // The opening cover uses the real Chapter I Christian rig on a miniature
@@ -60,8 +60,7 @@ const titleJourneyRenderer = new THREE.WebGLRenderer({
 });
 titleJourneyRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
 titleJourneyRenderer.setClearColor(0xd8edf7, 1);
-titleJourneyRenderer.shadowMap.enabled = true;
-titleJourneyRenderer.shadowMap.type = THREE.PCFSoftShadowMap;
+configureRenderer(titleJourneyRenderer);
 const titleJourneyScene = new THREE.Scene();
 titleJourneyScene.background = new THREE.Color(0xd8edf7);
 titleJourneyScene.fog = new THREE.Fog(0xd8edf7, 24, 62);
@@ -139,7 +138,7 @@ addTitleCloud(-10, 7.4, -12, 0.7);
 addTitleCloud(0.5, 8.5, -15, 0.52);
 addTitleCloud(11, 7.1, -13, 0.62);
 const titleSun = block(1.7, 1.7, 0.8, 0xffe89a, 11.5, 9.2, -18);
-const titleSunMat = titleSun.material as THREE.MeshLambertMaterial;
+const titleSunMat = titleSun.material as THREE.MeshStandardMaterial;
 titleSunMat.emissive = new THREE.Color(0xffd66b);
 titleSunMat.emissiveIntensity = 0.65;
 titleJourneyScene.add(titleSun);
@@ -257,8 +256,12 @@ const scene = new THREE.Scene();
 scene.background = new THREE.Color(PALETTE.sky);
 scene.fog = new THREE.Fog(PALETTE.fog, 55, 130);
 
+// A slightly telephoto lens flattens perspective into a miniature-diorama
+// look. Every camera offset is scaled by LENS so framing matches the old 50°.
+const CAMERA_FOV = 38;
+const LENS = Math.tan(THREE.MathUtils.degToRad(25)) / Math.tan(THREE.MathUtils.degToRad(CAMERA_FOV / 2));
 const camera = new THREE.PerspectiveCamera(
-  50, window.innerWidth / window.innerHeight, 0.1, 300,
+  CAMERA_FOV, window.innerWidth / window.innerHeight, 0.1, 400,
 );
 
 // Warm, soft morning light for Chapter I: creamy sky fill, gentle golden
@@ -2370,9 +2373,15 @@ function triggerInteract(it: Interactable): void {
 // ---------------------------------------------------------------- movement & camera
 
 const SPEED = 7;
-const camOffset = new THREE.Vector3(0, 13, 13);
-const HOUSE_CAM_OFFSET = new THREE.Vector3(0, 7.5, 7.5); // closer view inside the Interpreter's House
-const DUNGEON_CAM_OFFSET = new THREE.Vector3(0, 6, -11); // camera looks from outside north wall inward
+const camOffset = new THREE.Vector3(0, 13, 13).multiplyScalar(LENS);
+const HOUSE_CAM_OFFSET = new THREE.Vector3(0, 7.5, 7.5).multiplyScalar(LENS); // closer view inside the Interpreter's House
+const DUNGEON_CAM_OFFSET = new THREE.Vector3(0, 6, -11).multiplyScalar(LENS); // camera looks from outside north wall inward
+// Scenes tuned their fog for the old 18.4-unit camera distance; the
+// atmosphere layer shifts fog out by the extra distance of the longer lens.
+const atmosphere = new Atmosphere({
+  fogShift: camOffset.length() - Math.hypot(13, 13),
+  shadowHalf: 28,
+});
 const camTarget = new THREE.Vector3();
 // one damped camera shared by the village and every chapter scene
 const cameraRig = new CameraController(camera, camTarget);
@@ -2988,7 +2997,9 @@ function runChapter(a: ChapterAdapter, dt: number, t: number): boolean {
     frame = chapterFrame;
   }
   cameraRig.update(dt, frame, gameSettings.reducedMotion);
-  renderer.render(a.scene(), camera);
+  const sc = a.scene();
+  atmosphere.update(sc, camera, cameraRig.target);
+  renderer.render(sc, camera);
   return true;
 }
 
@@ -3195,6 +3206,7 @@ function tick(): void {
   chapterFrame.lookHeight = 1.4;
   chapterFrame.follow = 4;
   cameraRig.update(dt, chapterFrame, gameSettings.reducedMotion);
+  atmosphere.update(scene, camera, cameraRig.target);
 
   renderer.render(scene, camera);
 }

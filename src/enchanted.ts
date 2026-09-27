@@ -235,7 +235,7 @@ export class EnchantedScene {
     for (let i = 0; i < 15; i++) {
       const fog = new THREE.Mesh(
         new THREE.BoxGeometry(5 + Math.random() * 5, 0.35, 1.8),
-        new THREE.MeshLambertMaterial({ color: 0xf3e8c8, transparent: true, opacity: 0.24 }),
+        new THREE.MeshStandardMaterial({ color: 0xf3e8c8, transparent: true, opacity: 0.24 }),
       );
       fog.position.set(22 + i * 4.2, 0.45 + (i % 3) * 0.22, (i % 2 ? -1 : 1) * (2.5 + i % 3));
       fog.castShadow = false;
@@ -642,7 +642,7 @@ export class EnchantedScene {
       note.group.scale.setScalar(0.8 + note.life * 0.5);
       note.group.traverse((obj) => {
         if (obj instanceof THREE.Mesh) {
-          const material = obj.material as THREE.MeshLambertMaterial;
+          const material = obj.material as THREE.MeshStandardMaterial;
           material.transparent = true;
           material.opacity = 1 - note.life;
         }

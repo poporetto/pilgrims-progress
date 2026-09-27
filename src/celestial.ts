@@ -85,7 +85,7 @@ export class CelestialScene {
   private helmetChr: THREE.Group | null = null;
   private robeChr: THREE.Group | null = null;
   private robeHop: THREE.Group | null = null;
-  private rewardMaterials: THREE.MeshLambertMaterial[] = [];
+  private rewardMaterials: THREE.MeshStandardMaterial[] = [];
   private rewardLights: THREE.PointLight[] = [];
   private rewardShineT = 0;
   private scrollChr: THREE.Group | null = null;
@@ -242,7 +242,7 @@ export class CelestialScene {
 
   private makeSealedScroll(): THREE.Group {
     const g = new THREE.Group();
-    const paperMat = new THREE.MeshLambertMaterial({
+    const paperMat = new THREE.MeshStandardMaterial({
       color: 0xfff4ce, emissive: 0xffd66b, emissiveIntensity: 0.65,
     });
     const paper = new THREE.Mesh(new THREE.BoxGeometry(0.68, 0.42, 0.12), paperMat);
@@ -259,7 +259,7 @@ export class CelestialScene {
 
   private makeRewardRobe(parts: BearParts, scale: number): THREE.Group {
     const robe = new THREE.Group();
-    const white = new THREE.MeshLambertMaterial({
+    const white = new THREE.MeshStandardMaterial({
       color: 0xfffdf5, emissive: 0xffe3a0, emissiveIntensity: 0.12,
     });
     this.rewardMaterials.push(white);
@@ -405,10 +405,10 @@ export class CelestialScene {
       s.add(slab);
       // a crystal step edge on every slab lip
       const crystal = block(0.5, 0.3, 8.4, 0xcfeef8, x1 - 0.2, h + 0.12, 0);
-      (crystal.material as THREE.MeshLambertMaterial).transparent = true;
-      (crystal.material as THREE.MeshLambertMaterial).opacity = 0.85;
-      (crystal.material as THREE.MeshLambertMaterial).emissive = new THREE.Color(0xaadfef);
-      (crystal.material as THREE.MeshLambertMaterial).emissiveIntensity = 0.25;
+      (crystal.material as THREE.MeshStandardMaterial).transparent = true;
+      (crystal.material as THREE.MeshStandardMaterial).opacity = 0.85;
+      (crystal.material as THREE.MeshStandardMaterial).emissive = new THREE.Color(0xaadfef);
+      (crystal.material as THREE.MeshStandardMaterial).emissiveIntensity = 0.25;
       s.add(crystal);
     }
     // Pearl-and-gold ceremonial pillars climb beside the stairs. Their caps
@@ -421,7 +421,7 @@ export class CelestialScene {
         pillar.add(block(0.86, 0.24, 0.86, PALETTE.robeGold, 0, 0.12, 0));
         pillar.add(block(0.56, 2.1, 0.56, 0xfff8e8, 0, 1.25, 0));
         pillar.add(block(0.92, 0.26, 0.92, PALETTE.robeGold, 0, 2.42, 0));
-        const capMat = new THREE.MeshLambertMaterial({
+        const capMat = new THREE.MeshStandardMaterial({
           color: 0xfff0b0, emissive: 0xffd86a, emissiveIntensity: 0.75,
         });
         const cap = new THREE.Mesh(new THREE.BoxGeometry(0.52, 0.52, 0.52), capMat);
@@ -461,8 +461,8 @@ export class CelestialScene {
     s.add(street);
     for (let i = 0; i < 12; i++) {
       const tile = block(1.2, 0.06, 1.2, 0xcfeef8, GATE_X + 6 + i * 3.2, HILL_H + 0.05, (i % 2 === 0 ? -1 : 1) * 1.6);
-      (tile.material as THREE.MeshLambertMaterial).emissive = new THREE.Color(0x9fd8ec);
-      (tile.material as THREE.MeshLambertMaterial).emissiveIntensity = 0.3;
+      (tile.material as THREE.MeshStandardMaterial).emissive = new THREE.Color(0x9fd8ec);
+      (tile.material as THREE.MeshStandardMaterial).emissiveIntensity = 0.3;
       s.add(tile);
     }
 
@@ -529,8 +529,8 @@ export class CelestialScene {
     s.add(block(1.9, 0.6, 12.8, PALETTE.robeGold, y > 0 ? GATE_X : GATE_X, y + 11.4, 0));
     // a shining name-band across the arch
     const band = block(0.5, 1.0, 9.0, 0xfff3c4, GATE_X - 0.8, y + 12.6, 0);
-    (band.material as THREE.MeshLambertMaterial).emissive = new THREE.Color(0xffe9a0);
-    (band.material as THREE.MeshLambertMaterial).emissiveIntensity = 0.6;
+    (band.material as THREE.MeshStandardMaterial).emissive = new THREE.Color(0xffe9a0);
+    (band.material as THREE.MeshStandardMaterial).emissiveIntensity = 0.6;
     s.add(band);
     // Pearl garland and a luminous threshold mosaic.
     for (let i = 0; i < 9; i++) {
@@ -618,13 +618,13 @@ export class CelestialScene {
       const h = rng(8, 22);
       const crystal = side < 0 && i % 3 === 0;
       const tower = block(rng(2, 3.4), h, rng(2, 3.4), crystal ? 0xcfeef8 : 0xf5e2a8, tx, y + h / 2, tz);
-      const tm = tower.material as THREE.MeshLambertMaterial;
+      const tm = tower.material as THREE.MeshStandardMaterial;
       tm.emissive = new THREE.Color(crystal ? 0x9fd8ec : 0xffdc80);
       tm.emissiveIntensity = 0.35;
       s.add(tower);
       const cap = block(1.0, 1.4, 1.0, 0xfff4c8, tx, y + h + 0.7, tz);
-      (cap.material as THREE.MeshLambertMaterial).emissive = new THREE.Color(0xfff0c0);
-      (cap.material as THREE.MeshLambertMaterial).emissiveIntensity = 0.6;
+      (cap.material as THREE.MeshStandardMaterial).emissive = new THREE.Color(0xfff0c0);
+      (cap.material as THREE.MeshStandardMaterial).emissiveIntensity = 0.6;
       s.add(cap);
     }
 
@@ -888,15 +888,15 @@ export class CelestialScene {
     dd.add(block(2.86, 0.56, 0.96, 0x282328, 0, 3.46, 0));
     dd.add(block(2.25, 0.22, 1.02, 0x75605a, 0, 2.92, 0));
     const glow = block(1.82, 2.92, 0.5, 0x0d090a, 0, 1.58, 0.18);
-    (glow.material as THREE.MeshLambertMaterial).emissive = new THREE.Color(0xb03018);
-    (glow.material as THREE.MeshLambertMaterial).emissiveIntensity = 0.0; // dark until it opens
+    (glow.material as THREE.MeshStandardMaterial).emissive = new THREE.Color(0xb03018);
+    (glow.material as THREE.MeshStandardMaterial).emissiveIntensity = 0.0; // dark until it opens
     dd.add(glow);
     // Receding inner frames give the doorway depth instead of reading as a
     // flat red rectangle.
     for (let i = 0; i < 3; i++) {
       const tunnel = block(1.56 - i * 0.2, 2.55 - i * 0.22, 0.12,
         [0x341313, 0x541b16, 0x7a271b][i], 0, 1.48, 0.48 + i * 0.26);
-      const tunnelMat = tunnel.material as THREE.MeshLambertMaterial;
+      const tunnelMat = tunnel.material as THREE.MeshStandardMaterial;
       tunnelMat.emissive = new THREE.Color([0x4b1110, 0x7d2117, 0xa6381f][i]);
       tunnelMat.emissiveIntensity = 0.32 + i * 0.18;
       dd.add(tunnel);
@@ -923,7 +923,7 @@ export class CelestialScene {
     for (let i = 0; i < 14; i++) {
       const smoke = new THREE.Mesh(
         new THREE.BoxGeometry(1.0 + (i % 3) * 0.34, 0.8 + (i % 2) * 0.28, 0.9),
-        new THREE.MeshLambertMaterial({
+        new THREE.MeshStandardMaterial({
           color: i % 3 === 0 ? 0x74676d : 0x918388,
           transparent: true, opacity: 0,
         }),
@@ -1203,7 +1203,7 @@ export class CelestialScene {
       this.ignoranceAfraid = true;
       for (const sweat of this.ignoranceSweat) sweat.visible = true;
       this.cb.rumbleSound();
-      if (this.darkGlow) (this.darkGlow.material as THREE.MeshLambertMaterial).emissiveIntensity = 1.1;
+      if (this.darkGlow) (this.darkGlow.material as THREE.MeshStandardMaterial).emissiveIntensity = 1.1;
       this.darkDoor?.traverse((o) => {
         if (o instanceof THREE.PointLight && o.userData.gatewayEmber) o.intensity = 2.2;
       });
@@ -1246,7 +1246,7 @@ export class CelestialScene {
       for (const sweat of this.ignoranceSweat) sweat.visible = false;
       this.ignorance.root.visible = false;
       for (const a of this.ignAttendants) a.root.visible = false;
-      if (this.darkGlow) (this.darkGlow.material as THREE.MeshLambertMaterial).emissiveIntensity = 0;
+      if (this.darkGlow) (this.darkGlow.material as THREE.MeshStandardMaterial).emissiveIntensity = 0;
       this.darkDoor?.traverse((o) => {
         if (o instanceof THREE.PointLight && o.userData.gatewayEmber) o.intensity = 0;
       });
@@ -1375,7 +1375,7 @@ export class CelestialScene {
       note.group.scale.setScalar(0.8 + note.life * 0.45);
       note.group.traverse((obj) => {
         if (obj instanceof THREE.Mesh) {
-          const material = obj.material as THREE.MeshLambertMaterial;
+          const material = obj.material as THREE.MeshStandardMaterial;
           material.transparent = true;
           material.opacity = 1 - note.life;
         }
@@ -1418,7 +1418,7 @@ export class CelestialScene {
       scroll.rotation.y = Math.sin(t * 1.4) * 0.08;
     }
     if (this.phase === 'ignorance' && this.darkGlow) {
-      const darkMat = this.darkGlow.material as THREE.MeshLambertMaterial;
+      const darkMat = this.darkGlow.material as THREE.MeshStandardMaterial;
       if (darkMat.emissiveIntensity > 0) {
         darkMat.emissiveIntensity = 0.9 + Math.abs(Math.sin(t * 2.8)) * 0.45;
         this.darkDoor?.traverse((o) => {
@@ -1442,7 +1442,7 @@ export class CelestialScene {
         smoke.position.x = (smoke.userData.baseX as number) + Math.sin(t * 1.4 + phase) * 0.28;
         smoke.position.y = (smoke.userData.baseY as number) + cycle * 2.55;
         smoke.scale.setScalar(0.9 + cycle * 0.5);
-        (smoke.material as THREE.MeshLambertMaterial).opacity =
+        (smoke.material as THREE.MeshStandardMaterial).opacity =
           Math.sin((cycle / 2.2) * Math.PI) * 0.82;
       }
       const start = this.ignorance.root.userData.throwStart as THREE.Vector3 | undefined;

@@ -11,8 +11,8 @@ export interface AlpineMountainOptions {
   castShadow?: boolean;
 }
 
-function facetedMaterial(color: number): THREE.MeshLambertMaterial {
-  return new THREE.MeshLambertMaterial({ color, flatShading: true });
+function facetedMaterial(color: number): THREE.MeshStandardMaterial {
+  return new THREE.MeshStandardMaterial({ color, flatShading: true });
 }
 
 // A reusable low-poly alpine mountain for the title and world map. Broad

@@ -169,8 +169,8 @@ export class MoralityScene {
     for (const x of [-4.5, 1.0, 5.5]) {
       s.add(block(0.13, 1.5, 0.13, 0x62594f, x, 0.75, -3.8));
       const lamp = block(0.38, 0.42, 0.38, 0xffe7a0, x, 1.58, -3.8);
-      (lamp.material as THREE.MeshLambertMaterial).emissive = new THREE.Color(0xffcf69);
-      (lamp.material as THREE.MeshLambertMaterial).emissiveIntensity = 0.45;
+      (lamp.material as THREE.MeshStandardMaterial).emissive = new THREE.Color(0xffcf69);
+      (lamp.material as THREE.MeshStandardMaterial).emissiveIntensity = 0.45;
       s.add(lamp);
     }
 

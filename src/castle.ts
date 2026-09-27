@@ -232,8 +232,8 @@ function buildMinotaur(opts: MinotaurBuildOpts): BearParts {
     root.traverse((obj) => {
       const mesh = obj as THREE.Mesh;
       if (!mesh.isMesh) return;
-      if ((mesh.material as THREE.Material).type !== 'MeshLambertMaterial') return;
-      const src = mesh.material as THREE.MeshLambertMaterial;
+      if ((mesh.material as THREE.Material).type !== 'MeshStandardMaterial') return;
+      const src = mesh.material as THREE.MeshStandardMaterial;
       const own = src.clone();
       own.emissive = new THREE.Color(src.color).multiplyScalar(0.75);
       mesh.material = own;
@@ -877,8 +877,8 @@ export class CastleScene {
 
     // a glowing keyhole / door glow, on the door panel itself
     const glow = block(0.55, 0.55, 0.55, 0xffe89a, d.x + GAP_LO + 0.7, 2.2, d.z + 5.6);
-    (glow.material as THREE.MeshLambertMaterial).emissive = new THREE.Color(0xffdc70);
-    (glow.material as THREE.MeshLambertMaterial).emissiveIntensity = 1.4;
+    (glow.material as THREE.MeshStandardMaterial).emissive = new THREE.Color(0xffdc70);
+    (glow.material as THREE.MeshStandardMaterial).emissiveIntensity = 1.4;
     glow.visible = false;
     this.doorGlow = glow;
     this.scene.add(glow);
@@ -1064,7 +1064,7 @@ export class CastleScene {
       ], () => this.beginDoorExit());
     }
     if (this.doorGlow) {
-      (this.doorGlow.material as THREE.MeshLambertMaterial).emissiveIntensity = 0.6 + this.keyPresses * 0.45;
+      (this.doorGlow.material as THREE.MeshStandardMaterial).emissiveIntensity = 0.6 + this.keyPresses * 0.45;
     }
   }
 
@@ -1550,7 +1550,7 @@ export class CastleScene {
     // ---- key glow pulse ----
     if ((this.phase === 'key' || this.phase === 'dungeon') && this.doorGlow) {
       const glow = 1.2 + Math.sin(t * 3) * 0.5;
-      (this.doorGlow.material as THREE.MeshLambertMaterial).emissiveIntensity = glow;
+      (this.doorGlow.material as THREE.MeshStandardMaterial).emissiveIntensity = glow;
     }
 
     // ---- escape animation ----

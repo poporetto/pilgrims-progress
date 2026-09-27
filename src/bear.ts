@@ -33,39 +33,17 @@ export interface BearParts {
   dustPuffs?: THREE.Mesh[];
   dustTimer?: number;
   dustLastT?: number;
+  /** Soft ambient-occlusion blob grounding the character. */
+  contact?: THREE.Mesh;
+  /** Per-character phase so idles and blinks never play in unison. */
+  seed?: number;
 }
 
-const geoCache = new Map<string, THREE.BoxGeometry>();
-function box(w: number, h: number, d: number): THREE.BoxGeometry {
-  const key = `${w},${h},${d}`;
-  let g = geoCache.get(key);
-  if (!g) {
-    g = new THREE.BoxGeometry(w, h, d);
-    geoCache.set(key, g);
-  }
-  return g;
-}
-
-const matCache = new Map<number, THREE.MeshLambertMaterial>();
-export function mat(color: number): THREE.MeshLambertMaterial {
-  let m = matCache.get(color);
-  if (!m) {
-    m = new THREE.MeshLambertMaterial({ color });
-    matCache.set(color, m);
-  }
-  return m;
-}
-
-export function block(
-  w: number, h: number, d: number, color: number,
-  x = 0, y = 0, z = 0,
-): THREE.Mesh {
-  const mesh = new THREE.Mesh(box(w, h, d), mat(color));
-  mesh.position.set(x, y, z);
-  mesh.castShadow = true;
-  mesh.receiveShadow = true;
-  return mesh;
-}
+// Geometry/material kit lives in render/kit.ts; re-exported here so every
+// chapter keeps importing block()/mat() from ./bear.
+import { block, mat } from './render/kit';
+import { makeContactShadow } from './render/atmosphere';
+export { block, mat };
 
 const DEFAULT_FUR: Record<Species, number> = {
   bear: PALETTE.bearBrown,
@@ -492,8 +470,16 @@ export function makeBear(opts: CharacterOptions = {}): BearParts {
     body.add(block(0.1, verticalStrapH, 0.08, PALETTE.burdenStrap, 0.3, verticalStrapY, bStrapZ));
   }
 
+  // soft contact shadow so every character sits on the ground, not above it
+  const contact = makeContactShadow(opts.plump ? 1.5 : 1.35);
+  root.add(contact);
+
   root.scale.setScalar(scale);
-  return { root, body, head, armL, armR, legL, legR, tail, eyes, dustPuffs, dustTimer: 0, dustLastT: 0 };
+  const seed = (root.id * 0.618034) % 1;
+  return {
+    root, body, head, armL, armR, legL, legR, tail, eyes, dustPuffs,
+    dustTimer: 0, dustLastT: 0, contact, seed,
+  };
 }
 
 // Shared finishing layer for Christian's post-Palace armour. Scene-specific
@@ -560,14 +546,50 @@ export function animateBear(parts: BearParts, t: number, moving: boolean): void 
       }
     }
   }
-  const swing = moving ? Math.sin(t * 9) * 0.7 : 0;
-  const idle = Math.sin(t * 2) * 0.02;
+  const seed = parts.seed ?? 0;
+  const lt = t + seed * 7.3; // local time: desynchronises idles between NPCs
+
+  // Blend between idle and walk so starting/stopping eases instead of
+  // snapping (0 = standing, 1 = full stride).
+  const blend = parts.root.userData.walkBlend as number | undefined ?? (moving ? 1 : 0);
+  const walk = blend + ((moving ? 1 : 0) - blend) * 0.22;
+  parts.root.userData.walkBlend = walk;
+
+  const stride = Math.sin(t * 9);
+  const swing = stride * 0.7 * walk;
+  const hop = Math.abs(stride); // two footfalls per cycle
   parts.legL.rotation.x = swing;
   parts.legR.rotation.x = -swing;
   parts.armL.rotation.x = -swing * 0.8;
   parts.armR.rotation.x = swing * 0.8;
-  parts.body.position.y = 0.55 + (moving ? Math.abs(Math.sin(t * 9)) * 0.06 : idle);
-  parts.head.rotation.z = moving ? Math.sin(t * 4.5) * 0.04 : Math.sin(t * 1.5) * 0.03;
+
+  // idle: slow breathing and a gentle weight shift from foot to foot
+  const breathe = Math.sin(lt * 2.1);
+  const idleY = breathe * 0.012;
+  parts.body.position.y = 0.55 + hop * 0.07 * walk + idleY * (1 - walk);
+  // squash on each footfall, stretch at the top of the bounce
+  const squash = (hop - 0.5) * 0.07 * walk;
+  const breatheScale = breathe * 0.012 * (1 - walk);
+  parts.body.scale.set(1 - squash * 0.5, 1 + squash + breatheScale, 1 - squash * 0.5);
+  parts.body.rotation.z = Math.sin(lt * 0.8) * 0.022 * (1 - walk) + Math.sin(t * 4.5) * 0.03 * walk;
+  parts.body.rotation.x = 0.07 * walk; // lean into the walk
+  parts.head.rotation.z = moving ? Math.sin(t * 4.5) * 0.04 : Math.sin(lt * 1.5) * 0.03;
+
+  // blink every few seconds (a quick close-open), unless eyes are hidden
+  if (parts.eyes && parts.eyes.length) {
+    const cycle = (lt * 0.27 + seed) % 1; // ≈ every 3.7 s
+    const closed = cycle < 0.035 ? Math.sin((cycle / 0.035) * Math.PI) : 0;
+    const sy = 1 - closed * 0.85;
+    for (const eye of parts.eyes) eye.scale.y = sy;
+  }
+
+  // the ground blob only makes sense while the character is upright
+  if (parts.contact) {
+    const r = parts.root.rotation;
+    parts.contact.visible = Math.abs(r.x) < 0.4 && Math.abs(r.z) < 0.4;
+    const base = (parts.contact.userData.base ??= parts.contact.scale.x) as number;
+    parts.contact.scale.setScalar(base * (1 - hop * 0.08 * walk));
+  }
   const puffs = parts.dustPuffs ?? [];
   const dt = Math.min(Math.max(t - (parts.dustLastT ?? t), 0), 0.1);
   parts.dustLastT = t;

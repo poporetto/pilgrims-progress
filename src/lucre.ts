@@ -199,7 +199,7 @@ export class LucreScene {
     for (let i = 0; i < 14; i++) {
       const m = new THREE.Mesh(
         new THREE.BoxGeometry(5 + Math.random() * 4, 1.2, 3 + Math.random() * 2),
-        new THREE.MeshLambertMaterial({ color: 0xdfe6ee, transparent: true, opacity: 0.4 }),
+        new THREE.MeshStandardMaterial({ color: 0xdfe6ee, transparent: true, opacity: 0.4 }),
       );
       m.position.set(-28 + Math.random() * 62, 0.8 + Math.random() * 0.6,
         (Math.random() > 0.5 ? 1 : -1) * (7.5 + Math.random() * 4));
@@ -860,7 +860,7 @@ export class LucreScene {
     for (let i = 0; i < this.mist.length; i++) {
       const m = this.mist[i];
       m.position.x += Math.sin(t * 0.4 + i) * dt * 0.2;
-      (m.material as THREE.MeshLambertMaterial).opacity = 0.3 + 0.15 * Math.sin(t * 0.5 + i * 1.3);
+      (m.material as THREE.MeshStandardMaterial).opacity = 0.3 + 0.15 * Math.sin(t * 0.5 + i * 1.3);
     }
     if (this.mineGlow) {
       (this.mineGlow.material as THREE.MeshBasicMaterial).opacity =

@@ -239,7 +239,7 @@ export class ValleyScene {
     for (let i = 0; i < 4; i++) {
       const plate = block(1.25 - i * 0.08, 0.3, 0.18, i % 2 ? 0xd74531 : EMBER,
         0, 1.25 + i * 0.38, 1.27);
-      const pm = plate.material as THREE.MeshLambertMaterial;
+      const pm = plate.material as THREE.MeshStandardMaterial;
       pm.emissive = new THREE.Color(0x8f160c);
       pm.emissiveIntensity = 0.45;
       a.add(plate);
@@ -290,8 +290,8 @@ export class ValleyScene {
     for (const ex of [-0.52, 0.52]) {
       head.add(block(0.3, 0.3, 0.15, 0x100d12, ex, 0.22, 0.78));
       const eyeGlow = block(0.14, 0.14, 0.08, EMBER, ex, 0.22, 0.87);
-      (eyeGlow.material as THREE.MeshLambertMaterial).emissive = new THREE.Color(0xff2418);
-      (eyeGlow.material as THREE.MeshLambertMaterial).emissiveIntensity = 1.4;
+      (eyeGlow.material as THREE.MeshStandardMaterial).emissive = new THREE.Color(0xff2418);
+      (eyeGlow.material as THREE.MeshStandardMaterial).emissiveIntensity = 1.4;
       head.add(eyeGlow);
       for (let h = 0; h < 3; h++) {
         const horn = block(0.25 - h * 0.035, 0.55, 0.28, h === 2 ? BONE : OXBLOOD,

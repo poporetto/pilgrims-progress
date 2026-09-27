@@ -270,7 +270,7 @@ export class WicketGateScene {
       const lamp = new THREE.Group();
       lamp.add(block(0.16, 2.2, 0.16, PALETTE.woodDark, 0, 1.1, 0));
       const bulb = block(0.34, 0.34, 0.34, PALETTE.light, 0, 2.35, 0);
-      bulb.material = new THREE.MeshLambertMaterial({
+      bulb.material = new THREE.MeshStandardMaterial({
         color: PALETTE.light, emissive: 0xfff0b0, emissiveIntensity: 0.55,
       });
       lamp.add(bulb);
@@ -563,7 +563,7 @@ export class WicketGateScene {
       const lamp = new THREE.Group();
       lamp.add(block(0.14, 2.1, 0.14, PALETTE.woodDark, 0, 1.05, 0));
       const bulb = block(0.32, 0.32, 0.32, PALETTE.light, 0, 2.15, 0);
-      bulb.material = new THREE.MeshLambertMaterial({
+      bulb.material = new THREE.MeshStandardMaterial({
         color: PALETTE.light, emissive: 0xfff0b0, emissiveIntensity: 0.5,
       });
       lamp.add(bulb);
