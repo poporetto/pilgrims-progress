@@ -193,8 +193,8 @@ export class HighwayScene {
     addHighwayPaving(s, -34, 44, { width: 3.2 });
 
     // trees flanking the way
-    ([[-28, 7, 'blossom'], [-22, -8, 'leafy'], [-6, 8, 'leafy'],
-      [18, 8, 'blossom'], [30, -8, 'fruit'], [36, 7, 'blossom']] as const).forEach(([tx, tz, kind], i) => {
+    ([[-28, 15, 'blossom'], [-22, -8, 'leafy'], [-6, 15, 'leafy'],
+      [18, 15, 'blossom'], [30, -8, 'fruit'], [36, 15, 'blossom']] as const).forEach(([tx, tz, kind], i) => {
       const tree = createTree({ seed: 660 + i * 5, kind });
       tree.position.set(tx, 0, tz);
       tree.rotation.y = i * 0.9;

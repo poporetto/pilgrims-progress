@@ -599,7 +599,7 @@ export class CastleScene {
     }
     // blossom trees along the meadow's far edge
     for (const tx of [FORK_X + 4, FORK_X + 12, SLEEP_X, SLEEP_X + 7]) {
-      const tz = MEADOW_Z + 2.8 + mr() * 1.4;
+      const tz = MEADOW_Z - 3.2 - mr() * 0.6; // behind the meadow (camera side would hide the path)
       const tree = createTree({ seed: 1350 + tx, kind: 'blossom' });
       tree.position.set(tx, 0, tz);
       s.add(tree);

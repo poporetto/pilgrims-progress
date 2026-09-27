@@ -193,7 +193,7 @@ export class MoralityScene {
     }
 
     // friendly trees on the west half only — the east grows bare
-    ([[-24, -8, 'blossom'], [-19, 9, 'leafy'], [-13, -10, 'fruit'], [-8, 8, 'blossom'], [-2, -9, 'leafy'], [-30, 11, 'leafy'], [-27, -13, 'blossom']] as const)
+    ([[-24, -8, 'blossom'], [-19, 15, 'leafy'], [-13, -10, 'fruit'], [-8, 15, 'blossom'], [-2, -9, 'leafy'], [-30, 16, 'leafy'], [-27, -13, 'blossom']] as const)
       .forEach(([tx, tz, kind], i) => {
         const tree = createTree({ seed: 330 + i * 11, kind });
         tree.position.set(tx, 0, tz);

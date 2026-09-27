@@ -359,7 +359,7 @@ export class MountainScene {
       const north = i % 2 === 0;
       const spot = this.tryPlace(
         rng, WEST_EDGE, LIGHT_X,
-        north ? -15 : 5, north ? -5 : 15,
+        north ? -15 : 14, north ? -5 : 20, // south trees stay clear of the camera side
         1.4,
       );
       if (!spot) continue;

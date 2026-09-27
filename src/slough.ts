@@ -288,7 +288,7 @@ export class SloughScene {
     s.add(this.help.root);
 
     // the marsh gives way to green, sunlit meadow near the light
-    ([[26, -5, 'blossom'], [30, 5, 'leafy'], [34, -6, 'fruit'], [37, 6, 'blossom'], [24, 7, 'leafy'], [41, -5, 'leafy']] as const)
+    ([[26, -5, 'blossom'], [30, 15, 'leafy'], [34, -6, 'fruit'], [37, 15, 'blossom'], [24, 15, 'leafy'], [41, -5, 'leafy']] as const)
       .forEach(([tx, tz, kind], i) => {
         const tree = createTree({ seed: 220 + i * 7, kind });
         tree.position.set(tx, 0, tz);

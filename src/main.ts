@@ -264,6 +264,18 @@ const LENS = Math.tan(THREE.MathUtils.degToRad(25)) / Math.tan(THREE.MathUtils.d
 const camera = new THREE.PerspectiveCamera(
   CAMERA_FOV, window.innerWidth / window.innerHeight, 0.1, 400,
 );
+// Tall portrait phones would otherwise see a very narrow slice of the world:
+// widen the vertical field so the horizontal view matches a near-square
+// screen (capped, so the telephoto diorama look survives).
+function fitCameraFov(): void {
+  const aspect = window.innerWidth / window.innerHeight;
+  const PORTRAIT = 0.85;
+  camera.fov = aspect >= PORTRAIT
+    ? CAMERA_FOV
+    : Math.min(58, THREE.MathUtils.radToDeg(2 * Math.atan(Math.tan(THREE.MathUtils.degToRad(CAMERA_FOV / 2)) * PORTRAIT / aspect)));
+  camera.updateProjectionMatrix();
+}
+fitCameraFov();
 
 // Warm, soft morning light for Chapter I: creamy sky fill, gentle golden
 // sunlight and an earthy grass bounce keep the village welcoming.
@@ -2842,13 +2854,13 @@ const CHAPTERS: Partial<Record<GameMode, ChapterAdapter>> = {
     afterMove: () => valley.afterMove(),
     update: (dt, t, moving) => valley.update(dt, t, moving),
     prompt: () => (valley.canAttack() ? { text: 'Swing the sword!', button: null } : null),
-    extra: () => swordBtn.classList.toggle('show', !dialogueOpen && !endingOpen),
+    extra: () => swordBtn.classList.toggle('show', battleUI.classList.contains('show') && !dialogueOpen && !endingOpen),
     frame: (a, dt) => {
       const frameBattle = valley.battleCameraFocus(valleyBattleFocus);
       const mobileBattle = frameBattle && window.innerWidth <= 700 && camera.aspect < 0.8;
       // ease into the wide duel framing and back out after the victory
       valleyBattleZoom = THREE.MathUtils.lerp(
-        valleyBattleZoom, mobileBattle ? 1.75 : 1, 1 - Math.exp(-dt * 2.8),
+        valleyBattleZoom, mobileBattle ? 1.3 : 1, 1 - Math.exp(-dt * 2.8),
       );
       valleyCameraOffset.copy(camOffset).multiplyScalar(valleyBattleZoom);
       return { focus: frameBattle ? valleyBattleFocus : a.root.position, offset: valleyCameraOffset };
@@ -3078,6 +3090,11 @@ function tick(): void {
   const dt = Math.min(clock.getDelta(), 0.05);
   const t = clock.elapsedTime;
   windUniforms.uWindTime.value = gameSettings.reducedMotion ? 0 : t;
+  // phones: the joystick and Talk button step aside while a line is shown
+  // (tapping the dialogue box advances it), so they never cover the text
+  if (document.body.classList.contains('dialogue-open') !== dialogueOpen) {
+    document.body.classList.toggle('dialogue-open', dialogueOpen);
+  }
 
   if (!started) {
     // Three repeating crossings: Pliable, then Faithful, then Hopeful. Each
@@ -3285,7 +3302,7 @@ function tick(): void {
 window.addEventListener('resize', () => {
   positionMobileHudControls();
   camera.aspect = window.innerWidth / window.innerHeight;
-  camera.updateProjectionMatrix();
+  fitCameraFov();
   worldMap.resize(window.innerWidth / window.innerHeight);
   renderer.setSize(window.innerWidth, window.innerHeight);
   resizeTitleJourney();

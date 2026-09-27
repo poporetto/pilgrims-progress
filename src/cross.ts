@@ -252,8 +252,8 @@ export class CrossScene {
     s.add(tomb);
 
     // friendly trees flanking the road, clear of the hill
-    ([[-26, -7, 'blossom'], [-20, 8, 'leafy'], [-14, -9, 'blossom'],
-      [16, 7, 'leafy'], [22, -8, 'blossom'], [28, 6, 'fruit']] as const).forEach(([tx, tz, kind], i) => {
+    ([[-26, -7, 'blossom'], [-20, 15, 'leafy'], [-14, -9, 'blossom'],
+      [16, 15, 'leafy'], [22, -8, 'blossom'], [28, 15, 'fruit']] as const).forEach(([tx, tz, kind], i) => {
       const tree = createTree({ seed: 550 + i * 7, kind });
       tree.position.set(tx, this.groundY(tx, tz), tz);
       tree.rotation.y = i * 1.7;

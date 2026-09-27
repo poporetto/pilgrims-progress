@@ -233,7 +233,7 @@ export class VanityScene {
     // highway stones outside the city, both sides
     addHighwayPaving(s, -33, CITY_X0 - 1, { width: 3.1 });
     addHighwayPaving(s, CITY_X1 + 1, 57, { width: 3.1 });
-    ([[-30, 8, 'blossom'], [-24, -8, 'leafy'], [-10, 8, 'fruit'], [40, 8, 'blossom'], [48, -8, 'leafy'], [-16, -9, 'blossom'], [52, 9, 'leafy']] as const)
+    ([[-30, 15, 'blossom'], [-24, -8, 'leafy'], [-10, 15, 'fruit'], [40, 15, 'blossom'], [48, -8, 'leafy'], [-16, -9, 'blossom'], [52, 15, 'leafy']] as const)
       .forEach(([tx, tz, kind], i) => {
         const tree = createTree({ seed: 1110 + i * 7, kind });
         tree.position.set(tx, 0, tz);

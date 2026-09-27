@@ -120,6 +120,9 @@ export function dressExterior(scene: THREE.Object3D, spec: DressSpec): Dressing 
     const x = b.minX + r() * (b.maxX - b.minX);
     const z = b.minZ + r() * (b.maxZ - b.minZ);
     if (!offGround(x, z)) continue;
+    // the camera looks north from the south side: tall trees in the near band
+    // would fill the foreground as big blocks (worse on wide portrait views)
+    if (z > 0 && z < 14) continue;
     const pine = r() > 0.55;
     const tree = pine
       ? createPine({ seed: spec.seed * 100 + k, colors: p.pine })

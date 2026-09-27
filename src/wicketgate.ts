@@ -289,8 +289,8 @@ export class WicketGateScene {
       s.add(lamp);
     }
     // scattered trees along the approach
-    ([[-56, -7, 'leafy'], [-48, 8, 'blossom'], [-38, -9, 'leafy'], [-27, 7, 'fruit'],
-      [-16, -8, 'blossom'], [-8, 9, 'leafy']] as const).forEach(([tx, tz, kind], i) => {
+    ([[-56, -7, 'leafy'], [-48, 15, 'blossom'], [-38, -9, 'leafy'], [-27, 15, 'fruit'],
+      [-16, -8, 'blossom'], [-8, 15, 'leafy']] as const).forEach(([tx, tz, kind], i) => {
       const tree = createTree({ seed: 440 + i * 9, kind });
       tree.position.set(tx, 0, tz);
       tree.rotation.y = i * 1.1;
@@ -567,6 +567,13 @@ export class WicketGateScene {
     s.add(block(96, 0.2, HOUSE_WIDTH, PALETTE.wood, midX, -0.1, 0));
     s.add(block(96, 3.1, 0.3, PALETTE.wallCream, midX, 1.55, -HOUSE_HALF));
     s.add(block(96, 3.1, 0.3, PALETTE.wallCream, midX, 1.55, HOUSE_HALF));
+    // closed west end, and a warm shadowed apron around the hall so a wide
+    // (portrait phone) view never looks past the rooms into empty sky
+    s.add(block(0.3, 3.1, HOUSE_WIDTH + 0.3, PALETTE.wallCream, IX - 2.15, 1.55, 0));
+    s.add(block(0.18, 0.16, HOUSE_WIDTH, PALETTE.woodDark, IX - 1.95, 0.3, 0));
+    const apron = block(130, 0.1, 70, 0x6b5442, midX, -0.28, 0);
+    apron.castShadow = false;
+    s.add(apron);
     // Warm timber rails, inset panels, and short pilasters keep the long
     // cream walls from reading as one unbroken slab.
     for (const side of [-1, 1]) {

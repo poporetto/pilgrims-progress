@@ -295,8 +295,8 @@ export class HillScene {
     this.scrollProp = sp;
 
     // trees flanking the lower road and dotted along the ridge
-    ([[-26, 7, 'blossom'], [-20, -8, 'leafy'], [-11, 8, 'leafy'],
-      [20, 8, 'blossom'], [27, -8, 'fruit'], [33, 7, 'blossom']] as const).forEach(([tx, tz, kind], i) => {
+    ([[-26, 15, 'blossom'], [-20, -8, 'leafy'], [-11, 15, 'leafy'],
+      [20, 15, 'blossom'], [27, -8, 'fruit'], [33, 15, 'blossom']] as const).forEach(([tx, tz, kind], i) => {
       const tree = createTree({ seed: 770 + i * 3, kind });
       tree.position.set(tx, dress.heightAt(tx, tz), tz);
       tree.rotation.y = i * 1.3;

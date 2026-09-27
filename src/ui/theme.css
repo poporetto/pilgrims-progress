@@ -256,6 +256,12 @@ html.large-dialogue #dialogue .text { font-size: 20px; }
 }
 #talk-btn:active { transform: scale(.94); }
 
+body.dialogue-open #joystick, body.dialogue-open #talk-btn {
+  opacity: 0; pointer-events: none; transition: opacity .2s ease;
+}
+#joystick { transition: opacity .2s ease; }
+#talk-btn { transition: opacity .2s ease, transform .18s var(--ease-bounce); }
+
 /* ------------------------------------------------- battle & stay-awake */
 
 #battle-ui { top: calc(76px + env(safe-area-inset-top)); gap: 10px; }
@@ -397,6 +403,13 @@ html.large-dialogue #dialogue .text { font-size: 20px; }
   #prompt { width: auto; bottom: calc(26px + env(safe-area-inset-bottom)); }
   .touch-device #prompt { bottom: calc(160px + env(safe-area-inset-bottom)); }
   #dialogue .portrait { width: 76px; height: 76px; border-radius: 16px; bottom: calc(100% - 47px); }
+  /* battle bars sit below the round HUD buttons */
+  #battle-ui { top: calc(126px + env(safe-area-inset-top)); }
+  /* chapter cards clear the round HUD buttons and scroll if the text is long */
+  #ending.screen {
+    padding: calc(128px + env(safe-area-inset-top)) 22px calc(24px + env(safe-area-inset-bottom));
+    justify-content: safe center; overflow-y: auto;
+  }
   #dialogue.has-portrait .name { margin-left: 86px; }
 }
 
