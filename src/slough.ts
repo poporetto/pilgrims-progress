@@ -185,15 +185,6 @@ export class SloughScene {
       mud.receiveShadow = true;
       s.add(mud);
     });
-    // murky, rippling puddles pooled in the deepest mud
-    for (const [px, pz, pr] of [[-2, -3.5, 2.1], [8, 3.8, 2.4], [2.5, 5.5, 1.4], [11.5, -3.8, 1.6]] as const) {
-      const pool = new THREE.Mesh(new THREE.CircleGeometry(pr, 12), marshWaterMaterial);
-      pool.rotation.x = -Math.PI / 2;
-      pool.position.set(px, 0.135, pz);
-      pool.receiveShadow = true;
-      s.add(pool);
-    }
-
     // mud bubbles that pop
     const bubbleGeo = new THREE.IcosahedronGeometry(0.14, 0);
     const bubbleMat = new THREE.MeshStandardMaterial({ color: 0xb09a78, roughness: 0.3, flatShading: true });
@@ -209,9 +200,8 @@ export class SloughScene {
     const stepVox: Voxel[] = [];
     const sr = seeded(77);
     for (const [sx, sz] of this.steps) {
-      stepVox.push({ w: 1.7, h: 0.12, d: 1.7, x: sx, y: 0.06, z: sz, color: 0xbfb8ad, ry: sr() * 0.4 });
+      stepVox.push({ w: 1.7, h: 0.17, d: 1.7, x: sx, y: 0.085, z: sz, color: 0xbfb8ad, ry: sr() * 0.4 });
       stepVox.push({ w: 1.45, h: 0.24, d: 1.4, x: sx, y: 0.2, z: sz, color: vary(0xdcd6cc, sr, 0.03), ry: sr() * 0.5 });
-      stepVox.push({ w: 0.5, h: 0.06, d: 0.35, x: sx + 0.35, y: 0.34, z: sz - 0.3, color: 0x9cc98a });
     }
     s.add(voxelMesh(stepVox));
 
@@ -489,6 +479,7 @@ export class SloughScene {
         if (this.pliable) {
           // stay frozen while Pliable flounders back to the west bank
           this.pliableStage = 'clamber';
+          this.phase = 'crossing';
           this.cb.setObjective('😨 Pliable flounders back toward the bank nearest home…');
         } else {
           this.phase = 'crossing';
@@ -529,7 +520,8 @@ export class SloughScene {
       if (this.phase === 'struggling') sinkTarget = 0.62 + Math.sin(t * 5) * 0.08;
     }
     // the mire pulls idle pilgrims under — keep moving, or rest on the Steps
-    if (this.phase === 'crossing' && !this.revisit && inMire && !onStep) {
+    const pliableLeaving = !!this.pliable && (this.pliableStage === 'clamber' || this.pliableStage === 'farewell');
+    if (this.phase === 'crossing' && !this.revisit && inMire && !onStep && !pliableLeaving) {
       this.struggle = moving
         ? Math.max(0, this.struggle - dt * 0.6)
         : Math.min(0.85, this.struggle + dt * 0.32);
@@ -537,6 +529,7 @@ export class SloughScene {
       this.struggle = Math.max(0, this.struggle - dt * 1.6);
     }
     sinkTarget += this.struggle;
+    if ((this.phase === 'freeroam' || this.phase === 'done') && !this.revisit && p.x > 13) sinkTarget = 0;
     if (this.phase === 'rescue' || this.phase === 'epilogue') sinkTarget = this.rescueT > 1 ? 0 : 0.62;
     this.sink += (sinkTarget - this.sink) * Math.min(dt * 3, 1);
     this.christian.root.position.y = -this.sink;
@@ -613,7 +606,7 @@ export class SloughScene {
       } else if (this.pliableStage === 'farewell') {
         // hops in place on the west bank, shaking the mud off
         pp.y = Math.abs(Math.sin(t * 6)) * 0.16;
-        this.pliable.root.rotation.y = Math.PI / 2; // faces back toward Christian
+        this.pliable.root.rotation.y = Math.atan2(p.x - pp.x, p.z - pp.z); // faces Christian
         animateBear(this.pliable, t * 2, false);
       } else if (this.pliableStage === 'flee') {
         pp.x -= dt * 9;
@@ -626,7 +619,7 @@ export class SloughScene {
           const print = this.footprints.find((mesh) => !mesh.visible);
           if (print) {
             print.visible = true;
-            print.position.set(pp.x + 0.35, 0.04, pp.z + (this.footprints.indexOf(print) % 2 ? 0.2 : -0.2));
+            print.position.set(pp.x + 0.35, pp.x < -13.6 && Math.abs(pp.z) < 1.9 ? 0.27 : 0.04, pp.z + (this.footprints.indexOf(print) % 2 ? 0.2 : -0.2));
             print.rotation.y = Math.PI / 2;
           }
         }
@@ -653,8 +646,9 @@ export class SloughScene {
           animateBear(this.pliable, t + 0.4, false);
         }
       } else {
-        // stands aghast in the mud during the dialogue
+        // stands aghast in the mud during the dialogue, glaring at Christian
         this.pliable.root.position.y = -0.35;
+        this.pliable.root.rotation.y = Math.atan2(p.x - pp.x, p.z - pp.z);
         animateBear(this.pliable, t + 0.4, false);
       }
     }

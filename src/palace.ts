@@ -1079,7 +1079,8 @@ export class PalaceScene {
       return;
     }
 
-    if (this.phase === 'roofdown' && p.x < ROOF.x - 6.2) {
+    // fires as soon as he steps onto the first tread of the stairwell opening
+    if (this.phase === 'roofdown' && p.x < ROOF.x - 3.8 && Math.abs(p.z) < 1.5) {
       this.phase = 'armor';
       this.cb.fade?.(() => {
         if (this.welcomeTable) this.welcomeTable.visible = false;
@@ -1280,6 +1281,13 @@ export class PalaceScene {
   womanName(index: number): string {
     return ['Discretion', 'Prudence', 'Piety', 'Charity'][index] ?? 'Keeper';
   }
+  /** The rig for a named speaker, so conversations can turn them to face Christian. */
+  speakerRig(name: string): BearParts | null {
+    if (name === 'Watchful') return this.watchful;
+    const i = ['Discretion', 'Prudence', 'Piety', 'Charity'].indexOf(name);
+    return i >= 0 ? this.women[i] : null;
+  }
+
   talkWoman(index: number): void {
     const names = ['Discretion', 'Prudence', 'Piety', 'Charity'];
     const lines = [

@@ -736,8 +736,12 @@ export class VanityScene {
   private follow(who: BearParts, ox: number, oz: number, t: number, dt: number): void {
     const p = this.christian.root.position;
     const wp = who.root.position;
+    // when the follower is still ahead of Christian, swing wide around his
+    // side instead of walking straight through (and seeming to shove) him
+    const ahead = wp.x > p.x - 0.6 && Math.abs(wp.z - p.z) < 1.6;
+    const tz = p.z + (ahead ? Math.sign(oz || 1) * 1.8 : oz);
     const dx = (p.x + ox) - wp.x;
-    const dz = (p.z + oz) - wp.z;
+    const dz = tz - wp.z;
     const d = Math.hypot(dx, dz);
     if (d > 0.25) {
       const sp = Math.min(6.6, d * 2.5) * dt;
@@ -896,7 +900,7 @@ export class VanityScene {
 
     // ---------- Hopeful ----------
     if (this.hopeful.root.visible) {
-      if (this.hopefulJoined) this.follow(this.hopeful, -2.0, 1.3, t, dt);
+      if (this.hopefulJoined) this.follow(this.hopeful, -1.5, 1.2, t, dt);
       else animateBear(this.hopeful, t + 1.2, false);
     }
 

@@ -1729,12 +1729,14 @@ function enterWicket(revisit: boolean): void {
   camTarget.copy(wicketActors.christian.root.position);
 }
 
-function enterSlough(revisit: boolean): void {
+function enterSlough(revisit: boolean, replay = false): void {
   mode = 'slough';
   music.setStyle('slough');
   ui.prompt.style.display = 'none';
   ui.talkBtn.style.display = 'none';
-  sloughActors = slough.enter(!revisit && quest.pliableFollowing && !quest.pliableLeft, revisit);
+  // a story replay brings Pliable back, so the whole chapter is retold
+  const withPliable = replay || (!revisit && quest.pliableFollowing && !quest.pliableLeft);
+  sloughActors = slough.enter(withPliable, revisit);
   camTarget.copy(sloughActors.christian.root.position);
 }
 
@@ -1891,12 +1893,20 @@ function showDialogueText(text: string): void {
   }
   dialogueTyping = true;
   ui.dialogue.classList.add('is-typing');
-  ui.dialogueText.textContent = '';
+  // Lay out the whole line up front with the unrevealed part invisible, so the
+  // bubble is its final height from the first letter and words never jump
+  // to the next line mid-type.
+  const shown = document.createElement('span');
+  const ghost = document.createElement('span');
+  ghost.className = 'type-ghost';
+  ghost.textContent = text;
+  ui.dialogueText.replaceChildren(shown, ghost);
   let visibleCharacters = 0;
   const interval = gameSettings.textSpeed === 'storybook' ? 34 : 19;
   dialogueTypingTimer = window.setInterval(() => {
     visibleCharacters += 1;
-    ui.dialogueText.textContent = text.slice(0, visibleCharacters);
+    shown.textContent = text.slice(0, visibleCharacters);
+    ghost.textContent = text.slice(visibleCharacters);
     if (visibleCharacters >= text.length) stopDialogueTyping(true);
   }, interval);
 }
@@ -2010,25 +2020,40 @@ window.addEventListener('keydown', (e) => {
   }
 });
 
+// Entering a finished chapter from the map offers to retell its story from
+// the start, or to simply wander the place again.
+const MAP_CHAPTERS: Partial<Record<string, { done: () => boolean; enter: (revisit: boolean, replay: boolean) => void }>> = {
+  slough: { done: () => quest.sloughComplete, enter: (r, replay) => enterSlough(r, replay) },
+  morality: { done: () => quest.moralityDone, enter: (r) => enterMorality(r) },
+  beyond: { done: () => quest.wicketDone, enter: (r) => enterWicket(r) },
+  cross: { done: () => quest.crossDone, enter: (r) => enterCross(r) },
+  highway: { done: () => quest.highwayDone, enter: (r) => enterHighway(r) },
+  hill: { done: () => quest.hillDone, enter: (r) => enterHill(r) },
+  palace: { done: () => quest.palaceDone, enter: (r) => enterPalace(r) },
+  valley: { done: () => quest.valleyDone, enter: (r) => enterValley(r) },
+  shadow: { done: () => quest.shadowDone, enter: (r) => enterShadow(r) },
+  vanity: { done: () => quest.vanityDone, enter: (r) => enterVanity(r) },
+  lucre: { done: () => quest.lucreDone, enter: (r) => enterLucre(r) },
+  castle: { done: () => quest.castleDone, enter: (r) => enterCastle(r) },
+  mountain: { done: () => quest.mountainDone, enter: (r) => enterMountain(r) },
+  enchanted: { done: () => quest.enchantedDone, enter: (r) => enterEnchanted(r) },
+  beulah: { done: () => quest.beulahDone, enter: (r) => enterBeulah(r) },
+  celestial: { done: () => quest.celestialDone, enter: (r) => enterCelestial(r) },
+};
+
 function tryEnterFromMap(): void {
+  if (choiceBox.classList.contains('open')) return;
   const spot = worldMap.spot();
-  if (spot === 'slough') enterSlough(quest.sloughComplete);
-  else if (spot === 'city') enterVillage();
-  else if (spot === 'morality') enterMorality(quest.moralityDone);
-  else if (spot === 'beyond') enterWicket(quest.wicketDone);
-  else if (spot === 'cross') enterCross(quest.crossDone);
-  else if (spot === 'highway') enterHighway(quest.highwayDone);
-  else if (spot === 'hill') enterHill(quest.hillDone);
-  else if (spot === 'palace') enterPalace(quest.palaceDone);
-  else if (spot === 'valley') enterValley(quest.valleyDone);
-  else if (spot === 'shadow') enterShadow(quest.shadowDone);
-  else if (spot === 'vanity') enterVanity(quest.vanityDone);
-  else if (spot === 'lucre') enterLucre(quest.lucreDone);
-  else if (spot === 'castle') enterCastle(quest.castleDone);
-  else if (spot === 'mountain') enterMountain(quest.mountainDone);
-  else if (spot === 'enchanted') enterEnchanted(quest.enchantedDone);
-  else if (spot === 'beulah') enterBeulah(quest.beulahDone);
-  else if (spot === 'celestial') enterCelestial(quest.celestialDone);
+  if (spot === 'city') { enterVillage(); return; }
+  const ch = MAP_CHAPTERS[spot];
+  if (!ch) return;
+  if (!ch.done()) { ch.enter(false, false); return; }
+  ui.prompt.style.display = 'none';
+  showChoice('Replay the story from the beginning', 'Just wander around', (pick) => {
+    if (mode !== 'map' || worldMap.spot() !== spot) return;
+    if (pick === 0) ch.enter(false, true);
+    else ch.enter(true, false);
+  });
 }
 window.addEventListener('keyup', (e) => keys.delete(e.code));
 // don't leave movement keys stuck when the tab loses focus mid-keypress
@@ -2733,6 +2758,8 @@ interface ChapterAdapter {
   prompt?: (choiceOpen: boolean) => ChapterPrompt | null;
   extra?: (choiceOpen: boolean) => void;
   frame?: (actor: Actor, dt: number) => CameraFrame;
+  /** resolves a dialogue speaker's name to their rig (they turn to face Christian) */
+  speaker?: (name: string) => BearParts | null;
 }
 
 const talk = (text: string, button = 'Talk'): ChapterPrompt => ({ text, button });
@@ -2799,6 +2826,7 @@ const CHAPTERS: Partial<Record<GameMode, ChapterAdapter>> = {
     moveFactor: () => palace.moveFactor(),
     afterMove: () => palace.afterMove(),
     update: (dt, t, moving) => palace.update(dt, t, moving),
+    speaker: (name) => palace.speakerRig(name),
     prompt: () => {
       if (palace.nearWatchful()) return talk('Talk to Watchful');
       for (let wi = 0; wi < 4; wi++) {
@@ -2974,8 +3002,13 @@ const chapterFrame: CameraFrame = { focus: new THREE.Vector3(), offset: camOffse
 // spatially rather than per NPC.
 let talkPartner: BearParts | null = null;
 let talkWasOpen = false;
-function faceTalkPartner(sc: THREE.Scene, actor: Actor, dt: number): void {
-  if (dialogueOpen && !talkWasOpen) {
+function faceTalkPartner(sc: THREE.Scene, actor: Actor, dt: number, a: ChapterAdapter): void {
+  // a chapter that knows its cast turns whoever is speaking this line
+  const named = dialogueOpen && a.speaker ? a.speaker(dialogueLines[dialogueIndex]?.speaker ?? '') : null;
+  if (named) {
+    talkWasOpen = true;
+    talkPartner = named;
+  } else if (dialogueOpen && !talkWasOpen) {
     talkPartner = null;
     let best = 3.4;
     const p = actor.root.position;
@@ -3015,7 +3048,7 @@ function runChapter(a: ChapterAdapter, dt: number, t: number): boolean {
   }
   a.afterMove(dt, moving);
   a.update(dt, t, moving);
-  faceTalkPartner(a.scene(), actor, dt);
+  faceTalkPartner(a.scene(), actor, dt, a);
 
   const idle = !dialogueOpen && !endingOpen;
   applyPrompt(idle && a.prompt ? a.prompt(choiceOpen) : null);
@@ -3084,6 +3117,8 @@ function tick(): void {
     if (keys.has('KeyW') || keys.has('ArrowUp')) az -= 1;
     ax += joy.x;
     az += joy.y;
+    // hold still while the replay / wander choice is open
+    if (choiceBox.classList.contains('open')) { ax = 0; az = 0; }
     worldMap.update(dt, t, THREE.MathUtils.clamp(ax, -1, 1), THREE.MathUtils.clamp(az, -1, 1));
 
     // the barred east road just shunted Christian onto the smooth byway
@@ -3113,7 +3148,7 @@ function tick(): void {
     if (spot === 'beulah' && !quest.beulahDone) { enterBeulah(false); return; }
     if (spot === 'celestial' && !quest.celestialDone) { enterCelestial(false); return; }
 
-    ui.prompt.style.display = spot === 'road' ? 'none' : 'block';
+    ui.prompt.style.display = spot === 'road' || choiceBox.classList.contains('open') ? 'none' : 'block';
     ui.promptKey.style.display = 'none';
     if (isTouch) ui.talkBtn.style.display = 'none';
     if (spot === 'city') {

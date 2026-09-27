@@ -230,13 +230,8 @@ export class HighwayScene {
     for (let wx = WALL_X0; wx <= WALL_X1; wx += 2) {
       wallVox.push({ w: 2.08, h: 1.7, d: 0.8, x: wx, y: 0.85, z: -3.6, color: vary(0xc6bcad, wr, 0.03) });
       wallVox.push({ w: 2.2, h: 0.25, d: 0.95, x: wx, y: 1.8, z: -3.6, color: vary(0xb0a695, wr, 0.02) });
-      // proud stones and a trailing sprig of ivy here and there
+      // a few proud stones break up the face
       wallVox.push({ w: 0.7, h: 0.34, d: 0.08, x: wx + (wr() - 0.5), y: 0.5 + wr() * 0.9, z: -3.18, color: vary(0xd2c8b8, wr, 0.03) });
-      if (wr() > 0.5) {
-        const ix = wx + (wr() - 0.5) * 1.4;
-        wallVox.push({ w: 0.36, h: 0.9, d: 0.06, x: ix, y: 1.3, z: -3.16, color: vary(0x86b77a, wr, 0.05) });
-        wallVox.push({ w: 0.5, h: 0.2, d: 0.2, x: ix, y: 1.96, z: -3.6, color: vary(0x8dbd80, wr, 0.05) });
-      }
     }
     s.add(voxelMesh(wallVox));
 
