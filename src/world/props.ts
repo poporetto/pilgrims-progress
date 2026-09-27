@@ -522,6 +522,10 @@ export interface HouseOptions {
   w?: number; d?: number; h?: number;
   wall?: number; roof?: number; trim?: number; door?: number;
   chimney?: boolean;
+  /** door position along the front (default: a seeded offset) */
+  doorX?: number;
+  /** leave the door panel out (a scene supplies its own hinged door) */
+  doorless?: boolean;
 }
 
 /**
@@ -549,11 +553,12 @@ export function createHouse(o: HouseOptions = {}): THREE.Group {
   }
   vox.push({ w: w + 0.06, h: 0.14, d: d + 0.06, x: 0, y: 0.24 + h - 0.05, z: 0, color: trim });
   // door (front = +z) with frame and step
-  const dx = (r() - 0.5) * (w * 0.25);
-  vox.push({ w: 0.78, h: 1.3, d: 0.1, x: dx, y: 0.24 + 0.65, z: d / 2 + 0.03, color: doorC });
+  const dx = o.doorX ?? (r() - 0.5) * (w * 0.25);
+  if (!o.doorless) vox.push({ w: 0.78, h: 1.3, d: 0.1, x: dx, y: 0.24 + 0.65, z: d / 2 + 0.03, color: doorC });
+  else vox.push({ w: 0.92, h: 1.62, d: 0.06, x: dx, y: 0.24 + 0.81, z: d / 2 + 0.01, color: 0x5a4a3c });
   vox.push({ w: 0.96, h: 0.12, d: 0.14, x: dx, y: 0.24 + 1.36, z: d / 2 + 0.04, color: trim });
   vox.push({ w: 1.0, h: 0.12, d: 0.4, x: dx, y: 0.06, z: d / 2 + 0.3, color: stone });
-  vox.push({ w: 0.08, h: 0.08, d: 0.08, x: dx + 0.26, y: 0.24 + 0.65, z: d / 2 + 0.1, color: 0xf0cf6a });
+  if (!o.doorless) vox.push({ w: 0.08, h: 0.08, d: 0.08, x: dx + 0.26, y: 0.24 + 0.65, z: d / 2 + 0.1, color: 0xf0cf6a });
   // windows on the front and sides
   const windowGlow = new THREE.Color(0xfff0c2);
   const win = (x: number, y: number, z: number, ry: number) => {

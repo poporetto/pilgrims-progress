@@ -4,6 +4,10 @@ import { makeBear, animateBear, BearParts, block, mat } from './bear';
 import { setupSunShadow } from './light';
 import { DialogueLine } from './npcs';
 import { addHighwayPaving } from './road';
+import { dressExterior } from './world/dress';
+import { band } from './world/terrain';
+import { createTree, createRock, createLamp, createHouse, createBush, createSign } from './world/props';
+import { voxelMesh, Voxel, rng as seeded, vary } from './world/voxels';
 
 // Chapter IV — The Wicket Gate & the House of the Interpreter.
 // A long, straight road; Christian mutters his doubts as he walks it. At the
@@ -248,47 +252,50 @@ export class WicketGateScene {
     sun.shadow.camera.bottom = -45;
     s.add(sun);
 
-    // rolling ground — runs the full length of the road, past the gate and
-    // all the way out to the light at the end of the King's Highway
-    const ground = new THREE.Mesh(new THREE.BoxGeometry(210, 1, 90), mat(0x9dc793));
-    ground.position.set(10, -0.5, 0);
-    ground.receiveShadow = true;
-    s.add(ground);
-    for (let i = 0; i < 90; i++) {
-      const x = -70 + Math.random() * 185;
-      const z = -35 + Math.random() * 70;
-      const p = block(0.9 + Math.random() * 1.6, 0.1, 0.9 + Math.random() * 1.6,
-        Math.random() > 0.5 ? 0x8cba80 : 0xaad49c, x, 0.05, z);
-      p.castShadow = false;
-      s.add(p);
-    }
+    // rolling land: level wherever the story walks (the lonely road, the wall,
+    // the crag, the hedged highway and the cottage), gentle hills elsewhere
+    const flatAt = (x: number, z: number): number => Math.max(
+      x < GATE_X + 1.5 ? band(Math.max(0, Math.abs(z) - 15), 0, 6) : 0,
+      band(Math.max(0, Math.abs(z) - 3.2), 0, 5),
+      band(Math.abs(x - GATE_X), 2, 5) * band(Math.max(0, Math.abs(z) - 31), 0, 4),
+      band(Math.hypot(x - CASTLE.x, z - CASTLE.z), 7, 11),
+      band(Math.hypot((x - COTTAGE_X) / 1.3, z + 6), 5, 8),
+    ) * band(Math.max(0, x - (HIGHWAY_END + 8)), 0, 8);
+    dressExterior(s, {
+      seed: 44,
+      bounds: { minX: -100, maxX: 138, minZ: -58, maxZ: 58 },
+      flat: flatAt,
+      hills: 3.6,
+      blocked: (x, z) =>
+        (Math.abs(z) < 2.7 && x > -66 && x < HIGHWAY_END + 6) ||
+        Math.hypot(x - CASTLE.x, z - CASTLE.z) < 6.5 ||
+        (Math.abs(x - GATE_X) < 1.3 && Math.abs(z) < 32) ||
+        (Math.abs(x - COTTAGE_X) < 3.3 && z < -2.2 && z > -9),
+      palette: { blossom: true },
+      grass: 3200,
+      flowers: 520,
+      trees: 85,
+      shrubs: 60,
+      treeZone: (x, z) => (x < GATE_X ? Math.abs(z) > 16 : Math.abs(z) > 6) && Math.abs(z) < 40,
+    });
 
     // ---------- the long straight road, west → the gate → the highway ----------
     addHighwayPaving(s, -62, 11, { width: 3.2 });
     // lamps pacing out the lonely miles
     for (const lx of [-52, -36, -20, -4] as const) {
-      const lamp = new THREE.Group();
-      lamp.add(block(0.16, 2.2, 0.16, PALETTE.woodDark, 0, 1.1, 0));
-      const bulb = block(0.34, 0.34, 0.34, PALETTE.light, 0, 2.35, 0);
-      bulb.material = new THREE.MeshStandardMaterial({
-        color: PALETTE.light, emissive: 0xfff0b0, emissiveIntensity: 0.55,
-      });
-      lamp.add(bulb);
+      const lamp = createLamp({ seed: Math.round(-lx) + 5 });
       lamp.position.set(lx, 0, 2.6);
+      lamp.rotation.y = Math.PI / 2;
       s.add(lamp);
     }
     // scattered trees along the approach
-    for (const [tx, tz, blossom] of [
-      [-56, -7, false], [-48, 8, true], [-38, -9, false], [-27, 7, false],
-      [-16, -8, true], [-8, 9, false],
-    ] as const) {
-      const tree = new THREE.Group();
-      tree.add(block(0.5, 1.6, 0.5, PALETTE.trunk, 0, 0.8, 0));
-      tree.add(block(1.9, 1.3, 1.9, blossom ? PALETTE.leafPink : PALETTE.leaf, 0, 2.2, 0));
-      tree.add(block(1.2, 0.9, 1.2, blossom ? PALETTE.leafPink : PALETTE.leaf, 0, 3.1, 0));
+    ([[-56, -7, 'leafy'], [-48, 8, 'blossom'], [-38, -9, 'leafy'], [-27, 7, 'fruit'],
+      [-16, -8, 'blossom'], [-8, 9, 'leafy']] as const).forEach(([tx, tz, kind], i) => {
+      const tree = createTree({ seed: 440 + i * 9, kind });
       tree.position.set(tx, 0, tz);
+      tree.rotation.y = i * 1.1;
       s.add(tree);
-    }
+    });
 
     // ---------- the wall and the Wicket Gate ----------
     const BRICK = 0xf2ecdf;
@@ -400,10 +407,20 @@ export class WicketGateScene {
     }
     castle.position.copy(CASTLE);
     s.add(castle);
-    // dead brush around the crag
-    for (const [bx, bz] of [[-1, -9], [8, -10], [1, -20], [9, -18]] as const) {
-      s.add(block(0.3, 1.3, 0.3, 0x8d8478, bx, 0.65, bz));
-      s.add(block(0.9, 0.24, 0.24, 0x8d8478, bx + 0.3, 1.3, bz));
+    // dead, thorny brush around the crag
+    for (const [bx, bz] of [[-1, -9], [8, -10], [1, -20], [9, -18], [-3, -14], [11, -14]] as const) {
+      const brush = voxelMesh([
+        { w: 0.28, h: 1.3, d: 0.28, x: 0, y: 0.65, z: 0, color: 0x8d8478 },
+        { w: 0.9, h: 0.2, d: 0.2, x: 0.3, y: 1.2, z: 0, color: 0x8d8478, rz: 0.4 },
+        { w: 0.18, h: 0.6, d: 0.18, x: -0.3, y: 1.1, z: 0.1, color: 0x7f766b, rz: -0.5 },
+      ]);
+      brush.position.set(bx, 0, bz);
+      brush.rotation.y = bx * 0.7;
+      s.add(brush);
+      const rock = createRock({ seed: Math.round(bx * 7 - bz), size: 0.5, color: 0x9d97a3 });
+      rock.position.x = bx + 0.8;
+      rock.position.z = bz + 0.4;
+      s.add(rock);
     }
 
     // arrow pool
@@ -421,34 +438,31 @@ export class WicketGateScene {
     }
 
     // ---------- the King's Highway: straight and narrow, hedged both sides ----------
+    // (merged: two draw calls instead of ~140 separate tiles and hedges)
+    const hr = seeded(90);
+    const pathVox: Voxel[] = [];
+    const hedgeVox: Voxel[] = [];
+    const HEDGE = [0x86b77a, 0x7fae74, 0x8dbd80];
     for (let i = 0; i < 38; i++) {
       const px = GATE_X + 2 + i * 2.5;
-      const path = block(2.5, 0.12, 2.6, 0xeee3c4, px, 0.06, 0);
-      path.castShadow = false;
-      s.add(path);
+      pathVox.push({ w: 2.44, h: 0.12, d: 2.6, x: px, y: 0.06, z: 0, color: vary(0xeee3c4, hr, 0.025) });
       // a gap in the south hedge lets Christian step aside to the cottage door
       const nearCottageGap = Math.abs(px - COTTAGE_X) < 3.5;
       // trimmed hedges close on either hand — turn neither left nor right
-      if (i % 1 === 0) {
-        s.add(block(2.5, 0.9, 0.8, 0x7fae74, px, 0.45, 2.1));
-        if (!nearCottageGap) s.add(block(2.5, 0.9, 0.8, 0x7fae74, px, 0.45, -2.1));
-      }
-      if (i % 3 === 1 && !nearCottageGap) {
-        s.add(block(0.5, 0.4, 0.5, PALETTE.grassDark, px, 1.05, 2.1));
-        s.add(block(0.5, 0.4, 0.5, PALETTE.grassDark, px, 1.05, -2.1));
+      for (const side of nearCottageGap ? [1] : [1, -1]) {
+        hedgeVox.push({ w: 2.5, h: 0.9, d: 0.8, x: px, y: 0.45, z: side * 2.1, color: vary(HEDGE[i % 3], hr, 0.03) });
+        if (i % 3 === 1) hedgeVox.push({ w: 0.6, h: 0.42, d: 0.6, x: px, y: 1.05, z: side * 2.1, color: vary(0x76a86c, hr, 0.03) });
+        // flowers dotting the hedge tops — a kinder country already
+        if (hr() > 0.55 && Math.abs(px - COTTAGE_X) > 4.5) {
+          const fc = [0xfff0a8, 0xffd1dc, 0xcfe3ff, 0xffffff][Math.floor(hr() * 4)];
+          hedgeVox.push({ w: 0.16, h: 0.16, d: 0.16, x: px + (hr() - 0.5) * 2, y: 0.95, z: side * 2.1 + (hr() - 0.5) * 0.5, color: fc });
+        }
       }
     }
-    // flowers dotting the highway's verge — a kinder country already
-    for (let i = 0; i < 34; i++) {
-      const flowerX = GATE_X + 3 + Math.random() * 84;
-      // Keep the Interpreter's doorway and greeting spot clear.
-      if (Math.abs(flowerX - COTTAGE_X) < 4.5) continue;
-      const f = block(0.18, 0.18, 0.18,
-        [PALETTE.flowerYellow, PALETTE.flowerPink, PALETTE.flowerBlue][i % 3],
-        flowerX, 0.98, (Math.random() > 0.5 ? 2.1 : -2.1));
-      f.castShadow = false;
-      s.add(f);
-    }
+    const pathMesh = voxelMesh(pathVox);
+    pathMesh.castShadow = false;
+    s.add(pathMesh);
+    s.add(voxelMesh(hedgeVox));
 
     // the soft glow at the end of the narrow way — the place of deliverance, far off
     const lightBeam = new THREE.Group();
@@ -499,29 +513,42 @@ export class WicketGateScene {
     const s = this.scene;
     const cx = COTTAGE_X;
     const cz = -6.5; // the near (foreground/"top of screen") side of the highway
-    const cottage = new THREE.Group();
-    cottage.add(block(4.2, 2.6, 3.6, PALETTE.wallCream, 0, 1.3, 0));
-    cottage.add(block(4.6, 1.5, 4.0, PALETTE.roofPeach, 0, 3.35, 0));
-    cottage.add(block(0.5, 0.9, 0.5, PALETTE.woodDark, 1.5, 3.6, 0.2)); // chimney
-    cottage.add(block(0.9, 0.16, 0.3, 0x8a6f52, 0, 1.66, 1.9)); // lintel
-    cottage.add(block(0.7, 0.7, 0.1, PALETTE.wallMint, -1.4, 1.6, 1.81)); // window
-    cottage.add(block(0.7, 0.7, 0.1, PALETTE.wallMint, 1.4, 1.6, 1.81));
+    // a warm, scholarly storybook cottage — the Interpreter's house
+    const cottage = createHouse({
+      seed: 41, w: 4.2, d: 3.6, h: 2.3,
+      wall: 0xfdf1dc, roof: 0xf2b27f, trim: 0x9c7454, chimney: true,
+      doorX: 0, doorless: true,
+    });
     cottage.position.set(cx, 0, cz);
     s.add(cottage);
     // the door swings open on a hinge as Christian is welcomed in
     const doorPivot = new THREE.Group();
-    doorPivot.position.set(cx - 0.45, 0, cz + 1.81);
-    doorPivot.add(block(0.9, 1.7, 0.14, PALETTE.woodDark, 0.45, 0.85, 0));
+    doorPivot.position.set(cx - 0.45, 0.24, cz + 1.84);
+    doorPivot.add(block(0.9, 1.6, 0.12, 0x8a6a4c, 0.45, 0.8, 0));
+    doorPivot.add(block(0.1, 0.1, 0.08, 0xf0cf6a, 0.75, 0.8, 0.08));
     s.add(doorPivot);
     this.cottageDoor = doorPivot;
-    // a short path from the highway gap up to the door
+    // stepping stones from the highway gap up to the door
+    const stones: Voxel[] = [];
+    const pr = seeded(3);
     for (let i = 0; i < 4; i++) {
-      s.add(block(1.4, 0.1, 1.2, PALETTE.path, cx, 0.05, -2.6 - i * 1.1));
+      stones.push({ w: 1.2, h: 0.1, d: 0.9, x: cx + (pr() - 0.5) * 0.3, y: 0.06, z: -2.5 - i * 1.05, ry: (pr() - 0.5) * 0.3, color: vary(0xe2d3b2, pr, 0.03) });
+    }
+    const stoneMesh = voxelMesh(stones);
+    stoneMesh.castShadow = false;
+    s.add(stoneMesh);
+    // a lantern by the door and a little herb garden either side
+    const lamp = createLamp({ seed: 8, height: 1.7 });
+    lamp.position.set(cx + 1.9, 0, cz + 2.15);
+    lamp.rotation.y = Math.PI;
+    s.add(lamp);
+    for (const bx of [-1.6, 1.3]) {
+      const bush = createBush({ seed: Math.round(bx * 10) + 50, size: 0.7, flowers: true });
+      bush.position.set(cx + bx * 1.15, 0, cz + 2.25);
+      s.add(bush);
     }
     // a little sign: THE HOUSE OF THE INTERPRETER
-    const sign = new THREE.Group();
-    sign.add(block(0.12, 1.2, 0.12, PALETTE.woodDark, 0, 0.6, 0));
-    sign.add(block(1.6, 0.6, 0.1, PALETTE.wallCream, 0, 1.1, 0));
+    const sign = createSign({ seed: 17 });
     sign.position.set(cx - 2.3, 0, -3.2);
     sign.rotation.y = -0.5;
     s.add(sign);

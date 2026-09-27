@@ -104,6 +104,8 @@ update the checklist as phases land.
 ### Environment passes
 - [x] I Village
 - [x] II Slough
+- [x] III Morality & Sinai
+- [x] IV Wicket Gate (exterior + cottage; interior house keeps its rooms)
 
 ## Baseline (before remake, dev build, 1 s sample after debug jump)
 
