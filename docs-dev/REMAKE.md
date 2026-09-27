@@ -116,6 +116,7 @@ update the checklist as phases land.
 - [x] XII Plain of Ease & Hill Lucre
 - [x] XIII Doubting Castle (exterior)
 - [x] XIV Delectable Mountains
+- [x] XV Enchanted Ground
 
 ## Baseline (before remake, dev build, 1 s sample after debug jump)
 

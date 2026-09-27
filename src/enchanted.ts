@@ -7,6 +7,10 @@ import {
 import { setupSunShadow, makeShiningLight, animateShiningLight, ShiningLight } from './light';
 import { DialogueLine } from './npcs';
 import { addHighwayPaving } from './road';
+import { dressExterior } from './world/dress';
+import { band } from './world/terrain';
+import { createTree } from './world/props';
+import { voxelMesh, Voxel, rng as seeded, vary, bakeStatic } from './world/voxels';
 
 interface EnchantedCallbacks {
   playScript: (lines: DialogueLine[], onDone?: () => void) => void;
@@ -162,36 +166,62 @@ export class EnchantedScene {
     sun.shadow.camera.bottom = -40;
     s.add(sun);
 
-    const ground = new THREE.Mesh(new THREE.BoxGeometry(200, 1, 70), mat(0xc9b86f));
-    ground.position.y = -0.5;
-    ground.receiveShadow = true;
-    s.add(ground);
+    // honeyed, drowsy land: level through the tree tunnel, soft hills beyond
+    const GOLDEN_LEAVES = [0xd2b46a, 0xc6a968, 0xdcc07a, 0xbfa05e];
+    dressExterior(s, {
+      seed: 151,
+      bounds: { minX: -85, maxX: 128, minZ: -50, maxZ: 50 },
+      flat: (x, z) => band(Math.max(0, Math.abs(z) - 11), 0, 6) * band(Math.max(0, WEST - 6 - x, x - (LIGHT_X + 10)), 0, 8),
+      hills: 3.2,
+      blocked: (x, z) => (Math.abs(z) < 2.2 && x > WEST - 2 && x < LIGHT_X + 3)
+        || (x > FORK_X - 1 && x < MERGE_X + 1 && Math.abs(z) < 4.3),
+      palette: {
+        grass: [0xd3c27f, 0xcab874, 0xdccb8b, 0xc2af6b],
+        highGrass: 0xe2d49a,
+        leaves: GOLDEN_LEAVES,
+        pine: [0xa99a5e, 0xb5a466, 0x9d8f57],
+        flowers: [0xfff4c5, 0xf6e1ff, 0xffe0b8, 0xffffff, 0xe8f0ff],
+      },
+      grass: 2800,
+      flowers: 520,
+      trees: 50,
+      shrubs: 40,
+      treeZone: (_x, z) => Math.abs(z) > 12 && Math.abs(z) < 40,
+    });
 
     // Main highway before and after the fork.
     addHighwayPaving(s, WEST, FORK_X, { width: 3.2 });
     addHighwayPaving(s, MERGE_X, LIGHT_X + 2, { width: 3.2 });
     // Two readable branches, one north and one south, merging back together.
+    const branchVox: Voxel[] = [];
+    const br = seeded(152);
     for (let i = 0; i <= 16; i++) {
       const u = i / 16;
       const x = THREE.MathUtils.lerp(FORK_X, MERGE_X, u);
       const bend = Math.sin(u * Math.PI) * 3.2;
       for (const side of [-1, 1]) {
-        const z = bend * side;
-        const tile = block(1.08, 0.11, 1.0, side < 0 ? 0xd7c69d : 0xe0d0aa, x, 0.07, z);
-        tile.castShadow = false;
-        s.add(tile);
+        branchVox.push({ w: 1.08, h: 0.11, d: 1.0, x, y: 0.07, z: bend * side, ry: (br() - 0.5) * 0.25, color: vary(side < 0 ? 0xd7c69d : 0xe0d0aa, br, 0.03) });
       }
     }
+    const branches = voxelMesh(branchVox);
+    branches.castShadow = false;
+    s.add(branches);
 
-    // Ancient trees form a dreamlike tunnel.
+    // Ancient trees form a dreamlike golden tunnel.
     for (let x = -36, i = 0; x < 87; x += 6.5, i++) {
       for (const side of [-1, 1]) {
         if (x > -16 && x < 9) continue;
-        const tree = new THREE.Group();
-        tree.add(block(0.75, 4.6 + (i % 3), 0.75, 0x8d704a, 0, 2.3, 0));
-        tree.add(block(3.1, 1.45, 2.8, i % 2 ? 0xc6a968 : 0xb99d62, 0, 5.0, 0));
-        tree.add(block(2.2, 1.1, 2.0, 0xd4bc78, side * 0.4, 6.0, 0));
-        tree.position.set(x + side * (i % 2) * 0.7, 0, side * (7.0 + (i % 3)));
+        // the near (camera-side) row stands further back and lower so the
+        // tunnel frames the path instead of hiding it
+        const near = side > 0;
+        const tree = createTree({
+          seed: 1500 + i * 2 + (near ? 1 : 0),
+          height: near ? 2.4 + (i % 3) * 0.4 : 3.6 + (i % 3) * 0.7,
+          canopy: near ? 2.2 + (i % 2) * 0.3 : 3.0 + (i % 2) * 0.4,
+          leaves: GOLDEN_LEAVES,
+        });
+        tree.position.set(x + side * (i % 2) * 0.7, 0, side * ((near ? 10.5 : 7.0) + (i % 3)));
+        tree.rotation.y = i * 0.9;
         s.add(tree);
       }
     }
@@ -202,8 +232,19 @@ export class EnchantedScene {
       [45, -5.3, 'pig', 0xd9a08f], [55, 5.5, 'sheep', 0xb4c9d9],
       [64, -5.6, 'cat', 0xd5b48e],
     ] as const) {
-      s.add(block(2.4, 0.08, 1.6, 0x9f7a50, x, 0.05, z));
-      s.add(block(0.8, 0.22, 0.6, 0xd9c7a0, x - 0.5, 0.18, z));
+      const camp = voxelMesh([
+        { w: 2.4, h: 0.08, d: 1.6, x: 0, y: 0.05, z: 0, color: 0x9f7a50 },
+        { w: 2.2, h: 0.04, d: 1.4, x: 0, y: 0.1, z: 0, color: 0xb88f64 },
+        { w: 0.8, h: 0.22, d: 0.6, x: -0.5, y: 0.18, z: 0, color: 0xd9c7a0 },
+        // a cold campfire ring and a forgotten pack
+        { w: 0.2, h: 0.14, d: 0.2, x: 1.6, y: 0.07, z: 0.9, color: 0x9a948a },
+        { w: 0.2, h: 0.14, d: 0.2, x: 1.9, y: 0.07, z: 0.6, color: 0x9a948a },
+        { w: 0.2, h: 0.14, d: 0.2, x: 1.3, y: 0.07, z: 0.6, color: 0x9a948a },
+        { w: 0.5, h: 0.08, d: 0.12, x: 1.6, y: 0.12, z: 0.65, color: 0x6e5438, ry: 0.6 },
+        { w: 0.5, h: 0.5, d: 0.36, x: -1.4, y: 0.25, z: -0.6, color: 0x8c7b5a },
+      ]);
+      camp.position.set(x, 0, z);
+      s.add(camp);
       const sleeper = makeBear({ species, outfit: 'shirt', outfitColor: color, scale: 0.8 });
       sleeper.root.position.set(x + 0.3, 0.42, z);
       sleeper.root.rotation.x = -Math.PI / 2;
@@ -234,8 +275,8 @@ export class EnchantedScene {
     }
     for (let i = 0; i < 15; i++) {
       const fog = new THREE.Mesh(
-        new THREE.BoxGeometry(5 + Math.random() * 5, 0.35, 1.8),
-        new THREE.MeshStandardMaterial({ color: 0xf3e8c8, transparent: true, opacity: 0.24 }),
+        new THREE.IcosahedronGeometry(1, 1).scale(2.6 + Math.random() * 2.5, 0.32, 1.0),
+        new THREE.MeshStandardMaterial({ color: 0xf6ecd0, transparent: true, opacity: 0.22, depthWrite: false, flatShading: true }),
       );
       fog.position.set(22 + i * 4.2, 0.45 + (i % 3) * 0.22, (i % 2 ? -1 : 1) * (2.5 + i % 3));
       fog.castShadow = false;
@@ -284,6 +325,7 @@ export class EnchantedScene {
       this.net.add(block(cageW, 0.1, 0.1, cageColor, 0, cageH, z));
     }
     this.net.position.set(-3.2, 0, -2.8);
+    bakeStatic(this.net);
     this.net.visible = false;
     s.add(this.net);
 
