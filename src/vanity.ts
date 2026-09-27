@@ -4,6 +4,12 @@ import { makeBear, animateBear, addPilgrimArmorDetails, BearParts, block, mat } 
 import { makeShiningLight, animateShiningLight, ShiningLight, setupSunShadow } from './light';
 import { DialogueLine } from './npcs';
 import { addHighwayPaving } from './road';
+import { dressExterior } from './world/dress';
+import { band } from './world/terrain';
+import { createTree, createHouse, createPavedArea } from './world/props';
+import { waterMaterial } from './world/water';
+import { bakeStatic } from './world/voxels';
+import { makeContactShadow } from './render/atmosphere';
 
 // Chapter XI — Vanity Fair.
 // On the highway Christian and Faithful fall in with Talkative — a monkey
@@ -206,29 +212,42 @@ export class VanityScene {
     sun.shadow.camera.bottom = -50;
     s.add(sun);
 
-    const ground = new THREE.Mesh(new THREE.BoxGeometry(200, 1, 90), mat(0x93bb85));
-    ground.position.y = -0.5;
-    ground.receiveShadow = true;
-    s.add(ground);
+    // meadows outside the gates; everything inside the walls is level
+    dressExterior(s, {
+      seed: 111,
+      bounds: { minX: -80, maxX: 96, minZ: -58, maxZ: 58 },
+      flat: (x, z) => Math.max(
+        band(Math.max(0, Math.abs(z) - 12), 0, 6),
+        band(Math.max(0, Math.abs(x - 15) - 21, Math.abs(z) - 15), 0, 5),
+      ) * band(Math.max(0, -37 - x, x - 60), 0, 8),
+      hills: 3.4,
+      blocked: (x, z) => (Math.abs(z) < 2.1 && x > -36 && x < 58) || (x > CITY_X0 - 3 && x < CITY_X1 + 3 && Math.abs(z) < 14),
+      palette: { blossom: true },
+      grass: 2600,
+      flowers: 420,
+      trees: 60,
+      shrubs: 45,
+      treeZone: (x, z) => Math.abs(z) > 14 && Math.abs(z) < 42 && (x < CITY_X0 - 4 || x > CITY_X1 + 4 || Math.abs(z) > 18),
+    });
 
     // highway stones outside the city, both sides
     addHighwayPaving(s, -33, CITY_X0 - 1, { width: 3.1 });
     addHighwayPaving(s, CITY_X1 + 1, 57, { width: 3.1 });
-    for (const [tx, tz, blossom] of [
-      [-30, 8, true], [-24, -8, false], [-10, 8, false], [40, 8, true], [48, -8, false],
-    ] as const) {
-      const tree = new THREE.Group();
-      tree.add(block(0.5, 1.6, 0.5, PALETTE.trunk, 0, 0.8, 0));
-      tree.add(block(1.9, 1.3, 1.9, blossom ? PALETTE.leafPink : PALETTE.leaf, 0, 2.2, 0));
-      tree.add(block(1.2, 0.9, 1.2, blossom ? PALETTE.leafPink : PALETTE.leaf, 0, 3.1, 0));
-      tree.position.set(tx, 0, tz);
-      s.add(tree);
-    }
+    ([[-30, 8, 'blossom'], [-24, -8, 'leafy'], [-10, 8, 'fruit'], [40, 8, 'blossom'], [48, -8, 'leafy'], [-16, -9, 'blossom'], [52, 9, 'leafy']] as const)
+      .forEach(([tx, tz, kind], i) => {
+        const tree = createTree({ seed: 1110 + i * 7, kind });
+        tree.position.set(tx, 0, tz);
+        tree.rotation.y = i * 1.4;
+        s.add(tree);
+      });
 
     // ---------- VANITY FAIR: gaudy gates, cobbles, stalls, banners ----------
-    const cobble = block(CITY_X1 - CITY_X0 + 2, 0.12, 15, 0xd9c9a8, (CITY_X0 + CITY_X1) / 2, 0.06, 0);
-    cobble.castShadow = false;
-    s.add(cobble);
+    // a festive square of warm cobbles with bright inlaid tiles
+    s.add(createPavedArea(CITY_X0 - 1, CITY_X1 + 1, -7.5, 7.5, {
+      seed: 112, stone: 0.95,
+      colors: [0xead8bc, 0xe2cdae, 0xf0e2c8, 0xf2c9d3, 0xcfe2f0, 0xf6e3a8],
+      allow: (x, z) => Math.hypot(x - 17, z - 0.2) > 2.2,
+    }));
     // gate arches at both ends
     for (const gx of [CITY_X0, CITY_X1]) {
       const gate = new THREE.Group();
@@ -242,7 +261,7 @@ export class VanityScene {
       gate.add(block(0.1, 1.2, 0.1, PALETTE.woodDark, 0, 6.9, 4.4));
       gate.add(block(0.7, 0.4, 0.06, 0x7fb8d9, 0.35, 7.2, 4.4));
       gate.position.x = gx;
-      s.add(gate);
+      s.add(bakeStatic(gate));
     }
 
     // market stalls down both sides — striped canopies, heaped goods
@@ -267,29 +286,27 @@ export class VanityScene {
             -0.8 + gI * 0.8, 1.1, (Math.random() - 0.5) * 0.4));
         }
         stall.position.set(sx + (side > 0 ? 1.8 : 0), 0, side * 6.2);
-        s.add(stall);
+        s.add(bakeStatic(stall));
         stallIdx++;
       }
     }
     // tall crooked townhouses behind the stalls, painted every colour
+    const gaudyWalls = [0xfbd3dc, 0xfde6b8, 0xcfe6f5, 0xe3d4f5, 0xd3f0dc, 0xfff1dc];
+    const gaudyRoofs = [0xe06a7a, 0xf2a83a, 0x7fb8d9, 0xa06ac9, 0x6ac98a];
     let hIdx = 0;
     for (let hx = CITY_X0 + 3; hx < CITY_X1; hx += 5.2) {
       for (const side of [-1, 1]) {
-        const wall = canopies[(hIdx + 2) % canopies.length];
-        const roof = canopies[(hIdx + 4) % canopies.length];
-        const h = 3.4 + (hIdx % 3) * 0.9;
-        const house = new THREE.Group();
-        house.add(block(3.6, h, 3, 0xfaf3e3, 0, h / 2, 0));
-        // A thin, street-facing painted façade. The previous full-depth colour
-        // block occupied the same volume as the cream house, causing visible
-        // z-fighting/flicker as the camera moved.
-        house.add(block(3.6, h * 0.45, 0.1, wall, 0, h * 0.225, side * -1.55));
-        house.add(block(4.0, 1.0, 3.4, roof, 0, h + 0.5, 0));
-        house.add(block(0.9, 1.1, 0.14, PALETTE.woodDark, 0, 0.55, side * -1.61));
-        const win = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.8, 0.1), new THREE.MeshBasicMaterial({ color: 0xffe9a0 }));
-        win.position.set(0.9, h - 1, side * -1.69);
-        house.add(win);
-        house.position.set(hx + (side > 0 ? 2.2 : 0), 0, side * 11);
+        const h = 2.9 + (hIdx % 3) * 0.8;
+        const house = createHouse({
+          seed: 1200 + hIdx, w: 3.8, d: 3.0, h,
+          wall: gaudyWalls[hIdx % gaudyWalls.length],
+          roof: gaudyRoofs[(hIdx + 3) % gaudyRoofs.length],
+          trim: [0xc79c74, 0xb88d66, 0x9c7454][hIdx % 3],
+          door: gaudyRoofs[(hIdx + 1) % gaudyRoofs.length],
+        });
+        house.position.set(hx + (side > 0 ? 2.2 : 0), 0, side * 11.2);
+        house.rotation.y = side > 0 ? Math.PI : 0; // every door faces the street
+        house.rotation.y += (hIdx % 3 - 1) * 0.04; // a little crooked
         s.add(house);
         hIdx++;
       }
@@ -317,6 +334,10 @@ export class VanityScene {
     fountain.add(basin);
     fountain.add(block(0.4, 1.6, 0.4, 0xb8b4a8, 0, 1.2, 0));
     fountain.add(block(0.5, 0.24, 0.5, 0xffd94a, 0, 2.1, 0));
+    const pool = new THREE.Mesh(new THREE.CylinderGeometry(1.45, 1.45, 0.06, 18), waterMaterial);
+    pool.position.y = 0.62;
+    fountain.add(pool);
+    fountain.add(makeContactShadow(4.2, 0.28));
     fountain.position.set(17, 0, 0.2);
     s.add(fountain);
 

@@ -43,6 +43,50 @@ export interface BearParts {
 // chapter keeps importing block()/mat() from ./bear.
 import { block, mat } from './render/kit';
 import { makeContactShadow } from './render/atmosphere';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { voxelMaterial } from './world/voxels';
+
+/**
+ * Collapse a rig pivot's plain, opaque colour blocks into ONE vertex-coloured
+ * mesh. A character drops from ~40 draw calls to ~8 while every animated
+ * pivot (body, head, arms, legs) keeps moving exactly as before. Meshes the
+ * game still needs individually (eyes for blinking, the tail, glows, dust)
+ * are left untouched.
+ */
+function mergePivot(pivot: THREE.Object3D, keep: Set<THREE.Object3D>): void {
+  const parts: THREE.BufferGeometry[] = [];
+  const merged: THREE.Mesh[] = [];
+  const c = new THREE.Color();
+  for (const child of pivot.children) {
+    const m = child as THREE.Mesh;
+    if (!m.isMesh || keep.has(m) || !m.visible) continue;
+    const mat = m.material as THREE.MeshStandardMaterial;
+    if (Array.isArray(m.material) || !mat.isMeshStandardMaterial || mat.transparent || mat.map
+      || mat.emissive.getHex() !== 0 || mat.vertexColors) continue;
+    m.updateMatrix();
+    let g = m.geometry.index ? m.geometry.toNonIndexed() : m.geometry.clone();
+    for (const name of Object.keys(g.attributes)) {
+      if (name !== 'position' && name !== 'normal') g.deleteAttribute(name);
+    }
+    g.applyMatrix4(m.matrix);
+    c.copy(mat.color);
+    const n = g.getAttribute('position').count;
+    const col = new Float32Array(n * 3);
+    for (let i = 0; i < n; i++) { col[i * 3] = c.r; col[i * 3 + 1] = c.g; col[i * 3 + 2] = c.b; }
+    g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+    parts.push(g);
+    merged.push(m);
+  }
+  if (merged.length < 2) return;
+  const geo = mergeGeometries(parts, false);
+  if (!geo) return;
+  for (const m of merged) pivot.remove(m);
+  const mesh = new THREE.Mesh(geo, voxelMaterial);
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  mesh.name = '__rigMerged';
+  pivot.add(mesh);
+}
 export { block, mat };
 
 const DEFAULT_FUR: Record<Species, number> = {
@@ -473,6 +517,10 @@ export function makeBear(opts: CharacterOptions = {}): BearParts {
   // soft contact shadow so every character sits on the ground, not above it
   const contact = makeContactShadow(opts.plump ? 1.5 : 1.35);
   root.add(contact);
+
+  // batch each pivot's static blocks (eyes and tail stay separate)
+  const keep = new Set<THREE.Object3D>([...eyes, ...(tail ? [tail] : [])]);
+  for (const pivot of [body, head, armL, armR, legL, legR]) mergePivot(pivot, keep);
 
   root.scale.setScalar(scale);
   const seed = (root.id * 0.618034) % 1;

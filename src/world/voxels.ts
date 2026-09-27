@@ -132,3 +132,49 @@ export function voxelMesh(voxels: Voxel[], material: THREE.Material = voxelMater
   mesh.receiveShadow = true;
   return mesh;
 }
+
+/**
+ * Bake a STATIC group: every descendant mesh with a plain, opaque colour
+ * material (the block()/mat() kind) is merged — with its transform relative
+ * to `group` — into one vertex-coloured mesh. Glows, transparent pieces,
+ * textured or vertex-coloured meshes are left as they are. Only use on
+ * groups whose children never move, hide or change colour afterwards.
+ */
+export function bakeStatic(group: THREE.Object3D, material: THREE.Material = voxelMaterial): THREE.Object3D {
+  group.updateMatrixWorld(true);
+  const inv = new THREE.Matrix4().copy(group.matrixWorld).invert();
+  const rel = new THREE.Matrix4();
+  const parts: THREE.BufferGeometry[] = [];
+  const victims: THREE.Mesh[] = [];
+  const c = new THREE.Color();
+  group.traverse((o) => {
+    const m = o as THREE.Mesh;
+    if (!m.isMesh || o === group || !m.visible) return;
+    const mat = m.material as THREE.MeshStandardMaterial;
+    if (Array.isArray(m.material) || !mat.isMeshStandardMaterial || mat.transparent || mat.map
+      || mat.emissive.getHex() !== 0 || mat.vertexColors) return;
+    let g = m.geometry.index ? m.geometry.toNonIndexed() : m.geometry.clone();
+    for (const name of Object.keys(g.attributes)) {
+      if (name !== 'position' && name !== 'normal') g.deleteAttribute(name);
+    }
+    rel.multiplyMatrices(inv, m.matrixWorld);
+    g.applyMatrix4(rel);
+    c.copy(mat.color);
+    const n = g.getAttribute('position').count;
+    const col = new Float32Array(n * 3);
+    for (let i = 0; i < n; i++) { col[i * 3] = c.r; col[i * 3 + 1] = c.g; col[i * 3 + 2] = c.b; }
+    g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+    parts.push(g);
+    victims.push(m);
+  });
+  if (victims.length < 2) return group;
+  const geo = mergeGeometries(parts, false);
+  if (!geo) return group;
+  for (const v of victims) v.parent?.remove(v);
+  const mesh = new THREE.Mesh(geo, material);
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  mesh.name = '__baked';
+  group.add(mesh);
+  return group;
+}

@@ -112,6 +112,7 @@ update the checklist as phases land.
 - [x] VIII Palace (exterior; hall/roof keep their rooms)
 - [x] IX Valley of Humiliation
 - [x] X Shadow of Death (merged statics, layered crags)
+- [x] XI Vanity Fair
 
 ## Baseline (before remake, dev build, 1 s sample after debug jump)
 
