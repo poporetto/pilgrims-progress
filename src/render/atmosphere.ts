@@ -75,6 +75,7 @@ function makeSkyDome(): THREE.Mesh<THREE.SphereGeometry, THREE.ShaderMaterial> {
 
 interface SceneAtmosphere {
   dome: THREE.Mesh<THREE.SphereGeometry, THREE.ShaderMaterial>;
+  fill: THREE.AmbientLight;
   sun: THREE.DirectionalLight | null;
   sunOffset: THREE.Vector3;       // scene-intended light direction * distance
   sunTargetBase: THREE.Vector3;   // scene-intended target
@@ -112,6 +113,17 @@ export class Atmosphere {
     const fill = new THREE.AmbientLight(0xffe8d6, 0.22);
     fill.name = '__warmFill';
     scene.add(fill);
+    // Glows (beacons, halos, lenses, fire, gate light…) are unlit basic
+    // materials: keep them out of tone mapping so they stay luminous.
+    scene.traverse((o) => {
+      const m = (o as THREE.Mesh).material as THREE.Material | THREE.Material[] | undefined;
+      if (!m) return;
+      for (const mm of Array.isArray(m) ? m : [m]) {
+        if ((mm as THREE.MeshBasicMaterial).isMeshBasicMaterial && mm.name !== '__keepToneMapped') {
+          mm.toneMapped = false;
+        }
+      }
+    });
     let sun: THREE.DirectionalLight | null = null;
     scene.traverse((o) => {
       if (!sun && (o as THREE.DirectionalLight).isDirectionalLight && (o as THREE.DirectionalLight).castShadow) {
@@ -141,6 +153,7 @@ export class Atmosphere {
     const fog = scene.fog as THREE.Fog | null;
     const st: SceneAtmosphere = {
       dome,
+      fill,
       sun: sunLight,
       sunOffset: offset,
       sunTargetBase: targetBase,
@@ -173,6 +186,12 @@ export class Atmosphere {
       );
     }
     st.dome.position.copy(camera.position);
+    // the warm floor fades out for night, dusk-dark and dungeon moods so
+    // darkness that is part of the story stays dark
+    if (bg) {
+      const lum = 0.2126 * bg.r + 0.7152 * bg.g + 0.0722 * bg.b;
+      st.fill.intensity = 0.22 * THREE.MathUtils.smoothstep(lum, 0.08, 0.35);
+    }
 
     // ---- sun: keep the scene's direction, re-centre the frustum on the view
     const sun = st.sun;
