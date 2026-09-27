@@ -121,3 +121,12 @@ export function createPond(o: { seed?: number; radius?: number; stones?: boolean
   }
   return g;
 }
+
+/** A rippled water material in any tint/opacity (e.g. river depth bands). */
+export function makeWaterMaterial(color: number, opacity = 0.86, roughness = 0.2): THREE.MeshStandardMaterial {
+  const m = new THREE.MeshStandardMaterial({
+    color, roughness, metalness: 0.04, transparent: opacity < 1, opacity, depthWrite: opacity >= 1,
+  });
+  addRipples(m, 0.8, 0.14);
+  return m;
+}

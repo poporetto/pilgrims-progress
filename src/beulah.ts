@@ -1,6 +1,11 @@
 import * as THREE from 'three';
 import { PALETTE } from './palette';
 import { makeBear, animateBear, addPilgrimArmorDetails, addShiningOneDetails, BearParts, block, mat } from './bear';
+import { dressExterior } from './world/dress';
+import { band } from './world/terrain';
+import { createTree, createBush, createRock } from './world/props';
+import { voxelMesh, foliageMaterial, bakeStatic } from './world/voxels';
+import { makeWaterMaterial } from './world/water';
 import { makeShiningLight, animateShiningLight, ShiningLight, setupSunShadow } from './light';
 import { DialogueLine } from './npcs';
 
@@ -199,21 +204,32 @@ export class BeulahScene {
 
     const rng = (a: number, b: number) => a + Math.random() * (b - a);
 
-    // ---- ground: one continuous green base, with a golden shore laid ON TOP
-    // to the east. Distinct heights everywhere (no two planes share a y over
-    // the same ground) so nothing z-fights / flickers. ----
-    const base = new THREE.Mesh(new THREE.PlaneGeometry(320, 180), mat(0x9ed67e));
-    base.rotation.x = -Math.PI / 2;
-    base.position.set(LIGHT_X - 10, 0, 0);
-    base.receiveShadow = true;
-    s.add(base);
-
-    // the far golden shore (east of the river), raised just above the green base
-    const farShore = new THREE.Mesh(new THREE.PlaneGeometry(140, 180), mat(0xe8d69a));
-    farShore.rotation.x = -Math.PI / 2;
-    farShore.position.set(FAR_SHORE_X + 60, 0.02, 0);
-    farShore.receiveShadow = true;
-    s.add(farShore);
+    // ---- the land of Beulah: lush green meadows on this side, a warm golden
+    // shore beyond the river. Level along the walk and across the river bed. ----
+    const GOLD = new THREE.Color(0xeedb9f);
+    dressExterior(s, {
+      seed: 161,
+      bounds: { minX: -85, maxX: 118, minZ: -58, maxZ: 58 },
+      flat: (x, z) => Math.max(
+        band(Math.max(0, Math.abs(z) - 21), 0, 6),
+        x > RIVER_X - 3 && x < FAR_SHORE_X + 3 ? 1 : 0,
+      ) * band(Math.max(0, WEST_EDGE - 8 - x, x - (LIGHT_X + 12)), 0, 8),
+      hills: 3.4,
+      blocked: (x, z) => (Math.abs(z) < 2.4 && x > WEST_EDGE - 5 && x < LIGHT_X + 4)
+        || (x > RIVER_X - 1 && x < FAR_SHORE_X + 1),
+      palette: {
+        grass: [0xa8dc88, 0x9fd57e, 0xb4e396, 0x96cf76],
+        highGrass: 0xcfeab0,
+        blossom: true,
+        flowers: [0xf4c2d4, 0xfff0a0, 0xe8d4f8, 0xffb3c6, 0xaecbff, 0xff9ec4, 0xffffff],
+      },
+      tint: (x, _z, _y, c) => { const g = THREE.MathUtils.smoothstep(x, FAR_SHORE_X - 1, FAR_SHORE_X + 6); if (g > 0) c.lerp(GOLD, g * 0.8); },
+      grass: 3200,
+      flowers: 820,
+      trees: 55,
+      shrubs: 45,
+      treeZone: (x, z) => Math.abs(z) > 22 && Math.abs(z) < 44 && (x < RIVER_X - 4 || x > FAR_SHORE_X + 4),
+    });
 
     // ---- divided timber walkways (small gaps keep them readable as planks) ----
     const addPlankWalk = (fromX: number, toX: number, colors: number[]): void => {
@@ -243,24 +259,18 @@ export class BeulahScene {
       s.add(bank);
     }
     // the clear shallows
-    const clear = new THREE.Mesh(new THREE.PlaneGeometry(RW, 62), mat(0x7cc3e6));
+    const clear = new THREE.Mesh(new THREE.PlaneGeometry(RW, 62), makeWaterMaterial(0x7cc3e6, 0.92));
     clear.rotation.x = -Math.PI / 2;
     clear.position.set(RCX, 0.12, 0);
-    (clear.material as THREE.MeshStandardMaterial).transparent = true;
-    (clear.material as THREE.MeshStandardMaterial).opacity = 0.92;
     s.add(clear);
     // a mid indigo band, then the deepest channel down the centre line
-    const mid = new THREE.Mesh(new THREE.PlaneGeometry(RW - 4, 62), mat(0x3f6bb8));
+    const mid = new THREE.Mesh(new THREE.PlaneGeometry(RW - 4, 62), makeWaterMaterial(0x4a78c2, 0.85));
     mid.rotation.x = -Math.PI / 2;
     mid.position.set(RCX, 0.14, 0);
-    (mid.material as THREE.MeshStandardMaterial).transparent = true;
-    (mid.material as THREE.MeshStandardMaterial).opacity = 0.85;
     s.add(mid);
-    const deep = new THREE.Mesh(new THREE.PlaneGeometry(9, 62), mat(0x243a86));
+    const deep = new THREE.Mesh(new THREE.PlaneGeometry(9, 62), makeWaterMaterial(0x2f4a96, 0.86));
     deep.rotation.x = -Math.PI / 2;
     deep.position.set(RCX, 0.16, 0);
-    (deep.material as THREE.MeshStandardMaterial).transparent = true;
-    (deep.material as THREE.MeshStandardMaterial).opacity = 0.85;
     s.add(deep);
 
     // drifting ripple lines, to read as flowing water (animated in update)
@@ -290,11 +300,19 @@ export class BeulahScene {
       s.add(glint);
       this.riverGlints.push(glint);
     }
-    // a few reeds and bank rocks at the near shore
+    // reed clumps and mossy bank rocks at the near shore
     for (let i = 0; i < 8; i++) {
-      const rz = (Math.random() < 0.5 ? -1 : 1) * rng(3, 12);
-      s.add(block(0.12, rng(0.8, 1.5), 0.12, 0x6fae5a, RIVER_X - rng(0.3, 1.2), 0.5, rz)); // reed
-      s.add(block(rng(0.5, 1.0), rng(0.3, 0.6), rng(0.5, 0.9), 0xb9b0a2, RIVER_X - rng(0.5, 1.6), 0.2, rz + 1)); // rock
+      const rz = (i % 2 ? -1 : 1) * (3 + (i * 1.37) % 9);
+      const rock = createRock({ seed: 1610 + i, size: 0.5 + (i % 3) * 0.2, moss: i % 2 === 0 });
+      rock.position.x = RIVER_X - 1 - (i % 3) * 0.4;
+      rock.position.z = rz + 1;
+      s.add(rock);
+      const reeds = voxelMesh(Array.from({ length: 5 }, (_, k) => ({
+        w: 0.07, h: 0.8 + ((k * 7 + i) % 5) * 0.14, d: 0.07,
+        x: (k - 2) * 0.16, y: 0.45, z: ((k * 3) % 5) * 0.1 - 0.2, rz: (k - 2) * 0.08, color: 0x7fb866,
+      })), foliageMaterial);
+      reeds.position.set(RIVER_X - 0.6, 0, rz);
+      s.add(reeds);
     }
 
     // shimmering path of light cast across the water from the City
@@ -322,28 +340,13 @@ export class BeulahScene {
       this.mist.push(m);
     }
 
-    // ---- flowers, fruit trees, bird nests (atmosphere only) ----
-    const flowerColors = [0xf4c2d4, 0xfff0a0, 0xe8d4f8, 0xffb3c6, 0xaecbff, 0xff9ec4];
-    for (let i = 0; i < 120; i++) {
-      const fx = rng(WEST_EDGE - 6, RIVER_X - 1);
-      const fz = (Math.random() < 0.5 ? -1 : 1) * rng(3.2, 20);
-      s.add(block(0.16, 0.32, 0.16, flowerColors[i % 6], fx, 0.16, fz));
-    }
+    // ---- fruit trees, bird nests and flowering bushes (atmosphere only) ----
     for (let i = 0; i < 12; i++) {
       this.buildFruitTree(rng(WEST_EDGE, RIVER_X - 2), (Math.random() < 0.5 ? -1 : 1) * rng(5, 16), i < 3);
     }
-    // Garden details make Beulah feel inhabited and lovingly tended.
     for (let i = 0; i < 18; i++) {
-      const bx = rng(WEST_EDGE - 3, RIVER_X - 3);
-      const bz = (Math.random() < 0.5 ? -1 : 1) * rng(5, 19);
-      const bush = new THREE.Group();
-      bush.add(block(1.25, 0.72, 1.1, i % 2 ? 0x78bd66 : 0x86c973, 0, 0.36, 0));
-      bush.add(block(0.72, 0.62, 0.8, 0x96d47e, 0.25, 0.78, -0.05));
-      for (let f = 0; f < 3; f++) {
-        bush.add(block(0.16, 0.16, 0.16, flowerColors[(i + f) % flowerColors.length],
-          -0.35 + f * 0.35, 0.72 + (f % 2) * 0.22, 0.45));
-      }
-      bush.position.set(bx, 0, bz);
+      const bush = createBush({ seed: 1620 + i, flowers: true });
+      bush.position.set(rng(WEST_EDGE - 3, RIVER_X - 3), 0, (Math.random() < 0.5 ? -1 : 1) * rng(5, 19));
       s.add(bush);
     }
     for (let i = 0; i < 6; i++) {
@@ -356,7 +359,7 @@ export class BeulahScene {
           -0.32 + (f % 3) * 0.3, 0.48 + Math.floor(f / 3) * 0.17, (f % 2) * 0.2 - 0.1));
       }
       basket.position.set(rng(WEST_EDGE, RIVER_X - 4), 0, (i % 2 ? -1 : 1) * rng(3.5, 8));
-      s.add(basket);
+      s.add(bakeStatic(basket));
     }
 
     // ---- the Celestial City on the far golden cliffs ----
@@ -377,25 +380,19 @@ export class BeulahScene {
   }
 
   private buildFruitTree(x: number, z: number, withNest: boolean): void {
-    const t = new THREE.Group();
-    t.add(block(0.5, 1.6, 0.5, PALETTE.trunk, 0, 0.8, 0));
-    t.add(block(2.0, 1.4, 2.0, 0x86cc6c, 0, 2.2, 0));
-    t.add(block(1.3, 1.0, 1.3, 0x93d477, 0, 3.05, 0));
-    for (let i = 0; i < 6; i++) {
-      const a = (i / 6) * Math.PI * 2;
-      t.add(block(0.22, 0.22, 0.22, i % 2 ? 0xff8a4a : 0xf25b6a,
-        Math.cos(a) * 0.9, 2.2 + Math.sin(a * 2) * 0.4, Math.sin(a) * 0.9));
-    }
+    const t = createTree({ seed: Math.round(x * 17 + z * 5) + 1630, kind: 'fruit' });
     if (withNest) {
-      t.add(block(0.5, 0.28, 0.5, 0x9a7b52, 0.5, 2.7, 0.5)); // nest
-      t.add(block(0.16, 0.16, 0.16, 0xfff4e0, 0.42, 2.9, 0.5)); // egg
-      t.add(block(0.16, 0.16, 0.16, 0xfff4e0, 0.58, 2.9, 0.5));
+      t.add(voxelMesh([
+        { w: 0.56, h: 0.26, d: 0.56, x: 0.55, y: 3.25, z: 0.5, color: 0x9a7b52 },
+        { w: 0.16, h: 0.16, d: 0.16, x: 0.47, y: 3.44, z: 0.5, color: 0xfff4e0 },
+        { w: 0.16, h: 0.16, d: 0.16, x: 0.63, y: 3.44, z: 0.5, color: 0xfff4e0 },
+      ]));
     }
     t.position.set(x, 0, z);
+    t.rotation.y = x * 0.6;
     this.scene.add(t);
   }
 
-  // the Celestial City — radiant golden towers on cliffs beyond the far shore
   private buildCelestialCity(): void {
     const g = new THREE.Group();
     const gold = 0xffe08a;

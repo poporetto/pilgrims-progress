@@ -117,6 +117,7 @@ update the checklist as phases land.
 - [x] XIII Doubting Castle (exterior)
 - [x] XIV Delectable Mountains
 - [x] XV Enchanted Ground
+- [x] XVI Beulah Land
 
 ## Baseline (before remake, dev build, 1 s sample after debug jump)
 
