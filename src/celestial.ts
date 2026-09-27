@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { PALETTE } from './palette';
 import { makeBear, animateBear, addPilgrimArmorDetails, addShiningOneDetails, BearParts, Species, block, mat } from './bear';
+import { dressExterior } from './world/dress';
+import { band } from './world/terrain';
 import { makeShiningLight, animateShiningLight, ShiningLight, setupSunShadow } from './light';
 import { DialogueLine } from './npcs';
 
@@ -387,11 +389,39 @@ export class CelestialScene {
 
     const rng = (a: number, b: number) => a + Math.random() * (b - a);
 
-    // ---- base ground (warm gold-green Beulah edge) ----
-    const ground = new THREE.Mesh(new THREE.PlaneGeometry(340, 200), mat(0xd9c98e));
-    ground.rotation.x = -Math.PI / 2;
-    ground.position.set(60, 0, 0);
-    s.add(ground);
+    // ---- the shining mountain: Beulah's gold-green edge whose flanks rise
+    // to meet the golden stair and hold the City plateau aloft ----
+    const flank = (x: number, z: number): number => {
+      const az = Math.abs(z);
+      if (x <= HILL_X1) return Math.max(0, this.groundY(x) - 0.45) * band(az, 5.2, 21);
+      return (HILL_H - 0.35) * band(az, 13.2, 30) * band(Math.max(0, x - (GATE_X + 64)), 0, 14);
+    };
+    const GLOW = new THREE.Color(0xf6e7b0);
+    dressExterior(s, {
+      seed: 171,
+      bounds: { minX: -85, maxX: 118, minZ: -58, maxZ: 58 },
+      cell: 1.5,
+      flat: (x, z) => band(Math.max(0, Math.abs(z) - 30), 0, 8) * band(Math.max(0, WEST_EDGE - 8 - x), 0, 8),
+      shape: flank,
+      hills: 3,
+      blocked: (x, z) => (Math.abs(z) < 5.3 && x > WEST_EDGE - 4 && x < HILL_X1 + 1)
+        || (x > HILL_X1 - 1 && x < GATE_X + 66 && Math.abs(z) < 13.5)
+        || (Math.abs(z) < 2.4 && x < HILL_X0),
+      palette: {
+        grass: [0xcfd98e, 0xc6d285, 0xd8e09a, 0xbfcc80],
+        highGrass: 0xf2e6ad,
+        leaves: [0xf3e2a4, 0xfff0bf, 0xe9d690],
+        pine: [0xdcd39a, 0xe6dca4, 0xd2c890],
+        flowers: [0xffffff, 0xfff3c4, 0xfde2ec, 0xeef6ff],
+        blossom: true,
+      },
+      tint: (_x, _z, y, c) => c.lerp(GLOW, THREE.MathUtils.clamp(y / HILL_H, 0, 0.7)),
+      grass: 2600,
+      flowers: 700,
+      trees: 55,
+      shrubs: 35,
+      treeZone: (x, z) => Math.abs(z) > (x > HILL_X1 ? 15 : 7) && Math.abs(z) < 42,
+    });
 
     // ---- Zone 1: the Shining Hill — broad golden slabs + crystal steps ----
     const SLABS = 16;

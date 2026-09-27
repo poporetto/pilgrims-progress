@@ -118,6 +118,7 @@ update the checklist as phases land.
 - [x] XIV Delectable Mountains
 - [x] XV Enchanted Ground
 - [x] XVI Beulah Land
+- [x] XVII Celestial City (golden mountain terrain)
 
 ## Baseline (before remake, dev build, 1 s sample after debug jump)
 
