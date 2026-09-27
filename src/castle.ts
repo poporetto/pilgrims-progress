@@ -4,6 +4,11 @@ import { makeBear, animateBear, addPilgrimArmorDetails, BearParts, block, mat } 
 import { makeShiningLight, animateShiningLight, ShiningLight, setupSunShadow } from './light';
 import { DialogueLine } from './npcs';
 import { addHighwayPaving } from './road';
+import { dressExterior } from './world/dress';
+import { band } from './world/terrain';
+import { createTree, createBush, scatterGrass, scatterFlowers } from './world/props';
+import { createPond } from './world/water';
+import { voxelMesh, rng as seeded, bakeStatic } from './world/voxels';
 
 // Chapter XIII — Doubting Castle.
 // The King's Highway turns rough and rocky. Beside it a smooth green meadow
@@ -454,15 +459,31 @@ export class CastleScene {
     s.add(this.hemi);
     s.add(this.sun);
 
-    // ---- ambient ground ----
-    const ground = new THREE.Mesh(
-      new THREE.PlaneGeometry(260, 180),
-      mat(0xb5c98a),
-    );
-    ground.rotation.x = -Math.PI / 2;
-    ground.position.set(LIGHT_X / 2, 0, 0);
-    ground.receiveShadow = true;
-    s.add(ground);
+    // ---- ambient ground: level along the highway, meadow and castle
+    // approach, with pale moorland hills rolling away beyond ----
+    dressExterior(s, {
+      seed: 131,
+      bounds: { minX: -80, maxX: 118, minZ: -40, maxZ: 52 },
+      flat: (x, z) => Math.max(
+        band(Math.max(0, z - 12, -12 - z), 0, 6),
+        band(Math.hypot((x - (FORK_X + 12)) / 1.6, z + 12), 8, 12),
+      ) * band(Math.max(0, -38 - x, x - (LIGHT_X + 8)), 0, 8),
+      hills: 3,
+      blocked: (x, z) => Math.abs(z - HWY_Z) < 2.4
+        || (x > FORK_X - 2 && x < SLEEP_X + 11 && z > 2.3 && z < 10)
+        || (x > -2 && x < 26 && z < -3 && z > -20),
+      palette: {
+        grass: [0xb3c98f, 0xaac287, 0xbdd29a, 0xa3bb80],
+        highGrass: 0xc3d1a3,
+        leaves: [0x93b572, 0x89ab69, 0x9dbf7b],
+        flowers: [0xf4c2d4, 0xffefa8, 0xc9dfff, 0xe6cff5],
+      },
+      grass: 2600,
+      flowers: 300,
+      trees: 45,
+      shrubs: 40,
+      treeZone: (x, z) => (z > 12 || z < -21) && Math.abs(z) < 38 && x > -60,
+    });
 
     // ---- rocky King's Highway (x: WEST_EDGE to FORK_X) ----
     // road surface — matches the path colour used everywhere else
@@ -526,53 +547,22 @@ export class CastleScene {
       }
     }
 
-    // Dress the pale-green world beyond Bypath Meadow too. Patchwork turf,
-    // voxel grasses, and small flower groups give the open land a cute,
-    // lived-in storybook quality while keeping the centre highway clear.
-    const fieldGreens = [0xa9c681, 0x9fbe78, 0xbdd399, 0x95b875];
-    for (let i = 0; i < 52; i++) {
-      const x = rng(WEST_EDGE - 5, LIGHT_X + 7);
-      const z = (Math.random() < 0.5 ? -1 : 1) * rng(3.1, 17);
-      // Leave the authored meadow and Doubting Castle silhouette untouched.
-      if (x > FORK_X - 2 && x < SLEEP_X + 11 && z > 2.3 && z < 11) continue;
-      if (x > 5 && x < 20 && z < -3 && z > -13) continue;
-      const turf = block(rng(1.2, 3.4), 0.025, rng(0.8, 2.2),
-        fieldGreens[i % fieldGreens.length], x, 0.018, z);
-      turf.rotation.y = rng(-0.3, 0.3);
-      turf.castShadow = false;
-      s.add(turf);
-      const blades = 2 + (i % 3);
-      for (let b = 0; b < blades; b++) {
-        s.add(block(
-          0.08, rng(0.26, 0.52), 0.08,
-          b % 2 ? 0x789f59 : 0x88ad63,
-          x + rng(-0.8, 0.8), rng(0.14, 0.24), z + rng(-0.5, 0.5),
-        ));
-      }
-    }
-    const fieldFlowers = [0xf4c2d4, 0xffefa8, 0xc9dfff, 0xe6cff5];
-    for (let i = 0; i < 16; i++) {
-      const x = rng(WEST_EDGE - 2, LIGHT_X + 4);
-      const z = (Math.random() < 0.5 ? -1 : 1) * rng(3.4, 12);
-      if (x > FORK_X - 2 && x < SLEEP_X + 11 && z > 2.3) continue;
-      for (let f = 0; f < 3; f++) {
-        const fx = x + f * 0.28 + rng(-0.12, 0.12);
-        const fz = z + (f % 2) * 0.25;
-        s.add(block(0.06, 0.3, 0.06, 0x6d9f54, fx, 0.15, fz));
-        s.add(block(0.18, 0.14, 0.18, fieldFlowers[(i + f) % fieldFlowers.length], fx, 0.35, fz));
-      }
-    }
-    // A few low shrubs, chopped logs, and stumps break up the largest empty
+    // A few low shrubs, chopped logs and stumps break up the largest empty
     // stretches but stay well beyond the player's narrow movement bands.
     for (const [x, z] of [[-28, -7], [-19, 8], [-8, -9], [34, 8], [48, -8], [62, 7]] as const) {
-      s.add(block(1.25, 0.58, 1.0, 0x89ae68, x, 0.29, z));
-      s.add(block(0.75, 0.42, 0.72, 0x9bc078, x + 0.42, 0.62, z - 0.12));
+      const bush = createBush({ seed: Math.round(x * 3 + z), colors: [0x89ae68, 0x9bc078] });
+      bush.position.set(x, 0, z);
+      s.add(bush);
     }
     for (const [x, z, rot] of [[-23, 6.8, 0.25], [39, -6.7, -0.3], [58, 8.4, 0.18]] as const) {
-      const log = block(1.8, 0.42, 0.48, 0x9a7653, x, 0.28, z);
+      const log = voxelMesh([
+        { w: 1.8, h: 0.42, d: 0.48, x: 0, y: 0.28, z: 0, color: 0x9a7653 },
+        { w: 0.12, h: 0.44, d: 0.5, x: -0.9, y: 0.28, z: 0, color: 0xe2c79e },
+        { w: 0.3, h: 0.1, d: 0.3, x: 0.3, y: 0.52, z: 0.05, color: 0x9cc98a },
+      ]);
+      log.position.set(x, 0, z);
       log.rotation.y = rot;
       s.add(log);
-      s.add(block(0.12, 0.5, 0.55, 0xc7a477, x - 0.86, 0.28, z));
     }
 
     // ---- Bypath Meadow (z ≈ MEADOW_Z, x: FORK_X to SLEEP_X+8) ----
@@ -592,52 +582,31 @@ export class CastleScene {
     s.add(meadow2);
 
     // ---- meadow dressing: flowers, tall grass, bushes, blossom trees ----
-    const flowerColors = [0xf4c2d4, 0xfff0a0, 0xe8d4f8, 0xff9ec4, 0xaecbff, 0xffb865, 0xffffff];
-    // clustered flowers, some tall (stem + bloom)
-    for (let i = 0; i < 80; i++) {
-      const fx = rng(FORK_X - 1, SLEEP_X + 9);
-      const fz = rng(MEADOW_Z - 3.4, MEADOW_Z + 3.4);
-      const col = flowerColors[Math.floor(Math.random() * flowerColors.length)];
-      if (Math.random() < 0.4) {
-        s.add(block(0.05, 0.34, 0.05, 0x5aa04a, fx, 0.17, fz));   // stem
-        s.add(block(0.24, 0.2, 0.24, col, fx, 0.42, fz));          // bloom
-      } else {
-        s.add(block(0.2, 0.26, 0.2, col, fx, 0.13, fz));
-      }
-    }
-    // tufts of tall grass
-    for (let i = 0; i < 60; i++) {
-      const gx = rng(FORK_X - 1, SLEEP_X + 9);
-      const gz = rng(MEADOW_Z - 3.6, MEADOW_Z + 3.6);
-      s.add(block(0.1, rng(0.3, 0.6), 0.1, Math.random() < 0.5 ? 0x67b552 : 0x7cc766, gx, 0.25, gz));
-    }
-    // little round bushes
+    const meadowArea = {
+      minX: FORK_X - 1, maxX: SLEEP_X + 9, minZ: MEADOW_Z - 3.4, maxZ: MEADOW_Z + 3.4,
+      allow: (x: number, z: number) => Math.hypot((x - (SLEEP_X - 4)) / 2.6, (z - (MEADOW_Z + 3)) / 1.8) > 1.15,
+    };
+    s.add(scatterGrass(meadowArea, 420, 132, [0x7cc766, 0x6fbb5a, 0x88cd70]));
+    s.add(scatterFlowers(meadowArea, 260, 133, [0xf4c2d4, 0xfff0a0, 0xe8d4f8, 0xff9ec4, 0xaecbff, 0xffb865, 0xffffff]));
+    const mr = seeded(134);
     for (let i = 0; i < 10; i++) {
-      const bx = rng(FORK_X, SLEEP_X + 8);
-      const bz = MEADOW_Z + (Math.random() < 0.5 ? -1 : 1) * rng(2.6, 3.6);
-      s.add(block(rng(1.0, 1.7), rng(0.7, 1.1), rng(1.0, 1.7), 0x66ab52, bx, 0.45, bz));
-      s.add(block(rng(0.6, 1.0), rng(0.4, 0.7), rng(0.6, 1.0), 0x74bd5e, bx + rng(-0.4, 0.4), 0.9, bz + rng(-0.4, 0.4)));
+      const bx = FORK_X + mr() * (SLEEP_X + 8 - FORK_X);
+      const bz = MEADOW_Z + (mr() < 0.5 ? -1 : 1) * (2.6 + mr());
+      const bush = createBush({ seed: 1340 + i, colors: [0x66ab52, 0x74bd5e, 0x7fc466], flowers: true });
+      bush.position.set(bx, 0, bz);
+      s.add(bush);
     }
     // blossom trees along the meadow's far edge
     for (const tx of [FORK_X + 4, FORK_X + 12, SLEEP_X, SLEEP_X + 7]) {
-      const tz = MEADOW_Z + rng(2.8, 4.2);
-      const tree = new THREE.Group();
-      tree.add(block(0.5, 2.0, 0.5, 0xb08a68, 0, 1.0, 0));
-      tree.add(block(2.2, 1.5, 2.2, 0x74c060, 0, 2.5, 0));
-      tree.add(block(1.4, 1.1, 1.4, 0x86cc6c, 0, 3.4, 0));
-      // pink blossoms
-      for (let b = 0; b < 6; b++) {
-        const a = (b / 6) * Math.PI * 2;
-        tree.add(block(0.24, 0.24, 0.24, 0xf9cdd8, Math.cos(a) * 0.95, 2.6 + Math.sin(a * 2) * 0.4, Math.sin(a) * 0.95));
-      }
+      const tz = MEADOW_Z + 2.8 + mr() * 1.4;
+      const tree = createTree({ seed: 1350 + tx, kind: 'blossom' });
       tree.position.set(tx, 0, tz);
       s.add(tree);
     }
     // a little pond at the meadow's edge, catching the eye
-    const pond = new THREE.Mesh(new THREE.CircleGeometry(1, 18), mat(0x8fd0ea));
-    pond.rotation.x = -Math.PI / 2;
-    pond.scale.set(2.6, 1.8, 1);
-    pond.position.set(SLEEP_X - 4, 0.02, MEADOW_Z + 3.0);
+    const pond = createPond({ seed: 7, radius: 1.9 });
+    pond.scale.set(1.35, 1, 0.95);
+    pond.position.set(SLEEP_X - 4, 0, MEADOW_Z + 3.0);
     s.add(pond);
 
     // ---- Fork sign (at x = FORK_X - 2) — a single weathered board. This is the
@@ -748,7 +717,7 @@ export class CastleScene {
 
     g.position.set(castleX, 0, castleZ);
     g.scale.setScalar(scale);
-    this.scene.add(g);
+    this.scene.add(bakeStatic(g));
   }
 
   // A moorland backdrop that makes the castle feel like it owns this stretch
@@ -756,9 +725,9 @@ export class CastleScene {
   // ruined walls guide the eye toward the keep without entering the play lane.
   private buildDoubtingLandscape(castleX: number, castleZ: number): void {
     const g = new THREE.Group();
-    const CRAG = 0x5a5a58;
-    const CRAG_DK = 0x403f42;
-    const DEAD_WOOD = 0x382b27;
+    const CRAG = 0x837f88;
+    const CRAG_DK = 0x6a6672;
+    const DEAD_WOOD = 0x5e4d45;
 
     // Layered rocky ridge behind the castle. Low-poly cones preserve the
     // chapter's friendly voxel language while bringing real depth to the sky.
@@ -803,7 +772,7 @@ export class CastleScene {
       }
     }
 
-    this.scene.add(g);
+    this.scene.add(bakeStatic(g));
   }
 
   private buildDungeon(): void {
