@@ -2420,7 +2420,8 @@ function triggerInteract(it: Interactable): void {
 const SPEED = 7;
 const camOffset = new THREE.Vector3(0, 13, 13).multiplyScalar(LENS);
 const HOUSE_CAM_OFFSET = new THREE.Vector3(0, 7.5, 7.5).multiplyScalar(LENS); // closer view inside the Interpreter's House
-const DUNGEON_CAM_OFFSET = new THREE.Vector3(0, 6, -11).multiplyScalar(LENS); // camera looks from outside north wall inward
+// looks in from the passage north of the cell — kept below the 6-unit ceiling
+const DUNGEON_CAM_OFFSET = new THREE.Vector3(0, 4.4, -13.5);
 // Scenes tuned their fog for the old 18.4-unit camera distance; the
 // atmosphere layer shifts fog out by the extra distance of the longer lens.
 const atmosphere = new Atmosphere({

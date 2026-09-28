@@ -794,6 +794,13 @@ export class CastleScene {
     // just beyond them, and a solid wall here would hide him completely
     s.add(block(0.5, 7,  12, STONE, d.x - 9, 3, d.z));   // west wall
     s.add(block(0.5, 7,  12, STONE, d.x + 9, 3, d.z));   // east wall
+    // the camera watches from a shadowed passage north of the open side —
+    // enclosing it keeps the view inside the dungeon (no roof or daylight)
+    s.add(block(18.5, 0.5, 18, DAMP, d.x, FLOOR_Y, d.z - 15));   // passage floor
+    s.add(block(19, 0.5, 18, 0x2c2c33, d.x, 6.25, d.z - 15));    // passage ceiling
+    s.add(block(0.5, 7, 18, 0x33333b, d.x - 9.25, 3, d.z - 15)); // passage west wall
+    s.add(block(0.5, 7, 18, 0x33333b, d.x + 9.25, 3, d.z - 15)); // passage east wall
+    s.add(block(19, 7, 0.5, 0x2c2c33, d.x, 3, d.z - 24));        // passage end wall
 
     // a small torch-lit antechamber beyond the bars, where Giant Despair and
     // Diffidence stand — enclosed so it doesn't just open onto bright sky
