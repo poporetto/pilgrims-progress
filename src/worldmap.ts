@@ -61,6 +61,8 @@ const ISLANDS: Array<{ c: THREE.Vector3; r: number }> = [
   { c: CELESTIAL, r: 4.4 },
 ];
 
+const ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII', 'XIII', 'XIV', 'XV', 'XVI', 'XVII'];
+
 function mapRng(seed: number): () => number {
   let a = seed >>> 0;
   return () => { a = (a + 0x6d2b79f5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
@@ -238,39 +240,82 @@ export class WorldMap {
     return bestT;
   }
 
-  private label(text: string, x: number, z: number, y: number, color = '#5b4a3f'): void {
+  private labelCount = 0;
+
+  // A storybook signpost for each chapter: a cream card with a gold keyline,
+  // a small rose chapter numeral, the place name in the title serif, and a
+  // pointer down to the spot. Drawn at 2x and redrawn once the web fonts load.
+  private label(text: string, x: number, z: number, y: number, color = '#5b4535'): void {
+    const numeral = ROMAN[this.labelCount++] ?? '';
     const canvas = document.createElement('canvas');
-    // Wide labels (especially “Delectable Mountains”) need a larger texture;
-    // the previous 512px canvas clipped the rounded title plaque at its sides.
     canvas.width = 1024;
-    canvas.height = 160;
+    canvas.height = 300;
     const c = canvas.getContext('2d')!;
-    c.font = 'bold 54px "Trebuchet MS", sans-serif';
-    c.textAlign = 'center';
-    c.textBaseline = 'middle';
-    // A soft pastel signboard gives each scene title a friendly, map-book feel.
-    const w = Math.min(960, c.measureText(text).width + 104);
-    const left = (canvas.width - w) / 2;
-    const gradient = c.createLinearGradient(0, 22, 0, 138);
-    gradient.addColorStop(0, 'rgba(255, 252, 244, 0.97)');
-    gradient.addColorStop(1, 'rgba(232, 240, 255, 0.97)');
-    c.shadowColor = 'rgba(113, 91, 116, 0.22)';
-    c.shadowBlur = 10;
-    c.shadowOffsetY = 4;
-    c.fillStyle = gradient;
-    c.strokeStyle = 'rgba(227, 174, 202, 1)';
-    c.lineWidth = 7;
-    c.beginPath();
-    c.roundRect(left, 22, w, 112, 52);
-    c.fill();
-    c.stroke();
-    c.shadowColor = 'transparent';
-    c.fillStyle = color;
-    c.fillText(text, canvas.width / 2, 78);
+    const draw = (): void => {
+      c.clearRect(0, 0, canvas.width, canvas.height);
+      const nameFont = '600 66px Fraunces, Georgia, serif';
+      const capFont = '800 30px Nunito, "Trebuchet MS", sans-serif';
+      c.font = nameFont;
+      const nameW = c.measureText(text).width;
+      const w = Math.min(1000, Math.max(nameW + 96, 300));
+      const left = (canvas.width - w) / 2;
+      const top = 18; const h = 196; const r = 40;
+      const cx = canvas.width / 2;
+      // card + pointer, one soft shadowed shape
+      c.save();
+      c.shadowColor = 'rgba(98, 68, 46, 0.28)';
+      c.shadowBlur = 18;
+      c.shadowOffsetY = 8;
+      const grad = c.createLinearGradient(0, top, 0, top + h);
+      grad.addColorStop(0, '#fffaf1');
+      grad.addColorStop(1, '#f7ebdc');
+      c.fillStyle = grad;
+      c.beginPath();
+      c.roundRect(left, top, w, h, r);
+      c.moveTo(cx - 26, top + h - 1);
+      c.lineTo(cx, top + h + 34);
+      c.lineTo(cx + 26, top + h - 1);
+      c.closePath();
+      c.fill();
+      c.restore();
+      // thin gold keyline inset in the card
+      c.strokeStyle = 'rgba(201, 165, 122, 0.75)';
+      c.lineWidth = 3;
+      c.beginPath();
+      c.roundRect(left + 11, top + 11, w - 22, h - 22, r - 10);
+      c.stroke();
+      c.textAlign = 'center';
+      c.textBaseline = 'middle';
+      // chapter numeral in letter-spaced rose capitals
+      if (numeral) {
+        c.font = capFont;
+        c.fillStyle = '#c0788c';
+        const label = `CHAPTER ${numeral}`.split('').join(String.fromCharCode(8202));
+        c.fillText(label, cx, top + 62);
+      }
+      c.font = nameFont;
+      c.fillStyle = color;
+      c.fillText(text, cx, numeral ? top + 128 : top + h / 2);
+      tex.needsUpdate = true;
+    };
     const tex = new THREE.CanvasTexture(canvas);
-    const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true }));
-    sprite.scale.set(12.8, 2.0, 1);
-    sprite.position.set(x, y, z);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.anisotropy = 4;
+    draw();
+    // the web fonts may still be loading on first build — redraw when ready
+    if (document.fonts) {
+      Promise.all([
+        document.fonts.load('600 66px Fraunces'),
+        document.fonts.load('800 30px Nunito'),
+      ]).then(draw).catch(() => { /* keep the fallback drawing */ });
+    }
+    const sprite = new THREE.Sprite(new THREE.SpriteMaterial({
+      map: tex, transparent: true, toneMapped: false, fog: false, depthWrite: false,
+    }));
+    sprite.center.set(0.5, 52 / 300); // the pointer tip (52px above the canvas bottom) sits on the anchor
+    sprite.scale.set(9.6, 2.8, 1);
+    sprite.position.set(x, y - 1.25, z);
+    sprite.renderOrder = 10;
     this.scene.add(sprite);
   }
 
