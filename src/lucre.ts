@@ -267,31 +267,44 @@ export class LucreScene {
       hill.add(nug);
     }
     // the mine mouth, glowing an unwholesome silver-green
-    hill.add(block(2.2, 2.4, 0.6, 0x2e2a30, 0, 1.1, 2.2));
+    hill.add(block(2.2, 2.4, 0.6, 0x1f1c22, 0, 1.1, 2.62)); // dark throat, proud of the hill face
     const glow = new THREE.Mesh(
       new THREE.BoxGeometry(1.7, 1.9, 0.3),
-      new THREE.MeshBasicMaterial({ color: 0xb8e8c9, transparent: true, opacity: 0.8 }),
+      new THREE.MeshBasicMaterial({ color: 0xb8e8c9, transparent: true, opacity: 0.35, depthWrite: false }),
     );
-    glow.position.set(0, 1.0, 2.45);
+    glow.position.set(0, 0.95, 2.95);
     hill.add(glow);
     this.mineGlow = glow;
-    // A proper timber cave door frames the mine mouth: posts, a heavy lintel,
-    // and two plank doors standing ajar in welcome (that's how Demas likes it).
-    const DOORWOOD = 0x5e4a38;
-    hill.add(block(0.34, 2.6, 0.5, DOORWOOD, -1.25, 1.3, 2.4));  // left post
-    hill.add(block(0.34, 2.6, 0.5, DOORWOOD, 1.25, 1.3, 2.4));   // right post
-    hill.add(block(3.0, 0.4, 0.6, DOORWOOD, 0, 2.7, 2.4));       // lintel
-    hill.add(block(2.6, 0.3, 0.55, 0x4a3a2c, 0, 3.0, 2.35));     // cap beam
+    // A rough cave mouth: jagged stone blocks stepping in to a ragged arch
+    // around the dark opening, with fallen rock and a silver seam at the sill.
+    const caveVox: Voxel[] = [];
+    const cr = seeded(1290);
+    const ROCK = 0xa7abb3;
     for (const side of [-1, 1]) {
-      const leaf = new THREE.Group();
-      leaf.position.set(side * 1.05, 0, 2.62);
-      const panel = block(1.0, 2.2, 0.12, 0x6b573f, side * -0.5, 1.1, 0);
-      leaf.add(panel);
-      leaf.add(block(1.02, 0.14, 0.14, 0x4a3a2c, side * -0.5, 1.7, 0.04)); // cross brace
-      leaf.add(block(1.02, 0.14, 0.14, 0x4a3a2c, side * -0.5, 0.55, 0.04));
-      leaf.rotation.y = side * 0.85; // swung open
-      hill.add(leaf);
+      // stacked jambs, leaning inward as they rise
+      for (let k = 0; k < 4; k++) {
+        const h = 0.7 + cr() * 0.25;
+        caveVox.push({
+          w: 0.8 + cr() * 0.35, h, d: 0.9 + cr() * 0.3,
+          x: side * (1.45 - k * 0.14), y: 0.35 + k * 0.62, z: 2.7 + (cr() - 0.5) * 0.15,
+          rz: side * (0.08 + cr() * 0.12), ry: (cr() - 0.5) * 0.3, color: vary(ROCK, cr, 0.05),
+        });
+      }
     }
+    // ragged overhang across the top of the opening
+    for (let k = -2; k <= 2; k++) {
+      caveVox.push({
+        w: 0.85 + cr() * 0.3, h: 0.6 + cr() * 0.35, d: 1.0,
+        x: k * 0.62, y: 2.55 + Math.abs(k) * -0.08 + cr() * 0.2, z: 2.65,
+        rz: (cr() - 0.5) * 0.35, ry: (cr() - 0.5) * 0.25, color: vary(ROCK, cr, 0.05),
+      });
+    }
+    // fallen rubble at the threshold, and a glint of silver in the sill
+    for (const [rx, rz, rw] of [[-1.9, 3.1, 0.55], [1.8, 3.2, 0.45], [-1.1, 3.35, 0.3], [2.2, 2.9, 0.35]] as const) {
+      caveVox.push({ w: rw, h: rw * 0.7, d: rw, x: rx, y: rw * 0.35, z: rz, ry: cr(), color: vary(0x7e818a, cr, 0.05) });
+    }
+    caveVox.push({ w: 1.5, h: 0.1, d: 0.35, x: 0, y: 0.06, z: 3.1, color: 0xe6edf6 });
+    hill.add(voxelMesh(caveVox));
     hill.position.set(DEMAS_X, 0, -7.5);
     s.add(hill);
     // Demas at his post beside the road
@@ -827,7 +840,7 @@ export class LucreScene {
             break;
           }
         }
-        // the door glow flares as it breathes the cloud out
+        // the cave mouth flares as it breathes the cloud out
         if (this.mineGlow) {
           const m = this.mineGlow.material as THREE.MeshBasicMaterial;
           m.opacity = 0.8 + Math.sin(t * 9) * 0.2;
@@ -891,7 +904,7 @@ export class LucreScene {
     }
     if (this.mineGlow) {
       (this.mineGlow.material as THREE.MeshBasicMaterial).opacity =
-        0.6 + 0.3 * Math.abs(Math.sin(t * 1.6));
+        0.16 + 0.16 * Math.abs(Math.sin(t * 1.6)); // a faint, unwholesome shimmer in the dark
     }
     if (this.pillarGlow) {
       (this.pillarGlow.material as THREE.MeshBasicMaterial).opacity =
