@@ -130,3 +130,83 @@ export function makeWaterMaterial(color: number, opacity = 0.86, roughness = 0.2
   addRipples(m, 0.8, 0.14);
   return m;
 }
+
+/**
+ * A flowing river running along world Z between x0 and x1: a smooth depth
+ * gradient (pale shallows → deep channel), long streaks that stream
+ * downstream, lapping foam at both banks, rippled lighting, and an optional
+ * soft glittering path of light across the water at `glowZ`.
+ */
+export function createRiverMaterial(o: {
+  x0: number; x1: number;
+  shallow?: number; deep?: number;
+  flow?: number; glowZ?: number; glowColor?: number;
+}): THREE.MeshStandardMaterial {
+  const m = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.22, metalness: 0.04 });
+  const shallow = new THREE.Color(o.shallow ?? 0x8fd0e6);
+  const deep = new THREE.Color(o.deep ?? 0x3f5fa8);
+  const glow = new THREE.Color(o.glowColor ?? 0xfff0c2);
+  m.onBeforeCompile = (shader) => {
+    shader.uniforms.uWindTime = windUniforms.uWindTime;
+    shader.uniforms.uRiver = { value: new THREE.Vector2(o.x0, o.x1) };
+    shader.uniforms.uShallow = { value: shallow };
+    shader.uniforms.uDeep = { value: deep };
+    shader.uniforms.uGlow = { value: glow };
+    shader.uniforms.uFlow = { value: o.flow ?? 0.55 };
+    shader.uniforms.uGlowZ = { value: o.glowZ ?? 1e5 };
+    shader.vertexShader = shader.vertexShader
+      .replace('#include <common>', '#include <common>\nvarying vec3 vRiverPos;')
+      .replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\nvRiverPos = (modelMatrix * vec4(transformed, 1.0)).xyz;');
+    shader.fragmentShader = shader.fragmentShader
+      .replace('#include <common>', `#include <common>
+        uniform float uWindTime; uniform vec2 uRiver; uniform vec3 uShallow; uniform vec3 uDeep;
+        uniform vec3 uGlow; uniform float uFlow; uniform float uGlowZ;
+        varying vec3 vRiverPos;
+        float rHash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+        float rNoise(vec2 p) {
+          vec2 i = floor(p); vec2 f = fract(p); f = f * f * (3.0 - 2.0 * f);
+          return mix(mix(rHash(i), rHash(i + vec2(1.0, 0.0)), f.x), mix(rHash(i + vec2(0.0, 1.0)), rHash(i + vec2(1.0, 1.0)), f.x), f.y);
+        }
+        float rFbm(vec2 p) { return rNoise(p) * 0.55 + rNoise(p * 2.03 + 7.1) * 0.3 + rNoise(p * 4.1 + 3.3) * 0.15; }
+        float riverEdge() {
+          float u = clamp((vRiverPos.x - uRiver.x) / (uRiver.y - uRiver.x), 0.0, 1.0);
+          return min(u, 1.0 - u);
+        }`)
+      .replace('#include <color_fragment>', `#include <color_fragment>
+        {
+          float t = uWindTime;
+          vec2 p = vRiverPos.xz;
+          float edge = riverEdge() + (rFbm(p * 0.12) - 0.5) * 0.08;
+          float depth = smoothstep(0.02, 0.42, edge);
+          vec3 water = mix(uShallow, uDeep, depth);
+          // long streaks carried downstream (+z), faster in the deep channel
+          float speed = uFlow * (0.55 + depth * 0.9);
+          float s1 = rFbm(vec2(p.x * 1.1, p.y * 0.16 - t * speed));
+          float s2 = rFbm(vec2(p.x * 2.3 + 5.0, p.y * 0.32 - t * speed * 1.6));
+          float streak = smoothstep(0.66, 0.82, s1) * 0.5 + smoothstep(0.72, 0.86, s2) * 0.3;
+          water = mix(water, vec3(0.88, 0.96, 1.0), streak * (0.22 + depth * 0.18));
+          // lapping foam along both banks
+          float lap = rNoise(vec2(p.y * 1.4 - t * 0.9, p.x * 0.6)) * 0.05 + sin(t * 1.3 + p.y * 0.8) * 0.012;
+          float foam = smoothstep(0.075 + lap, 0.02 + lap, riverEdge());
+          water = mix(water, vec3(0.96, 0.99, 1.0), foam * 0.85);
+          // soft glittering path of light across the water
+          float band = exp(-pow((vRiverPos.z - uGlowZ) / 1.6, 2.0));
+          float glitter = smoothstep(0.86, 0.98, rNoise(vec2(p.x * 3.2 + t * 0.4, p.y * 1.6 - t * 0.9)));
+          water = mix(water, uGlow, band * 0.26);
+          water += vec3(1.0, 0.96, 0.82) * band * glitter * 0.25;
+          diffuseColor.rgb = water;
+        }`)
+      .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
+        {
+          vec2 q = vRiverPos.xz;
+          float t = uWindTime * uFlow;
+          vec2 w = vec2(
+            sin(q.x * 1.9 + q.y * 0.4 + t * 1.2) * 0.5 + (rNoise(vec2(q.x * 1.3, q.y * 0.5 - t * 2.0)) - 0.5),
+            cos(q.y * 1.1 - t * 2.4) * 0.6 + (rNoise(vec2(q.x * 0.9 + 3.0, q.y * 0.7 - t * 2.6)) - 0.5)
+          );
+          normal = normalize(normal + (viewMatrix * vec4(w.x, 0.0, w.y, 0.0)).xyz * 0.22);
+        }`);
+  };
+  m.customProgramCacheKey = () => `river-${o.x0}-${o.x1}`;
+  return m;
+}

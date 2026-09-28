@@ -5,7 +5,7 @@ import { dressExterior } from './world/dress';
 import { band } from './world/terrain';
 import { createTree, createBush, createRock } from './world/props';
 import { voxelMesh, foliageMaterial, bakeStatic } from './world/voxels';
-import { makeWaterMaterial } from './world/water';
+import { createRiverMaterial } from './world/water';
 import { makeShiningLight, animateShiningLight, ShiningLight, setupSunShadow } from './light';
 import { DialogueLine } from './npcs';
 
@@ -61,6 +61,21 @@ interface Balloon {
   popT: number;       // >0 while the burst animation plays
 }
 
+let mistTex: THREE.Texture | null = null;
+function mistTexture(): THREE.Texture {
+  if (mistTex) return mistTex;
+  const c = document.createElement('canvas');
+  c.width = c.height = 64;
+  const g = c.getContext('2d')!;
+  const grad = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+  grad.addColorStop(0, 'rgba(255,255,255,1)');
+  grad.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = grad;
+  g.fillRect(0, 0, 64, 64);
+  mistTex = new THREE.CanvasTexture(c);
+  return mistTex;
+}
+
 export class BeulahScene {
   scene = new THREE.Scene();
   phase: Phase = 'meadow';
@@ -73,10 +88,9 @@ export class BeulahScene {
   private sun: THREE.DirectionalLight;
 
   // river + city
-  private shimmer: THREE.Mesh | null = null;
   private cityGlow: THREE.Group | null = null;
   private shining: ShiningLight | null = null;
-  private mist: THREE.Mesh[] = [];
+  private mist: THREE.Object3D[] = [];
   private ripples: THREE.Mesh[] = [];
   private riverGlints: THREE.Mesh[] = [];
 
@@ -252,55 +266,16 @@ export class BeulahScene {
     // ---- the River — banks, shallows, deep channel, drifting ripples ----
     const RW = FAR_SHORE_X - RIVER_X;
     const RCX = (RIVER_X + FAR_SHORE_X) / 2;
-    // wet, foamy shore bands where the water meets each bank
-    for (const bx of [RIVER_X, FAR_SHORE_X]) {
-      const bank = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 62), mat(0xcfeaf2));
-      bank.rotation.x = -Math.PI / 2;
-      bank.position.set(bx, 0.1, 0);
-      s.add(bank);
-    }
-    // the clear shallows
-    const clear = new THREE.Mesh(new THREE.PlaneGeometry(RW, 62), makeWaterMaterial(0x7cc3e6, 0.92));
-    clear.rotation.x = -Math.PI / 2;
-    clear.position.set(RCX, 0.12, 0);
-    s.add(clear);
-    // a mid indigo band, then the deepest channel down the centre line
-    const mid = new THREE.Mesh(new THREE.PlaneGeometry(RW - 4, 62), makeWaterMaterial(0x4a78c2, 0.85));
-    mid.rotation.x = -Math.PI / 2;
-    mid.position.set(RCX, 0.14, 0);
-    s.add(mid);
-    const deep = new THREE.Mesh(new THREE.PlaneGeometry(9, 62), makeWaterMaterial(0x2f4a96, 0.86));
-    deep.rotation.x = -Math.PI / 2;
-    deep.position.set(RCX, 0.16, 0);
-    s.add(deep);
-
-    // drifting ripple lines, to read as flowing water (animated in update)
-    for (let i = 0; i < 14; i++) {
-      const rip = new THREE.Mesh(
-        new THREE.PlaneGeometry(RW - 1, 0.28),
-        new THREE.MeshBasicMaterial({ color: 0xd8f0fb, transparent: true, opacity: 0.35, depthWrite: false }),
-      );
-      rip.rotation.x = -Math.PI / 2;
-      rip.position.set(RCX, 0.18, -26 + i * 4 + rng(-1, 1));
-      rip.userData.speed = 0.5 + Math.random() * 0.6;
-      s.add(rip);
-      this.ripples.push(rip);
-    }
-    // Short voxel glints break up the broad water surface and follow the flow.
-    for (let i = 0; i < 34; i++) {
-      const glint = new THREE.Mesh(
-        new THREE.BoxGeometry(0.7 + (i % 4) * 0.28, 0.035, 0.12),
-        new THREE.MeshBasicMaterial({
-          color: i % 3 === 0 ? 0xffedbd : 0xc9efff,
-          transparent: true, opacity: 0.42, depthWrite: false,
-        }),
-      );
-      glint.position.set(rng(RIVER_X + 0.6, FAR_SHORE_X - 0.6), 0.23, rng(-27, 27));
-      glint.userData.baseX = glint.position.x;
-      glint.userData.phase = rng(0, Math.PI * 2);
-      s.add(glint);
-      this.riverGlints.push(glint);
-    }
+    // one flowing river surface: shallows to deep channel, streaks carried
+    // downstream, foam lapping at both banks, and the City's light across it
+    const river = new THREE.Mesh(
+      new THREE.PlaneGeometry(RW + 0.6, 62, 1, 1),
+      createRiverMaterial({ x0: RIVER_X - 0.3, x1: FAR_SHORE_X + 0.3, shallow: 0x94d3e8, deep: 0x3c5fa6, flow: 0.6, glowZ: 0 }),
+    );
+    river.rotation.x = -Math.PI / 2;
+    river.position.set(RCX, 0.14, 0);
+    river.receiveShadow = true;
+    s.add(river);
     // reed clumps and mossy bank rocks at the near shore
     for (let i = 0; i < 8; i++) {
       const rz = (i % 2 ? -1 : 1) * (3 + (i * 1.37) % 9);
@@ -316,25 +291,13 @@ export class BeulahScene {
       s.add(reeds);
     }
 
-    // shimmering path of light cast across the water from the City
-    const shimmer = new THREE.Mesh(
-      new THREE.PlaneGeometry(RW, 3.2),
-      new THREE.MeshBasicMaterial({
-        color: 0xfff2c0, transparent: true, opacity: 0.5,
-        depthWrite: false, blending: THREE.AdditiveBlending,
-      }),
-    );
-    shimmer.rotation.x = -Math.PI / 2;
-    shimmer.position.set(RCX, 0.2, 0);
-    s.add(shimmer);
-    this.shimmer = shimmer;
-
     // soft mist rising off the water
     for (let i = 0; i < 10; i++) {
-      const m = new THREE.Mesh(
-        new THREE.PlaneGeometry(3.5, 2),
-        new THREE.MeshBasicMaterial({ color: 0xfff4e0, transparent: true, opacity: 0.28, depthWrite: false }),
-      );
+      // soft round wisps (a radial-gradient sprite), not hard-edged planes
+      const m = new THREE.Sprite(new THREE.SpriteMaterial({
+        map: mistTexture(), color: 0xfff4e0, transparent: true, opacity: 0.28, depthWrite: false,
+      }));
+      m.scale.set(4.5, 2.2, 1);
       m.position.set(rng(RIVER_X, FAR_SHORE_X), rng(0.6, 2.2), rng(-8, 8));
       m.userData.baseY = m.position.y;
       s.add(m);
@@ -679,10 +642,7 @@ export class BeulahScene {
     const chr = this.christian;
     const hop = this.hopeful;
 
-    // shimmer + mist + city glow
-    if (this.shimmer) {
-      (this.shimmer.material as THREE.MeshBasicMaterial).opacity = 0.4 + Math.abs(Math.sin(t * 1.3)) * 0.3;
-    }
+    // mist + city glow
     // ripples drift slowly along the river and wrap around
     for (const r of this.ripples) {
       r.position.z += dt * (r.userData.speed as number);
