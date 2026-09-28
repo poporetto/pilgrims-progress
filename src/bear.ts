@@ -200,7 +200,7 @@ function buildBear(opts: CharacterOptions = {}): BearParts {
   // looks chopped off when it sways or the character lies down. Height halved
   // (0.44 → 0.22) for a shorter, stockier neck; the head is lowered to match
   // (see head.position.y below) so no gap opens up.
-  body.add(block(0.52, 0.22, 0.46, fur, 0, 0.88, 0));
+  body.add(block(0.52, 0.12, 0.46, fur, 0, 0.84, 0)); // short — just a hint of neck
 
   // species tails
   let tail: THREE.Mesh | undefined;
@@ -261,7 +261,7 @@ function buildBear(opts: CharacterOptions = {}): BearParts {
   const head = new THREE.Group();
   // lowered from 1.16 to 0.98 to sit atop the now-shorter neck (see neck block
   // above) — keeps the head connected to the body rather than floating
-  head.position.y = 0.98;
+  head.position.y = 0.88; // snug on the shoulders (neck trimmed to 0.12)
   body.add(head);
 
   head.add(block(0.95, 0.82, 0.8, fur, 0, 0.4, 0));

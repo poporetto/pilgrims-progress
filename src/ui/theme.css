@@ -41,6 +41,8 @@
 }
 
 body { font-family: var(--font-ui); color: var(--ink); }
+/* a light pastel grade on the 3D views: slightly softer colour and contrast */
+canvas { filter: saturate(0.9) contrast(0.95) brightness(1.03); }
 html, body { background: #dcebe0; }
 
 /* --------------------------------------------------------------- buttons */

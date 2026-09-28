@@ -110,7 +110,7 @@ export class Atmosphere {
     scene.add(dome);
     // A soft, warm ambient floor: shadows stay readable and never go black,
     // even in the darker moods (dusk palace, night valley, dungeon).
-    const fill = new THREE.AmbientLight(0xffe8d6, 0.22);
+    const fill = new THREE.AmbientLight(0xffe6ee, 0.3); // soft peach-pink pastel fill
     fill.name = '__warmFill';
     scene.add(fill);
     // Glows (beacons, halos, lenses, fire, gate light…) are unlit basic
@@ -145,6 +145,8 @@ export class Atmosphere {
       sh.camera.far = 180;
       sh.bias = -0.00035;
       sh.normalBias = 0.035;
+      // soft pastel shadows: a gentle tint, never a dark patch
+      sh.intensity = 0.68;
       sh.camera.updateProjectionMatrix();
       sh.map?.dispose();
       sh.map = null;
@@ -190,7 +192,7 @@ export class Atmosphere {
     // darkness that is part of the story stays dark
     if (bg) {
       const lum = 0.2126 * bg.r + 0.7152 * bg.g + 0.0722 * bg.b;
-      st.fill.intensity = 0.22 * THREE.MathUtils.smoothstep(lum, 0.08, 0.35);
+      st.fill.intensity = 0.3 * THREE.MathUtils.smoothstep(lum, 0.08, 0.35);
     }
 
     // ---- sun: keep the scene's direction, re-centre the frustum on the view
