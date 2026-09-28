@@ -35,7 +35,7 @@ export interface World {
   colliders: Collider[];
   interactables: Interactable[];
   lightBeam: THREE.Group; // shining light, hidden until Evangelist speaks
-  gate: { open: boolean }; // wicket gate doors swing open once set
+  gate: { open: boolean; snap?: boolean }; // doors swing open once set (snap: jump straight there)
   update: (t: number) => void; // ambient life: smoke, butterflies, birds
 }
 
@@ -602,7 +602,7 @@ export function buildWorld(scene: THREE.Scene): World {
   group.add(voxelMesh(wallVox));
 
   // wicket gate doors (swing open once Evangelist reveals the way)
-  const gate = { open: false };
+  const gate: { open: boolean; snap?: boolean } = { open: false };
   const makeDoor = (side: number) => {
     const pivot = new THREE.Group();
     pivot.position.set(E, 0, 2.35 * side);
@@ -814,6 +814,11 @@ export function buildWorld(scene: THREE.Scene): World {
   const update = (t: number) => {
     // swing the wicket gate doors open/closed, stopping just short of 90°
     const doorTarget = gate.open ? 1.5 : 0;
+    if (gate.snap) {
+      doorL.rotation.y = -doorTarget;
+      doorR.rotation.y = doorTarget;
+      gate.snap = false;
+    }
     doorL.rotation.y += (-doorTarget - doorL.rotation.y) * 0.04;
     doorR.rotation.y += (doorTarget - doorR.rotation.y) * 0.04;
 

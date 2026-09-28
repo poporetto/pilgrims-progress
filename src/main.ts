@@ -1756,6 +1756,11 @@ function enterSlough(revisit: boolean, replay = false): void {
 function enterVillage(): void {
   mode = 'village';
   music.setStyle('village');
+  // Chapter I is behind him: the Wicket Gate road stays open on every visit
+  // (including after a reload, when the gate would otherwise start shut)
+  world.gate.open = true;
+  world.gate.snap = true;
+  world.lightBeam.visible = true;
   christian.root.position.set(WALL.east - 5, 0, 0);
   christian.root.rotation.y = -Math.PI / 2;
   camTarget.copy(christian.root.position);

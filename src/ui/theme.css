@@ -346,8 +346,8 @@ body.dialogue-open #joystick, body.dialogue-open #talk-btn {
 @keyframes rise-in { from { transform: translateY(12px); opacity: 0; } to { transform: none; opacity: 1; } }
 .screen button {
   font-family: var(--font-ui); font-weight: 900;
-  background: linear-gradient(180deg, #e98aa1, #d0667f);
-  color: #fff; text-shadow: 0 1px 0 rgba(122, 38, 62, .45);
+  background: linear-gradient(180deg, #fbd3dd, #f4b6c6);
+  color: #8a3450; text-shadow: 0 1px 0 rgba(255, 255, 255, .55);
   border: 3px solid #fff;
   box-shadow: var(--shadow-md);
   transition: transform .22s var(--ease-bounce), box-shadow .2s ease, filter .2s ease;
@@ -375,16 +375,17 @@ body.dialogue-open #joystick, body.dialogue-open #talk-btn {
 #title-screen p { font-family: var(--font-ui); font-weight: 600; color: #6c5849; }
 #title-screen #start-btn, #title-screen #new-journey-btn { font-family: var(--font-ui); font-weight: 900; }
 #title-screen #start-btn {
-  background: linear-gradient(180deg, #e98aa1, #d0667f);
-  color: #fff; text-shadow: 0 1px 0 rgba(122, 38, 62, .45);
-  box-shadow: 0 7px 0 #b25069, 0 13px 28px rgba(126, 82, 91, .25);
+  background: linear-gradient(180deg, #fbd3dd, #f4b6c6);
+  color: #8a3450; text-shadow: 0 1px 0 rgba(255, 255, 255, .55);
+  box-shadow: 0 7px 0 #e59fb2, 0 13px 28px rgba(126, 82, 91, .18);
 }
+#title-screen #start-btn::after { color: #8a3450; }
 #title-screen #start-btn:hover {
-  background: linear-gradient(180deg, #ee96ab, #d77089);
-  box-shadow: 0 9px 0 #b25069, 0 15px 30px rgba(126, 82, 91, .28);
+  background: linear-gradient(180deg, #fddbe4, #f6bfcd);
+  box-shadow: 0 9px 0 #e59fb2, 0 15px 30px rgba(126, 82, 91, .2);
 }
-#title-screen #start-btn:active { box-shadow: 0 3px 0 #b25069; }
-#title-screen #new-journey-btn { color: #8a3a52; border-color: #d0667f; }
+#title-screen #start-btn:active { box-shadow: 0 3px 0 #e59fb2; }
+#title-screen #new-journey-btn { color: #8a3a52; border-color: #efb3c3; background: #fdf3f6; }
 #save-summary { font-family: var(--font-ui); }
 .title-credit { font-family: var(--font-ui); font-weight: 800; }
 
