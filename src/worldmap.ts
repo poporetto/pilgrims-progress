@@ -1,4 +1,7 @@
 import { bakeStatic } from './world/voxels';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { createTerrain } from './world/terrain';
+import { createTree, createPine, createBush, createRock } from './world/props';
 import * as THREE from 'three';
 import { PALETTE } from './palette';
 import { makeBear, animateBear, BearParts, block, mat } from './bear';
@@ -57,6 +60,11 @@ const ISLANDS: Array<{ c: THREE.Vector3; r: number }> = [
   { c: BEULAH, r: 4.2 },
   { c: CELESTIAL, r: 4.4 },
 ];
+
+function mapRng(seed: number): () => number {
+  let a = seed >>> 0;
+  return () => { a = (a + 0x6d2b79f5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+}
 
 export class WorldMap {
   scene = new THREE.Scene();
@@ -278,16 +286,20 @@ export class WorldMap {
       m.receiveShadow = true;
       g.add(m);
     };
-    disc(r + 0.34, 0.12, PALETTE.grassDark, 0.48);
-    disc(r + 0.18, 0.12, top, 0.54);
+    // pastel regional tint, sitting just proud of the continent's grass
+    const soft = new THREE.Color(top).lerp(new THREE.Color(0xf6f4e4), 0.3).getHex();
+    const edge = new THREE.Color(soft).multiplyScalar(0.93).getHex();
+    disc(r + 0.3, 0.06, edge, 0.52);
+    disc(r + 0.12, 0.06, soft, 0.55);
     // A few edge tufts soften the regional colour change without tracing a
     // complete circular rim that would make it read as another island.
     for (let i = 0; i < 4; i++) {
       const a = i * 1.67 + 0.45;
-      g.add(block(0.38, 0.16, 0.38, PALETTE.grassDark,
+      g.add(block(0.38, 0.16, 0.38, edge,
         Math.cos(a) * (r - 0.15), 0.7, Math.sin(a) * (r - 0.15)));
     }
     g.position.set(x, 0, z);
+    g.userData.r = r;
     this.scene.add(g);
     this.islands.push(g);
     return g;
@@ -347,12 +359,12 @@ export class WorldMap {
     // Extend well beyond the final island in every direction. The earlier sea
     // ended almost exactly beneath the Celestial City, exposing an empty edge
     // as the camera panned through the final chapters.
-    const sea = new THREE.Mesh(new THREE.BoxGeometry(380, 1, 190), mat(PALETTE.water));
+    const sea = new THREE.Mesh(new THREE.BoxGeometry(380, 1, 190), mat(0xb6e1f1));
     sea.position.set(45, -1.6, 0);
     sea.receiveShadow = true;
     s.add(sea);
     // Broad pastel bands give the enlarged ocean gentle voxel depth.
-    for (const [z, color] of [[-28, 0x9dd6ed], [25, 0xb1e0f1]] as const) {
+    for (const [z, color] of [[-28, 0xaddbee], [25, 0xc2e7f4]] as const) {
       const band = block(380, 0.04, 24, color, 45, -1.07, z);
       band.castShadow = false;
       s.add(band);
@@ -378,50 +390,13 @@ export class WorldMap {
       [73, 13.2, 0.4], [83, 14.4, 0.0], [93, 13.0, 0.1],
       [103, 14.8, 0.2], [113, 13.5, -0.1], [121, 10.5, -0.4],
     ] as const;
-    for (let i = 0; i < coastSections.length; i++) {
-      const [x, depth, z] = coastSections[i];
-      const lower = block(11.2, 1.0, depth + 1.6, 0xb6926f, x, -0.35, z);
-      lower.receiveShadow = true;
-      s.add(lower);
-      const soil = block(11.5, 0.38, depth + 0.8, 0xd3bd91, x, 0.28, z);
-      soil.receiveShadow = true;
-      s.add(soil);
-      const grassColor = i < 5 ? 0x9fc98c : i < 10 ? 0x93c081 : 0x9bcd82;
-      const top = block(11.7, 0.16, depth, grassColor, x, 0.43, z);
-      top.receiveShadow = true;
-      s.add(top);
-    }
-    // South-eastern bulge carries the Morality branch without making a
-    // separate island, and a few voxel capes break up the long coastline.
-    for (const [x, z, w, d, color] of [
-      [8, 7.5, 12, 8, 0xa7d49a],
-      [18, -6.4, 10, 4.5, 0x96c387],
-      [48, 6.5, 12, 4.2, 0x9ac889],
-      [88, -6.4, 11, 4.4, 0x91bf80],
-      [108, 6.4, 12, 4.6, 0xa2d189],
-    ] as const) {
-      const cape = block(w, 0.4, d, color, x, 0.3, z);
-      cape.receiveShadow = true;
-      s.add(cape);
-    }
+    const capes = [
+      [8, 7.5, 12, 8], [48, 6.5, 12, 4.2], [108, 6.4, 12, 4.6],
+    ] as const;
+    this.buildContinent(coastSections, capes);
 
     // ---------- northern alpine backdrop ----------
-    // A continuous foothill shelf joins the range to the continent and removes
-    // the strip of sea that previously showed between grass and mountain.
-    for (let x = -19, i = 0; x <= 123; x += 10.8, i++) {
-      const shelfDepth = 10.5 + (i % 3) * 0.8;
-      const shelf = block(
-        11.4, 0.62, shelfDepth,
-        i % 2 ? 0x8fbb83 : 0x98c58a,
-        x, 0.2, -9.1 - (i % 2) * 0.25,
-      );
-      shelf.receiveShadow = true;
-      s.add(shelf);
-      const shelfSoil = block(11.2, 0.72, shelfDepth + 0.5, 0xb6926f,
-        x, -0.44, -9.1 - (i % 2) * 0.25);
-      shelfSoil.receiveShadow = true;
-      s.add(shelfSoil);
-    }
+    // (the continent itself now runs back beneath the range — no separate shelf)
 
     // A long range of faceted low-poly peaks frames the upper coastline. The
     // blue stone keeps it visually distant, while white angular caps make the
@@ -442,14 +417,14 @@ export class WorldMap {
       alpinePeak(
         x, -14.5 - (i % 3) * 0.7,
         10.8 + (i % 4) * 0.75, 5.4 + (i % 5) * 0.55,
-        i % 2 ? 0x9ebbd0 : 0xaac6d9, 0xf8fbf7,
+        i % 2 ? 0xb4cbdd : 0xbed3e3, 0xfbfcf8,
       );
     }
     for (let x = -20, i = 0; x <= 125; x += 9.0, i++) {
       alpinePeak(
         x, -10.2 - (i % 2) * 0.55,
         11.0 + (i % 3) * 0.8, 4.3 + (i % 4) * 0.55,
-        i % 2 ? 0x789db8 : 0x86abc4, 0xfffdf5,
+        i % 2 ? 0x9bb8cf : 0xa7c1d6, 0xfffdf5,
       );
     }
 
@@ -457,9 +432,9 @@ export class WorldMap {
     for (let x = -19, i = 0; x <= 123; x += 6.4, i++) {
       const pine = new THREE.Group();
       pine.add(block(0.18, 0.8, 0.18, 0x765d45, 0, 0.4, 0));
-      pine.add(block(1.0, 0.42, 0.9, 0x527b69, 0, 0.82, 0));
-      pine.add(block(0.74, 0.42, 0.7, 0x608b75, 0, 1.15, 0));
-      pine.add(block(0.46, 0.4, 0.44, 0x719a80, 0, 1.47, 0));
+      pine.add(block(1.0, 0.42, 0.9, 0x7fa88f, 0, 0.82, 0));
+      pine.add(block(0.74, 0.42, 0.7, 0x8cb59b, 0, 1.15, 0));
+      pine.add(block(0.46, 0.4, 0.44, 0x9dc3a7, 0, 1.47, 0));
       pine.position.set(x, 0.5, -6.1 - (i % 3) * 0.45);
       pine.scale.setScalar(0.72 + (i % 2) * 0.12);
       s.add(pine);
@@ -1020,6 +995,8 @@ export class WorldMap {
     // travellers
     this.scene.add(this.christian.root);
     this.placeOn(this.mainCurve, this.christian.root, this.progress);
+    this.dressContinent();
+
     // merge every static opaque mesh on the continent into one draw call;
     // animated pieces (party, clouds, birds, halos) stay separate
     const live = new Set<THREE.Object3D>([this.christian.root, ...this.followers.map((f) => f.root), ...this.clouds, ...this.birds.map((b) => b.g), ...this.sunHalos]);
@@ -1027,6 +1004,209 @@ export class WorldMap {
     for (const o of [...s.children]) if (!live.has(o) && (o as THREE.Mesh).isMesh || o.type === 'Group' && !live.has(o)) statics.add(o);
     s.add(statics);
     bakeStatic(statics);
+  }
+
+  // ---------- the continent: organic coastline with real island edges ----------
+  private southCoast: (x: number) => number = () => 0;
+  private coastEdges: (x: number) => [number, number] = () => [0, 0];
+  private readonly WEST_TIP = -26.5;
+  private readonly EAST_TIP = 130.5;
+
+  private buildContinent(
+    sections: ReadonlyArray<readonly [number, number, number]>,
+    capes: ReadonlyArray<readonly [number, number, number, number]>,
+  ): void {
+    const s = this.scene;
+    const raw = (x: number): number => {
+      let z = -4;
+      for (const [cx, depth, cz] of sections) if (Math.abs(x - cx) <= 5.9) z = Math.max(z, cz + depth / 2);
+      for (const [cx, cz, w, d] of capes) if (Math.abs(x - cx) <= w / 2) z = Math.max(z, cz + d / 2);
+      return z;
+    };
+    // smooth the stepped section outline, then add a gentle hand-made wobble
+    const W = this.WEST_TIP; const E = this.EAST_TIP;
+    this.southCoast = (x: number): number => {
+      let sum = 0; let n = 0;
+      for (let dx = -3; dx <= 3; dx += 0.75) { sum += raw(THREE.MathUtils.clamp(x + dx, W, E)); n++; }
+      const wob = Math.sin(x * 0.53) * 0.35 + Math.sin(x * 1.37 + 1.2) * 0.18;
+      return sum / n + wob;
+    };
+    const NORTH = -15.5;
+    // 0..1 roundness near each tip (1 across the body of the island)
+    const tipRound = (x: number): number => Math.sqrt(THREE.MathUtils.clamp(Math.min(x - W, E - x) / 7, 0, 1));
+    const edges = (x: number, off: number): [number, number] => {
+      const zS = this.southCoast(THREE.MathUtils.clamp(x, W, E));
+      const mid = (NORTH + zS) / 2;
+      const k = 0.18 + 0.82 * tipRound(THREE.MathUtils.clamp(x, W, E));
+      return [mid - (mid - NORTH) * k - off, mid + (zS - mid) * k + off];
+    };
+    this.coastEdges = (x: number) => edges(x, 0);
+    const outline = (off: number): THREE.Vector2[] => {
+      const south: THREE.Vector2[] = []; const north: THREE.Vector2[] = [];
+      const w = W - off; const e = E + off;
+      for (let x = w; x <= e + 1e-6; x += 0.6) {
+        const [zN, zS] = edges(x, off);
+        south.push(new THREE.Vector2(x, -zS));
+        north.push(new THREE.Vector2(x, -zN));
+      }
+      return [...south, ...north.reverse()];
+    };
+    const slab = (off: number, y0: number, y1: number, color: number, bevel = 0): THREE.Mesh => {
+      const shape = new THREE.Shape(outline(off));
+      const geo = new THREE.ExtrudeGeometry(shape, {
+        depth: Math.max(0.01, y1 - y0 - bevel * 2), steps: 1, curveSegments: 1,
+        bevelEnabled: bevel > 0, bevelThickness: bevel, bevelSize: bevel, bevelSegments: 2,
+      });
+      geo.rotateX(-Math.PI / 2);
+      const m = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color, roughness: 0.95, flatShading: true }));
+      m.position.y = y0 + bevel;
+      m.receiveShadow = true;
+      s.add(m);
+      return m;
+    };
+    // shallows, beach and a foam line where the island meets the sea
+    slab(2.4, -1.12, -1.09, 0xcbeef6);
+    slab(1.05, -1.11, -1.05, 0xf4e7c6);
+    const foam = new THREE.Shape(outline(1.3));
+    foam.holes.push(new THREE.Path(outline(1.05)));
+    const foamGeo = new THREE.ShapeGeometry(foam, 1);
+    foamGeo.rotateX(-Math.PI / 2);
+    const foamMesh = new THREE.Mesh(foamGeo, new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, opacity: 0.7, roughness: 0.5, depthWrite: false }));
+    foamMesh.position.y = -1.04;
+    s.add(foamMesh);
+    // layered cliff: flared rock foot, soil, a pale sandy band, rounded grass lip
+    slab(0.4, -1.1, -0.5, 0xc2a48c, 0.12);
+    slab(0.12, -0.55, 0.08, 0xd6b996, 0.06);
+    slab(0.0, 0.05, 0.34, 0xeedcb8, 0.05);
+    slab(-0.08, 0.3, 0.5, 0xb9dea3, 0.1);
+    // faceted pastel meadow on top, clipped inside the lip
+    const terr = createTerrain({
+      minX: W - 1, maxX: E + 1, minZ: NORTH, maxZ: 14, cell: 1.1, seed: 91,
+      flat: () => 1, y: 0.505,
+      grass: [0xc1e4ab, 0xb6dca0, 0xcbe9b6, 0xaed59b],
+    });
+    const g = terr.mesh.geometry;
+    const pos = g.getAttribute('position'); const col = g.getAttribute('color');
+    const keepP: number[] = []; const keepC: number[] = [];
+    const inside = (x: number, z: number) => {
+      if (x < W + 0.5 || x > E - 0.5) return false;
+      const [zN, zS] = edges(x, -0.45);
+      return z > zN && z < zS;
+    };
+    for (let t = 0; t < pos.count; t += 3) {
+      const cx = (pos.getX(t) + pos.getX(t + 1) + pos.getX(t + 2)) / 3;
+      const cz = (pos.getZ(t) + pos.getZ(t + 1) + pos.getZ(t + 2)) / 3;
+      if (!inside(cx, cz)) continue;
+      for (let k = 0; k < 3; k++) {
+        keepP.push(pos.getX(t + k), pos.getY(t + k), pos.getZ(t + k));
+        keepC.push(col.getX(t + k), col.getY(t + k), col.getZ(t + k));
+      }
+    }
+    const top = new THREE.BufferGeometry();
+    top.setAttribute('position', new THREE.Float32BufferAttribute(keepP, 3));
+    top.setAttribute('color', new THREE.Float32BufferAttribute(keepC, 3));
+    top.computeVertexNormals();
+    terr.mesh.geometry = top;
+    s.add(terr.mesh);
+    // shoreline boulders at the cliff foot
+    const rocks = new THREE.Group();
+    const rr = mapRng(7);
+    for (let x = W + 1; x < E - 1; x += 2.2 + rr() * 2.5) {
+      const rock = createRock({ seed: 40 + Math.round(x * 3), size: 0.25 + rr() * 0.35, color: rr() > 0.5 ? 0xc7c2bc : 0xb9b2a8 });
+      rock.position.set(x, -1.05, this.coastEdges(x)[1] + 0.55 + rr() * 0.4);
+      rocks.add(rock);
+    }
+    s.add(this.mergeByMaterial(rocks));
+  }
+
+  // chapter-style scenery shrunk to map scale, kept off the road and landmarks
+  private dressContinent(): void {
+    const r = mapRng(33);
+    const road: THREE.Vector3[] = [
+      ...this.mainCurve.getSpacedPoints(700), ...this.branchCurve.getSpacedPoints(80),
+    ];
+    const clear = (x: number, z: number): boolean => {
+      if (z < -5 || x < this.WEST_TIP + 2 || x > this.EAST_TIP - 2) return false;
+      const [zN, zS] = this.coastEdges(x);
+      if (z > zS - 1.3 || z < zN + 1.3) return false;
+      for (const p of road) if (Math.abs(p.x - x) < 1.3 && Math.hypot(p.x - x, p.z - z) < 1.25) return false;
+      for (const isl of this.islands) {
+        const d = Math.hypot(isl.position.x - x, isl.position.z - z);
+        if (d < (isl.userData.r ?? 3) + 0.6) return false;
+      }
+      return true;
+    };
+    const group = new THREE.Group();
+    const place = (obj: THREE.Object3D, scale: number, tries = 30): void => {
+      for (let t = 0; t < tries; t++) {
+        const x = this.WEST_TIP + r() * (this.EAST_TIP - this.WEST_TIP);
+        const z = -5 + r() * 18;
+        if (!clear(x, z)) continue;
+        obj.scale.setScalar(scale);
+        obj.position.set(x, 0.5, z);
+        obj.rotation.y = r() * Math.PI * 2;
+        group.add(obj);
+        return;
+      }
+    };
+    const LEAVES = [0xa8d69a, 0xb4dea6, 0x9fcf93];
+    const BLOSSOM = [0xf7c9d4, 0xf3b9c8, 0xfad6de];
+    for (let k = 0; k < 64; k++) {
+      const blossom = r() > 0.78;
+      place(createTree({ seed: 900 + k, kind: blossom ? 'blossom' : 'leafy', leaves: blossom ? BLOSSOM : LEAVES, canopy: 1.5 + r() * 0.8 }), 0.26);
+    }
+    for (let k = 0; k < 28; k++) place(createPine({ seed: 1900 + k, colors: [0x8fb9a0, 0x9cc4ab, 0x86b198] }), 0.26);
+    for (let k = 0; k < 40; k++) place(createBush({ seed: 2900 + k, flowers: r() > 0.5, colors: [0xa9d79a, 0xb7dfa6] }), 0.3);
+    for (let k = 0; k < 24; k++) place(createRock({ seed: 3900 + k, size: 0.5 + r() * 0.5, moss: r() > 0.5 }), 0.35);
+    // flower dots scattered through the meadows
+    const petals = new THREE.Group();
+    const FLOWERS = [0xfff1a8, 0xffd1e3, 0xd9e6ff, 0xffffff, 0xffd9b8];
+    for (let k = 0; k < 420; k++) {
+      const x = this.WEST_TIP + r() * (this.EAST_TIP - this.WEST_TIP);
+      const z = -5 + r() * 18;
+      if (!clear(x, z)) continue;
+      const f = block(0.12, 0.1, 0.12, FLOWERS[k % FLOWERS.length], x, 0.56, z);
+      f.castShadow = false;
+      petals.add(f);
+    }
+    this.scene.add(this.mergeByMaterial(group));
+    this.scene.add(petals); // plain blocks: folded into the static bake
+  }
+
+  /** Merge every mesh under `root` into one mesh per material (keeps vertex colours). */
+  private mergeByMaterial(root: THREE.Object3D): THREE.Group {
+    root.updateMatrixWorld(true);
+    const buckets = new Map<THREE.Material, THREE.BufferGeometry[]>();
+    root.traverse((o) => {
+      const m = o as THREE.Mesh;
+      if (!m.isMesh || Array.isArray(m.material)) return;
+      let g = m.geometry.index ? m.geometry.toNonIndexed() : m.geometry.clone();
+      for (const name of Object.keys(g.attributes)) {
+        if (name !== 'position' && name !== 'normal' && name !== 'color') g.deleteAttribute(name);
+      }
+      if (!g.getAttribute('normal')) g.computeVertexNormals();
+      if (!g.getAttribute('color')) {
+        const c = new THREE.Color((m.material as THREE.MeshStandardMaterial).color ?? 0xffffff);
+        const n = g.getAttribute('position').count;
+        const arr = new Float32Array(n * 3);
+        for (let i = 0; i < n; i++) { arr[i * 3] = c.r; arr[i * 3 + 1] = c.g; arr[i * 3 + 2] = c.b; }
+        g.setAttribute('color', new THREE.BufferAttribute(arr, 3));
+      }
+      g = g.applyMatrix4(m.matrixWorld);
+      const list = buckets.get(m.material) ?? [];
+      list.push(g);
+      buckets.set(m.material, list);
+    });
+    const out = new THREE.Group();
+    for (const [material, geos] of buckets) {
+      const merged = mergeGeometries(geos, false);
+      if (!merged) continue;
+      const mesh = new THREE.Mesh(merged, material);
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      out.add(mesh);
+    }
+    return out;
   }
 
   private nearLand(x: number, z: number): boolean {
