@@ -797,41 +797,45 @@ export class LucreScene {
       const party = [this.byends, ...this.friends];
       // the mine-mouth door, in world space (hill at (DEMAS_X,0,-7.5); mouth at
       // hill-local z +2.2, facing the road)
-      const DOOR_X = DEMAS_X;
-      const DOOR_FRONT_Z = -4.6; // just outside the door
-      if (this.doomT < 4.0) {
-        // they run eagerly across the plain and line up at the mine DOOR
+      const DOOR_X = DEMAS_X + 0.1;   // centre of the cave opening
+      const MOUTH_Z = -4.3;           // the opening's face (rock jambs just in front)
+      const INSIDE_Z = -4.95;         // far enough into the dark to vanish
+      if (this.doomT < 4.8) {
+        // they hurry across the plain and form a single-file queue up to the mouth
         party.forEach((who, i) => {
           if (!who.root.visible) return;
-          const tx = DOOR_X + (i - 1.5) * 0.5; // a little queue at the mouth
-          const tz = DOOR_FRONT_Z;
+          const tx = DOOR_X;
+          const tz = MOUTH_Z + 0.55 + i * 0.85;
           const dx = tx - who.root.position.x;
           const dz = tz - who.root.position.z;
           const d = Math.hypot(dx, dz);
-          if (d > 0.35) {
-            who.root.position.x += (dx / d) * dt * 4.5;
-            who.root.position.z += (dz / d) * dt * 4.5;
+          if (d > 0.2) {
+            const step = Math.min(d, dt * 7.5);
+            who.root.position.x += (dx / d) * step;
+            who.root.position.z += (dz / d) * step;
             who.root.rotation.y = Math.atan2(dx, dz);
           } else {
-            who.root.rotation.y = Math.PI; // turn to face into the doorway (−z)
+            who.root.rotation.y = Math.PI; // facing into the cave (−z)
           }
-          animateBear(who, t * 1.4, d > 0.35);
+          animateBear(who, t * 1.4, d > 0.2);
         });
-      } else if (this.doomT < 6.4) {
-        // one by one they step THROUGH the door into the dark, and the hill
-        // swallows them — walking in (−z, into the hill) as they sink
+      } else if (this.doomT < 10.2) {
+        // one by one they walk straight through the opening into the dark
         party.forEach((who, i) => {
           if (!who.root.visible) return;
-          if (this.doomT > 4.0 + i * 0.4) {
-            who.root.position.z -= dt * 1.6;  // into the doorway
-            who.root.position.y -= dt * 1.1;  // and down into the earth
+          if (this.doomT > 4.8 + i * 0.55) {
+            who.root.position.x += (DOOR_X - who.root.position.x) * Math.min(1, dt * 6);
+            who.root.position.z -= dt * 1.9;
             who.root.rotation.y = Math.PI;
             animateBear(who, t, true);
-            if (who.root.position.z < -6.4) who.root.visible = false;
+            if (who.root.position.z < INSIDE_Z) who.root.visible = false;
+          } else {
+            animateBear(who, t, false);
           }
         });
-        // a cloud of silver-green smoke breathes OUT of the mine mouth
-        for (const sm of this.smoke) {
+        // once the last of them is inside, a silver-green cloud breathes OUT
+        const allIn = party.every((who) => !who.root.visible);
+        for (const sm of allIn ? this.smoke : []) {
           if (sm.life >= 1 && Math.random() < dt * 26) {
             sm.life = 0;
             sm.m.color.set(0x9ad9a8);
@@ -841,7 +845,7 @@ export class LucreScene {
           }
         }
         // the cave mouth flares as it breathes the cloud out
-        if (this.mineGlow) {
+        if (this.mineGlow && allIn) {
           const m = this.mineGlow.material as THREE.MeshBasicMaterial;
           m.opacity = 0.8 + Math.sin(t * 9) * 0.2;
         }
