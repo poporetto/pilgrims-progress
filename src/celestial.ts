@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { PALETTE } from './palette';
 import { makeBear, animateBear, addPilgrimArmorDetails, addShiningOneDetails, BearParts, Species, block, mat } from './bear';
 import { dressExterior } from './world/dress';
+import { createRiverMaterial } from './world/water';
 import { band } from './world/terrain';
 import { makeShiningLight, animateShiningLight, ShiningLight, setupSunShadow } from './light';
 import { DialogueLine } from './npcs';
@@ -799,45 +800,16 @@ export class CelestialScene {
     addPlankWalk(d.x - 31, d.x - 5, [0xcda878, 0xd9b98b, 0xb99669]);
     addPlankWalk(d.x + 3, d.x + 28, [0xe8cf94, 0xf0dca9, 0xdcbf83]);
 
-    for (const bx of [d.x - 5, d.x + 3]) {
-      const bank = new THREE.Mesh(new THREE.PlaneGeometry(1.4, 110), mat(0xcfeaf2));
-      bank.rotation.x = -Math.PI / 2;
-      bank.position.set(bx, 0.1, d.z);
-      s.add(bank);
-    }
-    const shallows = new THREE.Mesh(new THREE.PlaneGeometry(8, 110), mat(0x7cc3e6));
-    shallows.rotation.x = -Math.PI / 2;
-    shallows.position.set(d.x - 1, 0.12, d.z);
-    s.add(shallows);
-    const mid = new THREE.Mesh(new THREE.PlaneGeometry(5.8, 110), mat(0x3f6bb8));
-    mid.rotation.x = -Math.PI / 2;
-    mid.position.set(d.x - 1, 0.14, d.z);
-    s.add(mid);
-    const deep = new THREE.Mesh(new THREE.PlaneGeometry(2.8, 110), mat(0x243a86));
-    deep.rotation.x = -Math.PI / 2;
-    deep.position.set(d.x - 1, 0.16, d.z);
-    s.add(deep);
-    const shimmer = new THREE.Mesh(
-      new THREE.PlaneGeometry(8, 2.8),
-      new THREE.MeshBasicMaterial({
-        color: 0xfff2c0, transparent: true, opacity: 0.5,
-        depthWrite: false, blending: THREE.AdditiveBlending,
-      }),
+    // the same flowing River as Chapter XVI: shallows to a deep channel,
+    // streaks carried downstream, foam at the banks, the City's light across it
+    const river = new THREE.Mesh(
+      new THREE.PlaneGeometry(9.4, 110, 1, 1),
+      createRiverMaterial({ x0: d.x - 5.7, x1: d.x + 3.7, shallow: 0x94d3e8, deep: 0x3c5fa6, flow: 0.6, glowZ: d.z }),
     );
-    shimmer.rotation.x = -Math.PI / 2;
-    shimmer.position.set(d.x - 1, 0.2, d.z);
-    s.add(shimmer);
-    for (let i = 0; i < 54; i++) {
-      const glint = new THREE.Mesh(
-        new THREE.BoxGeometry(0.6 + (i % 4) * 0.25, 0.035, 0.12),
-        new THREE.MeshBasicMaterial({
-          color: i % 3 === 0 ? 0xffedbd : 0xc9efff,
-          transparent: true, opacity: 0.4, depthWrite: false,
-        }),
-      );
-      glint.position.set(rng(d.x - 4.4, d.x + 2.4), 0.23, rng(-52, 52));
-      s.add(glint);
-    }
+    river.rotation.x = -Math.PI / 2;
+    river.position.set(d.x - 1, 0.14, d.z);
+    river.receiveShadow = true;
+    s.add(river);
 
     const flowerColors = [0xf4c2d4, 0xfff0a0, 0xe8d4f8, 0xffb3c6, 0xaecbff, 0xff9ec4];
     for (let i = 0; i < 46; i++) {
