@@ -685,7 +685,7 @@ export class MountainScene {
     geo.setIndex(idx);
     geo.computeVertexNormals();
     const river = new THREE.Mesh(geo, waterMaterial);
-    river.position.y = 0.04;
+    river.position.y = 0.2; // clear of the bank (0.06) and terrain bumps, even mid-bob
     river.receiveShadow = true;
     river.renderOrder = 2;
     this.scene.add(river);
@@ -700,7 +700,7 @@ export class MountainScene {
     }
     bankGeo.computeVertexNormals();
     const bank = new THREE.Mesh(bankGeo, new THREE.MeshStandardMaterial({ color: 0xd8c49c, roughness: 1 }));
-    bank.position.y = 0.02;
+    bank.position.y = 0.06;
     bank.receiveShadow = true;
     this.scene.add(bank);
   }
@@ -1165,7 +1165,8 @@ export class MountainScene {
 
     // water shimmer
     for (const w of this.water) {
-      w.position.y = 0.03 + Math.sin(t * 2 + w.position.x * 0.3) * 0.02;
+      w.userData.restY ??= w.position.y;
+      w.position.y = w.userData.restY + Math.sin(t * 2 + w.position.x * 0.3) * 0.012;
     }
 
     // hell glow flicker + rising smoke

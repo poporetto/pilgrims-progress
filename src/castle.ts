@@ -550,12 +550,12 @@ export class CastleScene {
 
     // A few low shrubs, chopped logs and stumps break up the largest empty
     // stretches but stay well beyond the player's narrow movement bands.
-    for (const [x, z] of [[-28, -7], [-19, 8], [-8, -9], [34, 8], [48, -8], [62, 7]] as const) {
+    for (const [x, z] of [[-28, -7], [-19, 12.5], [-8, -9], [34, 12.5], [48, -8], [62, 12.5]] as const) {
       const bush = createBush({ seed: Math.round(x * 3 + z), colors: [0x89ae68, 0x9bc078] });
       bush.position.set(x, 0, z);
       s.add(bush);
     }
-    for (const [x, z, rot] of [[-23, 6.8, 0.25], [39, -6.7, -0.3], [58, 8.4, 0.18]] as const) {
+    for (const [x, z, rot] of [[-23, 12.8, 0.25], [39, -6.7, -0.3], [58, 12.6, 0.18]] as const) {
       const log = voxelMesh([
         { w: 1.8, h: 0.42, d: 0.48, x: 0, y: 0.28, z: 0, color: 0x9a7653 },
         { w: 0.12, h: 0.44, d: 0.5, x: -0.9, y: 0.28, z: 0, color: 0xe2c79e },

@@ -53,8 +53,8 @@ export function createWaterPlane(w: number, d: number, material: THREE.Material 
   return m;
 }
 
-const foamMaterial = new THREE.MeshBasicMaterial({
-  color: 0xf4fbf6, transparent: true, opacity: 0.55, depthWrite: false, toneMapped: false,
+const foamMaterial = new THREE.MeshStandardMaterial({
+  color: 0xf4fbf6, roughness: 0.6, transparent: true, opacity: 0.55, depthWrite: false,
 });
 
 /** An irregular rounded pond with a soft foam edge and scattered rim stones. */
