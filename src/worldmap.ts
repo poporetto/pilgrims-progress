@@ -270,11 +270,21 @@ export class WorldMap {
       grad.addColorStop(0, '#fffaf1');
       grad.addColorStop(1, '#f7ebdc');
       c.fillStyle = grad;
+      // one continuous outline — the pointer is part of the bubble itself
+      const right = left + w; const bottom = top + h;
       c.beginPath();
-      c.roundRect(left, top, w, h, r);
-      c.moveTo(cx - 26, top + h - 1);
-      c.lineTo(cx, top + h + 34);
-      c.lineTo(cx + 26, top + h - 1);
+      c.moveTo(left + r, top);
+      c.lineTo(right - r, top);
+      c.arcTo(right, top, right, top + r, r);
+      c.lineTo(right, bottom - r);
+      c.arcTo(right, bottom, right - r, bottom, r);
+      c.lineTo(cx + 28, bottom);
+      c.quadraticCurveTo(cx + 8, bottom + 2, cx, bottom + 32);
+      c.quadraticCurveTo(cx - 8, bottom + 2, cx - 28, bottom);
+      c.lineTo(left + r, bottom);
+      c.arcTo(left, bottom, left, bottom - r, r);
+      c.lineTo(left, top + r);
+      c.arcTo(left, top, left + r, top, r);
       c.closePath();
       c.fill();
       c.restore();

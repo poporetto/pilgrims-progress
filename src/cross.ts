@@ -41,7 +41,7 @@ const HILL_R = 16;      // hill radius — wide gentle mound
 const HILL_PEAK = 6;    // hill height at the summit
 const CROSS_TRIGGER = -1.2; // walking past here starts the scene
 // the tomb sits just below the summit, clear of the hill
-const TOMB = new THREE.Vector3(9.0, 0, -1.5);
+const TOMB = new THREE.Vector3(9.0, 0, -4.6); // set back off the paved path (|z| < 1.6)
 const LIGHT_X = 36;
 
 export class CrossScene {
@@ -261,7 +261,7 @@ export class CrossScene {
     });
     // the tomb is hewn into the hillside: mossy boulders hug its sides
     for (let k = 0; k < 6; k++) {
-      const a = -0.6 + k * 0.55;
+      const a = -1.9 + k * 0.46; // behind and east of the tomb: clear of the path and doorway
       const rx = TOMB.x + 0.6 + Math.cos(a) * 2.2;
       const rz = TOMB.z + Math.sin(a) * 2.0;
       const rock = createRock({ seed: 560 + k, size: 0.7 + (k % 3) * 0.2, moss: k % 2 === 0, color: 0xc4bfb6 });
@@ -359,6 +359,12 @@ export class CrossScene {
     // cross collision: the cross is at (0, gy, -2.2), base about 1.5 wide
     if (Math.abs(p.x) < 1.5 && p.z < -1.3 && p.z > -3.5) {
       p.z = -1.3;
+    }
+    // the tomb is solid: walk around it, never through it
+    const tx = p.x - TOMB.x; const tz = p.z - TOMB.z;
+    if (Math.abs(tx) < 1.9 && Math.abs(tz) < 1.7) {
+      if (1.9 - Math.abs(tx) < 1.7 - Math.abs(tz)) p.x = TOMB.x + Math.sign(tx || 1) * 1.9;
+      else p.z = TOMB.z + Math.sign(tz || 1) * 1.7;
     }
 
     if (this.revisit || this.phase === 'done') {
@@ -487,6 +493,17 @@ export class CrossScene {
             new THREE.Vector3(p.x, 0, p.z - 3.2),
             new THREE.Vector3(p.x + 2.2, 0, p.z - 2.0),
           ];
+          // never land inside the Cross (at x 0, z -2.2): step any angel whose
+          // spot is too close out to a clear radius around its base
+          for (const tg of this.angelTargets) {
+            const dx = tg.x; const dz = tg.z + 2.2;
+            const d = Math.hypot(dx, dz);
+            const CLEAR = 2.0;
+            if (d < CLEAR) {
+              const ax = d > 0.01 ? dx / d : 1; const az = d > 0.01 ? dz / d : 0;
+              tg.x = ax * CLEAR; tg.z = -2.2 + az * CLEAR;
+            }
+          }
           this.angels.forEach((a, i) => {
             const tg = this.angelTargets[i];
             a.root.position.set(tg.x, this.groundY(tg.x, tg.z) + 9, tg.z);
