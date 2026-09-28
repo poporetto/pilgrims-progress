@@ -1910,21 +1910,32 @@ function showDialogueText(text: string): void {
   }
   dialogueTyping = true;
   ui.dialogue.classList.add('is-typing');
-  // Lay out the whole line up front with the unrevealed part invisible, so the
-  // bubble is its final height from the first letter and words never jump
-  // to the next line mid-type.
-  const shown = document.createElement('span');
-  const ghost = document.createElement('span');
-  ghost.className = 'type-ghost';
-  ghost.textContent = text;
-  ui.dialogueText.replaceChildren(shown, ghost);
+  // Lay out the whole formatted line up front (bold story names included)
+  // with every letter hidden, then reveal letters in order. The bubble is its
+  // final height from the first letter, words never jump to the next line,
+  // and names are bold from the moment they appear.
+  renderDialogueText(text);
+  const letters: HTMLElement[] = [];
+  const walker = document.createTreeWalker(ui.dialogueText, NodeFilter.SHOW_TEXT);
+  const textNodes: Text[] = [];
+  for (let n = walker.nextNode(); n; n = walker.nextNode()) textNodes.push(n as Text);
+  for (const node of textNodes) {
+    const frag = document.createDocumentFragment();
+    for (const ch of node.data) {
+      const span = document.createElement('span');
+      span.className = 'type-ghost';
+      span.textContent = ch;
+      frag.append(span);
+      letters.push(span);
+    }
+    node.replaceWith(frag);
+  }
   let visibleCharacters = 0;
   const interval = gameSettings.textSpeed === 'storybook' ? 34 : 19;
   dialogueTypingTimer = window.setInterval(() => {
+    letters[visibleCharacters]?.classList.remove('type-ghost');
     visibleCharacters += 1;
-    shown.textContent = text.slice(0, visibleCharacters);
-    ghost.textContent = text.slice(visibleCharacters);
-    if (visibleCharacters >= text.length) stopDialogueTyping(true);
+    if (visibleCharacters >= letters.length) stopDialogueTyping(true);
   }, interval);
 }
 
