@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <meta charset="UTF-8" />
   <!-- Google tag (gtag.js) -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-Q0PV6NF7PC"></script>
   <script>
@@ -11,10 +12,11 @@
     gtag('config', 'G-Q0PV6NF7PC');
   </script>
   <link rel="icon" type="image/svg+xml" href="./favicon.svg">
-  <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <title>Pilgrim's Progress — City of Destruction</title>
-  <meta name="description" content="A cosy storybook adventure from the City of Destruction to the Celestial City — John Bunyan's classic, retold for young pilgrims.">
+  <title>Pilgrim's Progress — A Cosy Storybook Adventure Game</title>
+  <meta name="description" content="Play John Bunyan's Pilgrim's Progress as a free, cosy 3D storybook game. Walk with Christian from the City of Destruction to the Celestial City.">
+  <meta name="robots" content="index, follow, max-image-preview:large">
+  <meta name="author" content="Poporetto">
   <meta name="theme-color" content="#cfe8ff">
   <!-- home screen (iOS + Android) -->
   <link rel="manifest" href="./manifest.webmanifest">
@@ -25,8 +27,9 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <!-- link previews (Facebook, WhatsApp, iMessage, X…) -->
   <meta property="og:type" content="website">
-  <meta property="og:title" content="Pilgrim's Progress">
-  <meta property="og:description" content="A cosy storybook adventure from the City of Destruction to the Celestial City.">
+  <meta property="og:title" content="Pilgrim's Progress — A Cosy Storybook Adventure Game">
+  <meta property="og:description" content="Walk with Christian from the City of Destruction to the Celestial City in this free, cosy 3D retelling of John Bunyan's classic.">
+  <meta property="og:locale" content="en_AU">
   <meta property="og:url" content="https://pilgrimsprogress.com.au/">
   <meta property="og:site_name" content="Pilgrim's Progress">
   <meta property="og:image" content="https://pilgrimsprogress.com.au/og-image.png">
@@ -34,8 +37,29 @@
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
   <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Pilgrim's Progress — A Cosy Storybook Adventure Game">
+  <meta name="twitter:description" content="Walk with Christian from the City of Destruction to the Celestial City in this free, cosy 3D retelling of John Bunyan's classic.">
   <meta name="twitter:image" content="https://pilgrimsprogress.com.au/og-image.png">
   <link rel="canonical" href="https://pilgrimsprogress.com.au/">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "VideoGame",
+    "name": "Pilgrim's Progress",
+    "alternateName": "The Pilgrim's Progress — storybook adventure",
+    "url": "https://pilgrimsprogress.com.au/",
+    "description": "A free, cosy 3D storybook adventure based on John Bunyan's The Pilgrim's Progress. Walk with Christian through 17 chapters, from the City of Destruction to the Celestial City.",
+    "image": "https://pilgrimsprogress.com.au/og-image.png",
+    "genre": ["Adventure", "Educational", "Family"],
+    "gamePlatform": ["Web browser", "iOS", "Android"],
+    "applicationCategory": "Game",
+    "operatingSystem": "Any (web browser)",
+    "inLanguage": "en",
+    "isBasedOn": { "@type": "Book", "name": "The Pilgrim's Progress", "author": { "@type": "Person", "name": "John Bunyan" } },
+    "author": { "@type": "Person", "name": "Poporetto", "sameAs": ["https://www.instagram.com/tatcomic/"] },
+    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "AUD" }
+  }
+  </script>
   <style>
     :root {
       --ink: #5b4a3f;
@@ -1016,6 +1040,15 @@
   <link rel="stylesheet" crossorigin href="./assets/index-Cg31-Ieu.css">
 </head>
 <body>
+  <noscript>
+    <div style="position:fixed;inset:0;z-index:100;display:grid;place-items:center;padding:24px;background:#fff8ef;color:#5b4a3f;font-family:Georgia,serif;text-align:center;overflow:auto">
+      <div style="max-width:520px">
+        <h1>Pilgrim’s Progress</h1>
+        <p style="margin-top:14px;line-height:1.6">A cosy storybook adventure game based on John Bunyan’s classic. Walk with Christian, a burdened bear, from the City of Destruction through the Slough of Despond, Vanity Fair and the Delectable Mountains to the Celestial City.</p>
+        <p style="margin-top:14px;line-height:1.6">Please turn on JavaScript in your browser to play.</p>
+      </div>
+    </div>
+  </noscript>
   <div id="app"></div>
 
   <div id="objective">Say goodbye, then find Evangelist</div>
