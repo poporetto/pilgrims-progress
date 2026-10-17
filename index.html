@@ -177,6 +177,26 @@
     }
     .settings-row strong { display: block; font-size: 15px; color: #654f42; }
     .settings-row small { display: block; margin-top: 2px; color: #907e72; font-size: 11px; }
+    .a2hs-icon { color: #7a5a8a; background: #f1e6f7; }
+    .a2hs-icon svg { width: 21px; height: 21px; }
+    .a2hs-btn {
+      flex: 0 0 auto; min-width: 74px; min-height: 38px; padding: 0 16px;
+      border: 2px solid #efb3c3; border-radius: 999px; cursor: pointer;
+      background: linear-gradient(180deg, #fbd3dd, #f4b6c6); color: #8a3450;
+      font: 900 14px/1 inherit; box-shadow: 0 3px 0 #e59fb2;
+      transition: transform .18s ease, box-shadow .18s ease;
+    }
+    .a2hs-btn:hover { transform: translateY(-1px); box-shadow: 0 4px 0 #e59fb2; }
+    .a2hs-btn:active { transform: translateY(2px); box-shadow: 0 1px 0 #e59fb2; }
+    .a2hs-btn:disabled { opacity: .6; cursor: default; transform: none; box-shadow: none; }
+    .a2hs-help {
+      margin-top: -4px; padding: 12px 15px; border: 2px dashed #e7c9d6; border-radius: 16px;
+      background: #fff7fa; color: #76675e; font-size: 12.5px; line-height: 1.55;
+    }
+    .a2hs-help strong { display: block; color: #8a3450; font-size: 13px; margin-bottom: 4px; }
+    .a2hs-help ol { margin: 0; padding-left: 20px; }
+    .a2hs-help li { margin: 2px 0; }
+    .a2hs-help .share-glyph { display: inline-block; width: 15px; height: 15px; vertical-align: -2px; color: #3a7bd5; }
     .pastel-toggle {
       position: relative; flex: 0 0 auto; width: 62px; height: 34px;
       border: 0; border-radius: 999px; padding: 0; cursor: pointer;
@@ -1055,6 +1075,19 @@
         <div class="settings-row">
           <div class="settings-row-copy"><span class="settings-row-icon" aria-hidden="true">A+</span><span><strong>Larger dialogue</strong><small>Increase story text size</small></span></div>
           <button id="large-text-toggle" class="pastel-toggle" role="switch" aria-checked="false" aria-label="Larger dialogue off"></button>
+        </div>
+        <div class="settings-row a2hs-row" id="a2hs-row">
+          <div class="settings-row-copy">
+            <span class="settings-row-icon a2hs-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11.5 12 5l8 6.5"/><path d="M6 10v9h12v-9"/><path d="M12 12v5M9.5 14.5h5"/></svg>
+            </span>
+            <span><strong>Add to Home Screen</strong><small id="a2hs-sub">Play it like an app, right from your phone</small></span>
+          </div>
+          <button id="a2hs-btn" class="a2hs-btn" type="button">Add</button>
+        </div>
+        <div class="a2hs-help" id="a2hs-help" hidden>
+          <strong id="a2hs-help-title">On iPhone or iPad</strong>
+          <ol id="a2hs-steps"></ol>
         </div>
         <button id="reset-save-btn" class="settings-danger">Reset saved journey</button>
       </div>
