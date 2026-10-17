@@ -1,5 +1,6 @@
 import { inject as injectAnalytics } from '@vercel/analytics';
 import { setupInstallButton, registerServiceWorker } from './ui/install';
+import { preventMobileZoom } from './ui/noZoom';
 import * as THREE from 'three';
 import { PALETTE } from './palette';
 import { makeBear, animateBear, block, mat, liveBears, BearParts } from './bear';
@@ -37,6 +38,7 @@ import { getDialogueCharacterNames, getDialoguePortrait, preloadAllPortraits } f
 if (location.hostname.endsWith('.vercel.app')) injectAnalytics();
 setupInstallButton();
 registerServiceWorker();
+preventMobileZoom();
 
 // Warm the portrait image cache in the background once the browser is idle,
 // so dialogue portraits are already downloaded before any character speaks
