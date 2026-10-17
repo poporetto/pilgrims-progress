@@ -32,7 +32,8 @@ import { getDialogueCharacterNames, getDialoguePortrait, preloadAllPortraits } f
 
 // Vercel Analytics (vanilla/no-framework integration — this is a plain
 // Vite + TS app, not Next.js). No-ops harmlessly when not served from Vercel.
-injectAnalytics();
+// Vercel Analytics only exists on Vercel hosting; elsewhere its script 404s
+if (location.hostname.endsWith('.vercel.app')) injectAnalytics();
 
 // Warm the portrait image cache in the background once the browser is idle,
 // so dialogue portraits are already downloaded before any character speaks
