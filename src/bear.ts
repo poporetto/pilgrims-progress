@@ -456,15 +456,16 @@ function buildBear(opts: CharacterOptions = {}): BearParts {
     // fur pokes through and the coplanar faces flicker
     // shell top must clear body top (body: h=0.78 at y=0.4 → top=0.79)
     body.add(block(opts.plump ? 1.12 : 0.98, opts.plump ? 0.54 : 0.52, opts.plump ? 0.82 : 0.74, oc, 0, opts.plump ? 0.53 : 0.52, 0));
-    // sleeves on the upper arms
-    armL.add(block(0.32, 0.28, 0.4, oc, 0, -0.1, 0));
-    armR.add(block(0.32, 0.28, 0.4, oc, 0, -0.1, 0));
+    // sleeves on the upper arms; every sleeve tops out at y 0.12, well clear of
+    // the arm itself (top y 0.055), or the fur pokes through at the shoulder
+    armL.add(block(0.32, 0.36, 0.4, oc, 0, -0.06, 0));
+    armR.add(block(0.32, 0.36, 0.4, oc, 0, -0.06, 0));
   } else if (outfit === 'dress') {
     body.add(block(1.0, 0.5, 0.68, oc, 0, 0.12, 0));
     body.add(block(0.96, 0.4, 0.7, oc, 0, 0.52, 0));
     body.add(block(0.5, 0.16, 0.06, 0xffffff, 0, 0.68, 0.34)); // collar
-    armL.add(block(0.32, 0.24, 0.36, oc, 0, -0.08, 0));
-    armR.add(block(0.32, 0.24, 0.36, oc, 0, -0.08, 0));
+    armL.add(block(0.32, 0.32, 0.36, oc, 0, -0.04, 0));
+    armR.add(block(0.32, 0.32, 0.36, oc, 0, -0.04, 0));
   } else if (outfit === 'gown') {
     // One connected, modest dress: a single A-line shell from the neck to about
     // the knee (no waist seam), with long sleeves and a white collar.
@@ -487,8 +488,8 @@ function buildBear(opts: CharacterOptions = {}): BearParts {
     for (const arm of [armL, armR]) arm.add(block(0.32, 0.46, 0.38, oc, 0, -0.14, 0));
   } else if (outfit === 'apron') {
     body.add(block(0.98, 0.5, 0.7, 0xfaf3e3, 0, 0.5, 0)); // shirt under the apron
-    armL.add(block(0.32, 0.26, 0.36, 0xfaf3e3, 0, -0.1, 0));
-    armR.add(block(0.32, 0.26, 0.36, 0xfaf3e3, 0, -0.1, 0));
+    armL.add(block(0.32, 0.36, 0.36, 0xfaf3e3, 0, -0.05, 0));
+    armR.add(block(0.32, 0.36, 0.36, 0xfaf3e3, 0, -0.05, 0));
     body.add(block(0.62, 0.6, 0.08, oc, 0, 0.32, 0.32));
     body.add(block(0.3, 0.14, 0.06, oc, 0, 0.68, 0.34)); // bib strap
   } else if (outfit === 'overalls') {
@@ -499,8 +500,8 @@ function buildBear(opts: CharacterOptions = {}): BearParts {
   } else if (outfit === 'robe') {
     body.add(block(1.02, 0.9, 0.7, oc, 0, 0.36, 0));
     body.add(block(0.3, 0.1, 0.06, PALETTE.robeGold, 0, 0.66, 0.34)); // clasp
-    armL.add(block(0.34, 0.4, 0.38, oc, 0, -0.14, 0));
-    armR.add(block(0.34, 0.4, 0.38, oc, 0, -0.14, 0));
+    armL.add(block(0.34, 0.46, 0.38, oc, 0, -0.11, 0));
+    armR.add(block(0.34, 0.46, 0.38, oc, 0, -0.11, 0));
     if (species === 'owl') {
       // Low stepped cowl from the portrait, clear of the head and feather tufts.
       body.add(block(1.12, 0.2, 0.74, oc, 0, 0.82, 0));
