@@ -2,6 +2,7 @@
 // chapter and every animated episode. Opened from the title screen, Settings,
 // the chapter-complete card and the finale. Its text loads on first use.
 import type { Guide } from '../guides/chapters';
+import { CHAPTER_SLUGS, videoForChapter, videoForEpisode, watchUrl } from '../guides/videos';
 import './familyGuide.css';
 
 type Kind = 'chapters' | 'episodes';
@@ -109,6 +110,18 @@ async function showGuide(kind: Kind, i: number): Promise<void> {
   });
   const dl = el('dl');
   for (const [name, text] of g.meaning) dl.append(el('dt', '', name), el('dd', '', text));
+  const video = kind === 'chapters' ? videoForChapter(i + 1) : videoForEpisode(i + 1);
+  const links = el('div', 'fg-links');
+  const link = (href: string, text: string): void => {
+    const a = el('a', '', text);
+    a.href = href;
+    a.target = '_blank';
+    a.rel = 'noopener';
+    links.append(a);
+  };
+  if (video) link(watchUrl(video), kind === 'chapters' ? `Watch Episode ${video.episode}` : 'Watch on YouTube');
+  if (kind === 'chapters') link(`./family-guide/${CHAPTER_SLUGS[i]}/`, 'Open as a page');
+  else if (video) link(`./episodes/${video.slug}/`, 'Open as a page');
   const nav = el('div', 'fg-nav');
   const step = (to: number, text: string): void => {
     if (!lib[kind][to]) return;
@@ -124,6 +137,7 @@ async function showGuide(kind: Kind, i: number): Promise<void> {
     el('p', 'fg-kicker', label(kind, i)),
     el('h2', '', g.title),
     el('p', 'fg-story', g.story),
+    links,
     section('The big idea', idea),
     section('From the Bible', ...verses),
     section('What it means', dl),

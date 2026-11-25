@@ -1,8 +1,26 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url>
-    <loc>https://pilgrimsprogress.com.au/</loc>
-    <changefreq>monthly</changefreq>
-    <priority>1.0</priority>
-  </url>
+  <url><loc>https://pilgrimsprogress.com.au/</loc></url>
+  <url><loc>https://pilgrimsprogress.com.au/family-guide/</loc></url>
+  <url><loc>https://pilgrimsprogress.com.au/episodes/</loc></url>
+  <url><loc>https://pilgrimsprogress.com.au/family-guide/city-of-destruction/</loc></url>
+  <url><loc>https://pilgrimsprogress.com.au/family-guide/slough-of-despond/</loc></url>
+  <url><loc>https://pilgrimsprogress.com.au/family-guide/worldly-wiseman-and-mount-sinai/</loc></url>
+  <url><loc>https://pilgrimsprogress.com.au/family-guide/wicket-gate-and-the-interpreter/</loc></url>
+  <url><loc>https://pilgrimsprogress.com.au/family-guide/the-cross/</loc></url>
+  <url><loc>https://pilgrimsprogress.com.au/family-guide/the-kings-highway/</loc></url>
+  <url><loc>https://pilgrimsprogress.com.au/family-guide/hill-difficulty/</loc></url>
+  <url><loc>https://pilgrimsprogress.com.au/family-guide/palace-beautiful/</loc></url>
+  <url><loc>https://pilgrimsprogress.com.au/family-guide/valley-of-humiliation/</loc></url>
+  <url><loc>https://pilgrimsprogress.com.au/family-guide/shadow-of-death/</loc></url>
+  <url><loc>https://pilgrimsprogress.com.au/family-guide/vanity-fair/</loc></url>
+  <url><loc>https://pilgrimsprogress.com.au/family-guide/hill-lucre/</loc></url>
+  <url><loc>https://pilgrimsprogress.com.au/family-guide/doubting-castle/</loc></url>
+  <url><loc>https://pilgrimsprogress.com.au/family-guide/delectable-mountains/</loc></url>
+  <url><loc>https://pilgrimsprogress.com.au/family-guide/enchanted-ground/</loc></url>
+  <url><loc>https://pilgrimsprogress.com.au/family-guide/beulah-land/</loc></url>
+  <url><loc>https://pilgrimsprogress.com.au/family-guide/the-celestial-city/</loc></url>
+  <url><loc>https://pilgrimsprogress.com.au/episodes/the-heavy-burden/</loc></url>
+  <url><loc>https://pilgrimsprogress.com.au/episodes/the-slough-of-despond/</loc></url>
+  <url><loc>https://pilgrimsprogress.com.au/episodes/the-mountain-of-fire/</loc></url>
 </urlset>
