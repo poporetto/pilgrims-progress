@@ -1,0 +1,4 @@
+---
+deployment:
+  tasks:
+    - /bin/cp -R docs/. $HOME/pilgrimsprogress.com.au/
