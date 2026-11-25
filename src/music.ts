@@ -142,6 +142,9 @@ export class Music {
   private musicVolume = 0.5;
   private sfxVolume = 0.72;
   enabled = true;
+  /** set by the film renderer to place sound effects on its own timeline */
+  private nowOverride: number | null = null;
+  private now(): number { return this.nowOverride ?? this.ctx!.currentTime; }
 
   start(): void {
     if (this.ctx) {
@@ -232,7 +235,7 @@ export class Music {
   // one-shot cute blip for UI (dialogue advance)
   blip(): void {
     if (!this.ctx || !this.sfxBus || !this.enabled) return;
-    const t = this.ctx.currentTime;
+    const t = this.now();
     const osc = this.ctx.createOscillator();
     const g = this.ctx.createGain();
     osc.type = 'sine';
@@ -248,7 +251,7 @@ export class Music {
   // muddy splash for the slough
   splash(): void {
     if (!this.ctx || !this.sfxBus || !this.enabled || !this.noiseBuf) return;
-    const t = this.ctx.currentTime;
+    const t = this.now();
     const src = this.ctx.createBufferSource();
     src.buffer = this.noiseBuf;
     const f = this.ctx.createBiquadFilter();
@@ -265,7 +268,7 @@ export class Music {
   // deep mountain rumble for Mount Sinai's fire and thunder
   rumble(): void {
     if (!this.ctx || !this.sfxBus || !this.enabled || !this.noiseBuf) return;
-    const t = this.ctx.currentTime;
+    const t = this.now();
     const src = this.ctx.createBufferSource();
     src.buffer = this.noiseBuf;
     const f = this.ctx.createBiquadFilter();
@@ -470,4 +473,144 @@ export class Music {
       this.bass(t0, chord[0] / 2, 0.1, 0.7);
     }
   }
+
+  // ------------------------------------------------------------ film render
+
+  /**
+   * Renders a whole film soundtrack offline, on the exact timeline the
+   * recorder logged: when the music started, every mood change, every sound
+   * effect, and each dialogue line (voiced with little sung syllables that
+   * follow the typewriter, one voice per character).
+   */
+  static async renderFilm(cues: FilmCue[], duration: number, sampleRate = 48000): Promise<AudioBuffer> {
+    const ctx = new OfflineAudioContext(2, Math.ceil(duration * sampleRate), sampleRate);
+    const m = new Music();
+    m.ctx = ctx as unknown as AudioContext;
+    m.master = ctx.createGain();
+    m.musicBus = ctx.createGain();
+    m.sfxBus = ctx.createGain();
+    const voiceBus = ctx.createGain();
+    voiceBus.gain.value = 0.9;
+    m.master.gain.value = 1;
+    m.sfxBus.gain.value = m.sfxVolume;
+    m.musicBus.connect(m.master);
+    m.sfxBus.connect(m.master);
+    voiceBus.connect(m.master);
+    m.master.connect(ctx.destination);
+    const len = ctx.sampleRate * 0.25;
+    m.noiseBuf = ctx.createBuffer(1, len, ctx.sampleRate);
+    const nd = m.noiseBuf.getChannelData(0);
+    for (let i = 0; i < len; i++) nd[i] = Math.random() * 2 - 1;
+
+    // ---- music: segments between mood changes, with the game's crossfades
+    const start = cues.find((c) => c.kind === 'start');
+    const vol = m.musicVolume;
+    const g = m.musicBus.gain;
+    g.setValueAtTime(0.0001, 0);
+    if (start) {
+      let style: MusicStyle = 'village';
+      let from = start.t + 0.1;
+      g.setValueAtTime(vol, start.t);
+      const changes = cues.filter((c) => c.kind === 'style' && c.t >= start.t && c.style);
+      const segs: Array<{ style: MusicStyle; from: number; to: number }> = [];
+      for (const c of changes) {
+        if (c.style === style) continue;
+        const leavingMap = style === 'map';
+        const fadeOut = leavingMap ? 0.35 : 1.4;
+        const hold = leavingMap ? 0.38 : 1.5;
+        const fadeIn = leavingMap ? 0.9 : 2.0;
+        const sw = c.t + hold;
+        segs.push({ style, from, to: sw });
+        g.setValueAtTime(vol, c.t);
+        g.linearRampToValueAtTime(0.0001, c.t + fadeOut);
+        g.setValueAtTime(0.0001, sw);
+        g.linearRampToValueAtTime(vol, sw + fadeIn);
+        style = c.style!;
+        from = sw + 0.15;
+      }
+      segs.push({ style, from, to: duration });
+      for (const sg of segs) {
+        m.style = sg.style;
+        let bar = 0;
+        for (let t = sg.from; t < sg.to; t += m.barLen()) m.scheduleBar(t, bar++);
+      }
+    }
+
+    // ---- sound effects at their logged moments
+    for (const c of cues) {
+      if (c.kind !== 'blip' && c.kind !== 'splash' && c.kind !== 'rumble') continue;
+      m.nowOverride = c.t;
+      m[c.kind]();
+    }
+    m.nowOverride = null;
+
+    // ---- voices: a soft sung syllable on every other typed letter
+    for (const c of cues) {
+      if (c.kind !== 'line' || !c.text || !c.speaker) continue;
+      const base = voicePitch(c.speaker);
+      const chars = [...c.text];
+      const step = c.charMs ?? 34;
+      const shout = /!/.test(c.text);
+      let n = 0;
+      for (let i = 0; i < chars.length; i++) {
+        const ch = chars[i].toLowerCase();
+        if (!/[a-z]/.test(ch)) continue;
+        if (n++ % 2) continue;
+        const t = c.t + (i * step) / 1000;
+        const end = i > chars.length - 6 && /\?\s*$/.test(c.text) ? 1.12 : 1;
+        syllable(ctx, voiceBus, t, base * end * (0.96 + ((ch.charCodeAt(0) * 37) % 9) / 100), ch, shout ? 0.15 : 0.12);
+      }
+    }
+    return ctx.startRendering();
+  }
+}
+
+export interface FilmCue {
+  t: number;
+  kind: 'start' | 'style' | 'blip' | 'splash' | 'rumble' | 'line';
+  style?: MusicStyle;
+  speaker?: string;
+  text?: string;
+  charMs?: number;
+}
+
+// Each speaker gets a stable voice pitch; known characters are hand-picked.
+const VOICE_PITCH: Record<string, number> = {
+  christian: 175, christiana: 290, obstinate: 120, pliable: 330,
+  evangelist: 150, help: 160, faithful: 190, hopeful: 230,
+};
+function voicePitch(speaker: string): number {
+  const k = speaker.toLowerCase().replace(/[^a-z]/g, '');
+  if (VOICE_PITCH[k]) return VOICE_PITCH[k];
+  let h = 0;
+  for (const ch of k) h = (h * 31 + ch.charCodeAt(0)) % 997;
+  return 150 + (h % 180); // 150–330 Hz
+}
+
+// vowel-ish formants give each syllable a soft "ba / mi / lo" colour
+const FORMANT: Record<string, number> = { a: 900, e: 620, i: 380, o: 560, u: 420, y: 400 };
+function syllable(ctx: BaseAudioContext, out: AudioNode, t: number, f0: number, ch: string, vol: number): void {
+  const formant = FORMANT[ch] ?? 650 + ((ch.charCodeAt(0) * 53) % 700);
+  const osc = ctx.createOscillator();
+  osc.type = 'triangle';
+  osc.frequency.setValueAtTime(f0 * 1.04, t);
+  osc.frequency.exponentialRampToValueAtTime(f0, t + 0.05);
+  const o2 = ctx.createOscillator();
+  o2.type = 'sine';
+  o2.frequency.setValueAtTime(f0 * 2, t);
+  const bp = ctx.createBiquadFilter();
+  bp.type = 'bandpass';
+  bp.frequency.value = formant;
+  bp.Q.value = 1.1;
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(vol, t + 0.008);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.075);
+  const g2 = ctx.createGain();
+  g2.gain.value = 0.35;
+  osc.connect(bp);
+  o2.connect(g2).connect(bp);
+  bp.connect(g).connect(out);
+  osc.start(t); o2.start(t);
+  osc.stop(t + 0.09); o2.stop(t + 0.09);
 }

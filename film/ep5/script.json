@@ -1,0 +1,313 @@
+{
+  "title": "Pilgrim's Progress",
+  "episode": "Episode 5 — The Interpreter's House",
+  "cast": {
+    "Narrator": {
+      "voice": "bm_lewis",
+      "speed": 0.95,
+      "fish": {
+        "reference_id": "8906b5268cae414fb9b8d3da6e84413d",
+        "title": "Measured Storyteller",
+        "tag": ""
+      },
+      "chatterbox": {
+        "exaggeration": 0.6
+      }
+    },
+    "Christian": {
+      "voice": "am_fenrir",
+      "speed": 0.98,
+      "fish": {
+        "reference_id": "5c8dc6a69c0b4edfb32634db6384bf34",
+        "title": "Warm Storyteller",
+        "tag": ""
+      },
+      "chatterbox": {
+        "exaggeration": 0.65
+      }
+    },
+    "Interpreter": {
+      "voice": "am_santa",
+      "speed": 0.92,
+      "chatterbox": {
+        "exaggeration": 0.65
+      }
+    },
+    "Passion": {
+      "voice": "am_puck",
+      "speed": 1.05,
+      "pitch": 1.25,
+      "chatterbox": {
+        "exaggeration": 1.0
+      }
+    },
+    "Patience": {
+      "voice": "af_nicole",
+      "speed": 0.95,
+      "pitch": 1.2,
+      "chatterbox": {
+        "exaggeration": 0.55
+      }
+    }
+  },
+  "beats": [
+    {
+      "id": "title",
+      "pause": 4.5
+    },
+    {
+      "id": "establish",
+      "pause": 1.2
+    },
+    {
+      "id": "n1",
+      "speaker": "Narrator",
+      "text": "A little way along the King's Highway stood a warm cottage, with smoke curling from its chimney. It was the House of the Interpreter.",
+      "emo": 0.7
+    },
+    {
+      "id": "i1",
+      "speaker": "Interpreter",
+      "text": "Christian! Goodwill sent word you'd be coming. Come in, come in — I have things to show you that will help you greatly on your journey.",
+      "say": "Christian! Goodwill sent word you'd be coming. Come in, come in! I have things to show you that will help you greatly on your journey.",
+      "face": "happy",
+      "react": {
+        "Christian": "happy"
+      },
+      "emo": 0.85
+    },
+    {
+      "id": "c1",
+      "speaker": "Christian",
+      "text": "Gladly, sir. I have long wished for someone who could make plain the things I only half understand.",
+      "face": "happy",
+      "react": {
+        "Interpreter": "happy"
+      },
+      "emo": 0.75
+    },
+    {
+      "id": "n2",
+      "speaker": "Narrator",
+      "text": "The first room was thick with dust — years and years of it, over every beam and floorboard.",
+      "say": "The first room was thick with dust. Years and years of it, over every beam and floorboard.",
+      "react": {
+        "Christian": "worried"
+      },
+      "emo": 0.7
+    },
+    {
+      "id": "i2",
+      "speaker": "Interpreter",
+      "text": "Sweep it, if you please.",
+      "emo": 0.6
+    },
+    {
+      "id": "sweep",
+      "pause": 2.4
+    },
+    {
+      "id": "c2",
+      "speaker": "Christian",
+      "text": "Enough! Stop, I beg you! I can hardly breathe!",
+      "face": "scared",
+      "emo": 1.15
+    },
+    {
+      "id": "i3",
+      "speaker": "Interpreter",
+      "text": "Now — bring water, and sprinkle the floor before you sweep.",
+      "say": "Now. Bring water, and sprinkle the floor before you sweep.",
+      "emo": 0.65
+    },
+    {
+      "id": "sprinkle",
+      "pause": 2.4
+    },
+    {
+      "id": "i4",
+      "speaker": "Interpreter",
+      "text": "The dust is sin, hidden deep in the heart. The broom is the Law: it stirs sin up and shows it plainly, but it has no power to take it away.",
+      "say": "The dust is sin, hidden deep in the heart. The broom is the Law. It stirs sin up and shows it plainly, but it has no power to take it away.",
+      "face": "worried",
+      "react": {
+        "Christian": "sad"
+      },
+      "emo": 0.7
+    },
+    {
+      "id": "i5",
+      "speaker": "Interpreter",
+      "text": "The water is the Gospel, the good news. Grace alone settles the dust of sin and truly cleanses the heart.",
+      "say": "The water is the Gospel, the good news! Grace alone settles the dust of sin, and truly cleanses the heart.",
+      "face": "happy",
+      "react": {
+        "Christian": "surprised"
+      },
+      "emo": 0.8
+    },
+    {
+      "id": "c3",
+      "speaker": "Christian",
+      "text": "Then the Law can only show me my dirt — never wash it away. Now I see why I could not rest at Mount Sinai.",
+      "say": "Then the Law can only show me my dirt, never wash it away. Now I see why I could not rest at Mount Sinai.",
+      "face": "surprised",
+      "emo": 0.8
+    },
+    {
+      "id": "n3",
+      "speaker": "Narrator",
+      "text": "In the next room sat two little bears, side by side. But nothing else about them was alike."
+    },
+    {
+      "id": "i6",
+      "speaker": "Interpreter",
+      "text": "This one is named Passion. And that one, Patience.",
+      "react": {
+        "Christian": "happy"
+      },
+      "emo": 0.65
+    },
+    {
+      "id": "pa1",
+      "speaker": "Passion",
+      "text": "Mine! All of it, NOW! Why should I wait for anything, when I can have it all today?",
+      "say": "Mine! All of it, now! Why should I wait for anything, when I can have it all today?",
+      "face": "angry",
+      "react": {
+        "Christian": "surprised",
+        "Patience": "worried"
+      },
+      "emo": 1.15
+    },
+    {
+      "id": "n4",
+      "speaker": "Narrator",
+      "text": "So Passion was given all his treasures at once. But in no time at all, he had spilled and broken and wasted every bit of it.",
+      "react": {
+        "Christian": "worried"
+      },
+      "emo": 0.75
+    },
+    {
+      "id": "ruin",
+      "pause": 1.4
+    },
+    {
+      "id": "pt1",
+      "speaker": "Patience",
+      "text": "I'd rather wait and have something that lasts, than grab at what falls apart in my hands.",
+      "face": "happy",
+      "react": {
+        "Passion": "sad"
+      },
+      "emo": 0.6
+    },
+    {
+      "id": "c4",
+      "speaker": "Christian",
+      "text": "Poor foolish thing. Will he never have any more?",
+      "face": "sad",
+      "react": {
+        "Passion": "sad"
+      },
+      "emo": 0.8
+    },
+    {
+      "id": "i7",
+      "speaker": "Interpreter",
+      "text": "Not until the appointed time. By then, Patience will have riches that never rust or fade away — while Passion has nothing left at all.",
+      "say": "Not until the appointed time. By then, Patience will have riches that never rust, or fade away. While Passion has nothing left at all.",
+      "face": "determined",
+      "react": {
+        "Passion": "sad",
+        "Patience": "happy"
+      },
+      "emo": 0.7
+    },
+    {
+      "id": "c5",
+      "speaker": "Christian",
+      "text": "Better to wait for treasure that lasts, than grab a joy that crumbles in the hand.",
+      "face": "happy",
+      "emo": 0.75
+    },
+    {
+      "id": "n5",
+      "speaker": "Narrator",
+      "text": "In the third room, a fire burned against the wall. And someone kept pouring water on it, again and again.",
+      "react": {
+        "Christian": "surprised"
+      },
+      "emo": 0.7
+    },
+    {
+      "id": "c6",
+      "speaker": "Christian",
+      "text": "Strange! The more he pours, the higher it burns! Why does it not go out?",
+      "face": "surprised",
+      "emo": 0.95
+    },
+    {
+      "id": "i8",
+      "speaker": "Interpreter",
+      "text": "Come round to the other side, and see.",
+      "face": "happy",
+      "emo": 0.65
+    },
+    {
+      "id": "round",
+      "pause": 1.8
+    },
+    {
+      "id": "n6",
+      "speaker": "Narrator",
+      "text": "Behind the wall, another hand was secretly pouring oil into the fire — steadily, and without ever stopping.",
+      "say": "Behind the wall, another hand was secretly pouring oil into the fire. Steadily, and without ever stopping.",
+      "react": {
+        "Christian": "surprised"
+      },
+      "emo": 0.7
+    },
+    {
+      "id": "i9",
+      "speaker": "Interpreter",
+      "text": "The one with the water is the Devil, always trying to put out the work of grace in the heart. The one with the oil is Christ. He keeps alive what His own hand has begun — even when we cannot see Him.",
+      "say": "The one with the water is the Devil, always trying to put out the work of grace in the heart. The one with the oil is Christ. He keeps alive what his own hand has begun, even when we cannot see him.",
+      "face": "happy",
+      "react": {
+        "Christian": "surprised"
+      },
+      "emo": 0.75
+    },
+    {
+      "id": "c7",
+      "speaker": "Christian",
+      "text": "Then when my faith feels like it's failing, it may be that I just can't see the hand that is still feeding it.",
+      "face": "happy",
+      "react": {
+        "Interpreter": "happy"
+      },
+      "emo": 0.8
+    },
+    {
+      "id": "i10",
+      "speaker": "Interpreter",
+      "text": "Just so, Christian. Just so. Come — there is more to see.",
+      "say": "Just so, Christian. Just so. Come! There is more to see.",
+      "face": "happy",
+      "emo": 0.75
+    },
+    {
+      "id": "n7",
+      "speaker": "Narrator",
+      "text": "And there was more: a brave knight, a man in an iron cage, and a dream that would make Christian tremble…",
+      "say": "And there was more. A brave knight, a man in an iron cage, and a dream that would make Christian tremble...",
+      "emo": 0.8
+    },
+    {
+      "id": "end",
+      "pause": 4.5
+    }
+  ]
+}

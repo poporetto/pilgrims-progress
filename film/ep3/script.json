@@ -1,0 +1,306 @@
+{
+  "title": "Pilgrim's Progress",
+  "episode": "Episode 3 — The Mountain of Fire",
+  "cast": {
+    "Narrator": {
+      "voice": "bm_lewis",
+      "speed": 0.95,
+      "fish": {
+        "reference_id": "8906b5268cae414fb9b8d3da6e84413d",
+        "title": "Measured Storyteller",
+        "tag": ""
+      },
+      "chatterbox": {
+        "exaggeration": 0.6
+      }
+    },
+    "Christian": {
+      "voice": "am_fenrir",
+      "speed": 0.98,
+      "fish": {
+        "reference_id": "5c8dc6a69c0b4edfb32634db6384bf34",
+        "title": "Warm Storyteller",
+        "tag": ""
+      },
+      "chatterbox": {
+        "exaggeration": 0.65
+      }
+    },
+    "Evangelist": {
+      "voice": "bm_lewis",
+      "speed": 0.86,
+      "fish": {
+        "reference_id": "98db2383e6a14132b75a79b565f731ab",
+        "title": "Wise Old Man (British)",
+        "tag": "[calm, kind]"
+      },
+      "chatterbox": {
+        "exaggeration": 0.55
+      }
+    },
+    "Worldly Wiseman": {
+      "voice": "bm_george",
+      "speed": 1.0,
+      "chatterbox": {
+        "exaggeration": 0.7
+      }
+    }
+  },
+  "beats": [
+    {
+      "id": "title",
+      "pause": 4.5
+    },
+    {
+      "id": "establish",
+      "pause": 1.2
+    },
+    {
+      "id": "n1",
+      "speaker": "Narrator",
+      "text": "Christian walked on, still dripping with mud from the Slough. And by the side of the road, a very fine gentleman in a tall black hat was waiting.",
+      "emo": 0.7
+    },
+    {
+      "id": "w1",
+      "speaker": "Worldly Wiseman",
+      "text": "Hello there! You must be Christian from the City of Destruction — the bear with the famous burden!",
+      "say": "Hello there! You must be Christian, from the City of Destruction. The bear with the famous burden!",
+      "face": "happy",
+      "react": {
+        "Christian": "surprised"
+      },
+      "emo": 0.8
+    },
+    {
+      "id": "w2",
+      "speaker": "Christian",
+      "text": "Famous or not, sir, it is heavy. I'm headed for the Wicket Gate — they say I can be rid of it there.",
+      "say": "Famous or not, sir, it is heavy. I'm headed for the Wicket Gate. They say I can be rid of it there.",
+      "face": "sad"
+    },
+    {
+      "id": "w3",
+      "speaker": "Worldly Wiseman",
+      "text": "The Wicket Gate! Dear me. Mud, mountains, lions and worse lie on THAT road. You've already had a taste of the Slough, haven't you?",
+      "say": "The Wicket Gate! Dear me. Mud, mountains, lions and worse lie on that road. You've already had a taste of the Slough, haven't you?",
+      "face": "surprised",
+      "react": {
+        "Christian": "worried"
+      },
+      "emo": 0.85
+    },
+    {
+      "id": "w4",
+      "speaker": "Christian",
+      "text": "…I'm still drying out, if I'm honest.",
+      "say": "I'm still drying out, if I'm honest.",
+      "face": "worried"
+    },
+    {
+      "id": "w5",
+      "speaker": "Worldly Wiseman",
+      "text": "Then listen to a practical bear! In the nearby village of MORALITY lives my good friend Mr. Legality — a master at easing burdens exactly like yours.",
+      "say": "Then listen to a practical bear! In the nearby village of Morality lives my good friend, Mister Legality. A master at easing burdens exactly like yours.",
+      "face": "smug",
+      "emo": 0.8
+    },
+    {
+      "id": "w6",
+      "speaker": "Worldly Wiseman",
+      "text": "A short, SAFE stroll — no mud, no nonsense. You could get a house there, send for your wife and cubs, and live respectably ever after!",
+      "say": "A short, safe stroll. No mud, no nonsense! You could get a house there, send for your wife and cubs, and live respectably ever after!",
+      "face": "happy",
+      "react": {
+        "Christian": "happy"
+      },
+      "emo": 0.85
+    },
+    {
+      "id": "w7",
+      "speaker": "Christian",
+      "text": "No mud… a house for my family… Sir, that sounds very sensible indeed. Which way did you say?",
+      "say": "No mud... a house for my family... Sir, that sounds very sensible indeed. Which way did you say?",
+      "face": "happy",
+      "react": {
+        "Worldly Wiseman": "smug"
+      },
+      "emo": 0.8
+    },
+    {
+      "id": "w8",
+      "speaker": "Worldly Wiseman",
+      "text": "Straight on, past that tall hill. First door on the left! Do give Mr. Legality my regards.",
+      "say": "Straight on, past that tall hill. First door on the left! Do give Mister Legality my regards.",
+      "face": "smug",
+      "emo": 0.8
+    },
+    {
+      "id": "n2",
+      "speaker": "Narrator",
+      "text": "So Christian left the true road, and followed the pleasant path toward the village of Morality.",
+      "react": {
+        "Christian": "happy"
+      },
+      "emo": 0.6
+    },
+    {
+      "id": "stroll",
+      "pause": 1.5
+    },
+    {
+      "id": "n3",
+      "speaker": "Narrator",
+      "text": "But the path led right beneath a great, dark mountain… Mount Sinai.",
+      "say": "But the path led right beneath a great, dark mountain... Mount Sinai.",
+      "react": {
+        "Christian": "scared"
+      },
+      "emo": 0.85
+    },
+    {
+      "id": "rumble",
+      "pause": 2.6
+    },
+    {
+      "id": "s1",
+      "speaker": "Narrator",
+      "text": "At the foot of the mountain, a stone sign said: “Lift your burden by obeying every rule — perfectly.”",
+      "say": "At the foot of the mountain, a stone sign said: Lift your burden by obeying every rule. Perfectly.",
+      "react": {
+        "Christian": "worried"
+      },
+      "emo": 0.7
+    },
+    {
+      "id": "s2",
+      "speaker": "Christian",
+      "text": "Perfectly? Perhaps if I try harder than I ever have before…",
+      "say": "Perfectly? Perhaps if I try harder than I ever have before...",
+      "face": "worried",
+      "emo": 0.75
+    },
+    {
+      "id": "s3",
+      "speaker": "Christian",
+      "text": "No. I have not loved perfectly, spoken perfectly, or obeyed perfectly. I cannot free myself this way.",
+      "face": "sad",
+      "emo": 0.8
+    },
+    {
+      "id": "s4",
+      "speaker": "Christian",
+      "text": "The mountain hangs right OVER the road — and fire is flashing from its sides!",
+      "say": "The mountain hangs right over the road! And fire is flashing from its sides!",
+      "face": "scared",
+      "emo": 1.2
+    },
+    {
+      "id": "s5",
+      "speaker": "Christian",
+      "text": "It shows me everything I have done wrong, but it cannot lift this burden. What have I done?",
+      "face": "sad",
+      "emo": 0.9
+    },
+    {
+      "id": "hurry",
+      "pause": 1.6
+    },
+    {
+      "id": "e1",
+      "speaker": "Evangelist",
+      "text": "Christian. What are you doing HERE?",
+      "say": "Christian. What are you doing here?",
+      "face": "sad",
+      "react": {
+        "Christian": "scared"
+      },
+      "emo": 0.75
+    },
+    {
+      "id": "e2",
+      "speaker": "Christian",
+      "text": "E-Evangelist! A gentleman told me about a quicker way — a Mr. Legality, who could lift my burden without the mud and the mountains…",
+      "say": "Evangelist! A gentleman told me about a quicker way. A Mister Legality, who could lift my burden without the mud and the mountains...",
+      "face": "worried",
+      "react": {
+        "Evangelist": "sad"
+      },
+      "emo": 0.9
+    },
+    {
+      "id": "e3",
+      "speaker": "Evangelist",
+      "text": "Listen carefully, dear bear. That gentleman is Mr. WORLDLY WISEMAN. He loves only the wisdom of this world, and he turns every pilgrim he can away from the true road.",
+      "say": "Listen carefully, dear bear. That gentleman is Mister Worldly Wiseman. He loves only the wisdom of this world, and he turns every pilgrim he can away from the true road.",
+      "face": "determined",
+      "react": {
+        "Christian": "sad"
+      },
+      "emo": 0.75
+    },
+    {
+      "id": "e4",
+      "speaker": "Evangelist",
+      "text": "Mr. Legality cannot loosen even one strap of your burden. No one has ever been set free at his door.",
+      "say": "Mister Legality cannot loosen even one strap of your burden. No one has ever been set free at his door.",
+      "face": "determined",
+      "react": {
+        "Christian": "sad"
+      },
+      "emo": 0.7
+    },
+    {
+      "id": "e5",
+      "speaker": "Evangelist",
+      "text": "And THIS mountain is Sinai — the Law itself. It shows your burden for what it is… but it cannot LIFT it.",
+      "say": "And this mountain is Sinai. The Law itself. It shows your burden for what it is... but it cannot lift it.",
+      "face": "worried",
+      "react": {
+        "Christian": "sad"
+      },
+      "emo": 0.8
+    },
+    {
+      "id": "e6",
+      "speaker": "Christian",
+      "text": "Then I've been a fool twice over — once into the mud, and once onto this path. Is there any hope left for me?",
+      "say": "Then I've been a fool twice over. Once into the mud, and once onto this path. Is there any hope left for me?",
+      "face": "sad",
+      "emo": 0.9
+    },
+    {
+      "id": "e7",
+      "speaker": "Evangelist",
+      "text": "There is. The way you left is exactly where you left it. Go back to the true road, Christian — on to the Wicket Gate — and don't leave it again.",
+      "say": "There is! The way you left is exactly where you left it. Go back to the true road, Christian. On to the Wicket Gate. And don't leave it again.",
+      "face": "happy",
+      "react": {
+        "Christian": "surprised"
+      },
+      "emo": 0.85
+    },
+    {
+      "id": "e8",
+      "speaker": "Christian",
+      "text": "I'll go back at once. Thank you, Evangelist… again.",
+      "say": "I'll go back at once. Thank you, Evangelist... again.",
+      "face": "happy",
+      "react": {
+        "Evangelist": "happy"
+      },
+      "emo": 0.85
+    },
+    {
+      "id": "n4",
+      "speaker": "Narrator",
+      "text": "So Christian turned around and hurried back to the true road. The Wicket Gate was waiting… but would it open for him?",
+      "say": "So Christian turned around and hurried back to the true road. The Wicket Gate was waiting... but would it open for him?",
+      "emo": 0.8
+    },
+    {
+      "id": "end",
+      "pause": 4.5
+    }
+  ]
+}

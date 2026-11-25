@@ -1,0 +1,292 @@
+{
+  "title": "Pilgrim's Progress",
+  "episode": "Episode 7 — The Cross",
+  "cast": {
+    "Narrator": {
+      "voice": "bm_lewis",
+      "speed": 0.95,
+      "fish": {
+        "reference_id": "8906b5268cae414fb9b8d3da6e84413d",
+        "title": "Measured Storyteller",
+        "tag": ""
+      },
+      "chatterbox": {
+        "exaggeration": 0.6
+      }
+    },
+    "Christian": {
+      "voice": "am_fenrir",
+      "speed": 0.98,
+      "fish": {
+        "reference_id": "5c8dc6a69c0b4edfb32634db6384bf34",
+        "title": "Warm Storyteller",
+        "tag": ""
+      },
+      "chatterbox": {
+        "exaggeration": 0.65
+      }
+    },
+    "First Shining One": {
+      "voice": "bf_emma",
+      "speed": 0.92,
+      "chatterbox": {
+        "exaggeration": 0.6
+      }
+    },
+    "Second Shining One": {
+      "voice": "af_bella",
+      "speed": 0.92,
+      "chatterbox": {
+        "exaggeration": 0.65
+      }
+    },
+    "Third Shining One": {
+      "voice": "bf_isabella",
+      "speed": 0.92,
+      "chatterbox": {
+        "exaggeration": 0.6
+      }
+    }
+  },
+  "beats": [
+    {
+      "id": "title",
+      "pause": 4.5
+    },
+    {
+      "id": "n1",
+      "speaker": "Narrator",
+      "text": "Christian walked on along the King's Highway. The sun was shining and the flowers nodded in the breeze. But oh, how heavy his burden was!",
+      "react": {
+        "Christian": "sad"
+      },
+      "emo": 0.75
+    },
+    {
+      "id": "c0",
+      "speaker": "Christian",
+      "text": "I've carried it through the mud, and past the mountain, and through the little gate. And still it weighs me down.",
+      "face": "sad",
+      "emo": 0.75
+    },
+    {
+      "id": "c1",
+      "speaker": "Christian",
+      "text": "Just a little further... just a little further up this hill.",
+      "face": "determined",
+      "emo": 0.75
+    },
+    {
+      "id": "climb",
+      "pause": 2.2
+    },
+    {
+      "id": "n2",
+      "speaker": "Narrator",
+      "text": "At the top of the hill stood a Cross. And a little below it, on the slope, was an open tomb.",
+      "react": {
+        "Christian": "surprised"
+      },
+      "emo": 0.75
+    },
+    {
+      "id": "c2",
+      "speaker": "Christian",
+      "text": "The Cross... So this is the place I was told about.",
+      "face": "surprised",
+      "emo": 0.75
+    },
+    {
+      "id": "gaze",
+      "pause": 2.0
+    },
+    {
+      "id": "c3",
+      "speaker": "Christian",
+      "text": "Wait! Something is moving. The straps... they're coming loose, all on their own!",
+      "face": "surprised",
+      "emo": 1.1
+    },
+    {
+      "id": "roll",
+      "pause": 4.2
+    },
+    {
+      "id": "n3",
+      "speaker": "Narrator",
+      "text": "The burden tumbled down the hill, rolled into the mouth of the tomb, and was never seen again.",
+      "react": {
+        "Christian": "surprised"
+      },
+      "emo": 0.85
+    },
+    {
+      "id": "c4",
+      "speaker": "Christian",
+      "text": "It's gone... It's truly gone! All this way I carried it, and here, it fell off by itself!",
+      "face": "happy",
+      "emo": 1.2
+    },
+    {
+      "id": "leap",
+      "pause": 2.2
+    },
+    {
+      "id": "c5",
+      "speaker": "Christian",
+      "text": "It wasn't anything I did. Jesus carried my guilt for me. He has given me rest by His sorrow, and life by His death.",
+      "say": "It wasn't anything I did. Jesus carried my guilt for me. He has given me rest by his sorrow, and life by his death.",
+      "face": "happy",
+      "emo": 0.75
+    },
+    {
+      "id": "c5b",
+      "speaker": "Christian",
+      "text": "He hung here in my place, carrying everything I had carried all my life. I can never repay this. I can only walk on, and never forget.",
+      "face": "happy",
+      "emo": 0.7
+    },
+    {
+      "id": "n4",
+      "speaker": "Narrator",
+      "text": "He looked, and looked again, until happy tears ran down his cheeks.",
+      "react": {
+        "Christian": "happy"
+      },
+      "emo": 0.75
+    },
+    {
+      "id": "n4b",
+      "speaker": "Narrator",
+      "text": "Then Christian went softly down to the tomb, and peeped inside. It was empty.",
+      "react": {
+        "Christian": "surprised"
+      },
+      "emo": 0.7
+    },
+    {
+      "id": "peep",
+      "pause": 1.8
+    },
+    {
+      "id": "c5c",
+      "speaker": "Christian",
+      "text": "My burden tumbled in here, and it's gone. Jesus took it all into the grave with Him. And then, He came out again!",
+      "say": "My burden tumbled in here, and it's gone. Jesus took it all into the grave with him. And then, he came out again!",
+      "face": "surprised",
+      "emo": 0.95
+    },
+    {
+      "id": "c5d",
+      "speaker": "Christian",
+      "text": "The empty tomb is the proof that it was enough. He rose... and my guilt did not!",
+      "face": "happy",
+      "emo": 0.95
+    },
+    {
+      "id": "descend",
+      "pause": 3.6
+    },
+    {
+      "id": "n5",
+      "speaker": "Narrator",
+      "text": "Then three Shining Ones came down to him, bright as the morning.",
+      "react": {
+        "Christian": "surprised"
+      },
+      "emo": 0.8
+    },
+    {
+      "id": "a1",
+      "speaker": "First Shining One",
+      "text": "Peace be with you, Christian. Your sins are forgiven.",
+      "face": "happy",
+      "react": {
+        "Christian": "happy"
+      },
+      "emo": 0.6
+    },
+    {
+      "id": "a2",
+      "speaker": "Second Shining One",
+      "text": "I take away your worn and dusty clothes... and dress you in new ones, clean and shining.",
+      "face": "happy",
+      "react": {
+        "Christian": "surprised"
+      },
+      "emo": 0.7
+    },
+    {
+      "id": "dress",
+      "pause": 2.4
+    },
+    {
+      "id": "c6",
+      "speaker": "Christian",
+      "text": "Oh! They're beautiful! Are they really for me?",
+      "face": "happy",
+      "emo": 1.1
+    },
+    {
+      "id": "a3",
+      "speaker": "Third Shining One",
+      "text": "And I set this mark upon your forehead, and give you a sealed scroll.",
+      "face": "happy",
+      "react": {
+        "Christian": "surprised"
+      },
+      "emo": 0.6
+    },
+    {
+      "id": "seal",
+      "pause": 1.8
+    },
+    {
+      "id": "a4",
+      "speaker": "Third Shining One",
+      "text": "Read it as you travel, to comfort you on the way. And hand it in at the gate of the Celestial City. It is the King's own promise that you belong to Him.",
+      "say": "Read it as you travel, to comfort you on the way. And hand it in at the gate of the Celestial City. It is the King's own promise, that you belong to him.",
+      "face": "happy",
+      "react": {
+        "Christian": "happy"
+      },
+      "emo": 0.65
+    },
+    {
+      "id": "n6",
+      "speaker": "Narrator",
+      "text": "And just as gently as they had come, the Shining Ones were gone.",
+      "emo": 0.65
+    },
+    {
+      "id": "c7",
+      "speaker": "Christian",
+      "text": "Forgiven... clothed... and sealed! I came up this hill bent double, and I will go down it singing!",
+      "face": "happy",
+      "emo": 1.15
+    },
+    {
+      "id": "n7",
+      "speaker": "Narrator",
+      "text": "So Christian gave three leaps for joy, and went on his way, singing.",
+      "emo": 0.85
+    },
+    {
+      "id": "c8",
+      "speaker": "Christian",
+      "text": "Blest Cross! Blest tomb! And blessed most of all, the One who there was put to shame for me!",
+      "face": "happy",
+      "emo": 1.0
+    },
+    {
+      "id": "n8",
+      "speaker": "Narrator",
+      "text": "His back was straight, his steps were light, and the whole world looked new. Down the hill he went, toward the shining light.",
+      "emo": 0.8
+    },
+    {
+      "id": "end",
+      "pause": 4.5
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "name": "pilgrims-progress-film",
+  "private": true,
+  "type": "module",
+  "description": "Episode render tooling (Kokoro voices + frame capture). Kept apart from the game's dependencies.",
+  "scripts": {
+    "voices": "node voices.mjs",
+    "render": "node render.mjs"
+  },
+  "dependencies": {
+    "kokoro-js": "^1.2.1",
+    "playwright-core": "1.58.2"
+  }
+}

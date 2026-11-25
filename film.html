@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex" />
+  <title>Pilgrim's Progress — Film</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,600;0,9..144,700;1,9..144,600&family=Nunito:wght@700;800;900&display=swap">
+  <style>
+    html, body { margin: 0; height: 100%; background: #111; overflow: hidden; }
+    #frame { position: absolute; inset: 0; margin: auto; max-width: 100vw; max-height: 100vh; aspect-ratio: 16 / 9; width: 100%; }
+    #gl { display: none; }
+    #hud { position: fixed; left: 8px; top: 8px; color: #fff; font: 12px monospace; z-index: 2; }
+  </style>
+</head>
+<body>
+  <canvas id="frame" width="1920" height="1080"></canvas>
+  <div id="hud"></div>
+  <script type="module" src="/src/film/main.ts"></script>
+</body>
+</html>

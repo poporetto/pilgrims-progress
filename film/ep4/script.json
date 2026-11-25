@@ -1,0 +1,301 @@
+{
+  "title": "Pilgrim's Progress",
+  "episode": "Episode 4 — The Wicket Gate",
+  "cast": {
+    "Narrator": {
+      "voice": "bm_lewis",
+      "speed": 0.95,
+      "fish": {
+        "reference_id": "8906b5268cae414fb9b8d3da6e84413d",
+        "title": "Measured Storyteller",
+        "tag": ""
+      },
+      "chatterbox": {
+        "exaggeration": 0.6
+      }
+    },
+    "Christian": {
+      "voice": "am_fenrir",
+      "speed": 0.98,
+      "fish": {
+        "reference_id": "5c8dc6a69c0b4edfb32634db6384bf34",
+        "title": "Warm Storyteller",
+        "tag": ""
+      },
+      "chatterbox": {
+        "exaggeration": 0.65
+      }
+    },
+    "Goodwill": {
+      "voice": "bm_fable",
+      "speed": 0.9,
+      "pitch": 0.9,
+      "chatterbox": {
+        "exaggeration": 0.65
+      }
+    }
+  },
+  "beats": [
+    {
+      "id": "title",
+      "pause": 4.5
+    },
+    {
+      "id": "establish",
+      "pause": 1.2
+    },
+    {
+      "id": "n1",
+      "speaker": "Narrator",
+      "text": "Christian hurried back to the true road. It was long, and straight, and very quiet. And as he walked, his worries walked along with him.",
+      "react": {
+        "Christian": "sad"
+      },
+      "emo": 0.7
+    },
+    {
+      "id": "m1",
+      "speaker": "Christian",
+      "text": "Left my home. Lost my friend in a bog. Nearly crushed beneath a burning mountain. And still this burden sits on my back like a millstone…",
+      "say": "Left my home. Lost my friend in a bog. Nearly crushed beneath a burning mountain. And still this burden sits on my back like a millstone...",
+      "face": "sad",
+      "emo": 0.75
+    },
+    {
+      "id": "m2",
+      "speaker": "Christian",
+      "text": "What a fool I was to listen to Worldly Wiseman. Evangelist forgave me… but will the Gate? What if they shut it in my face?",
+      "say": "What a fool I was, to listen to Worldly Wiseman. Evangelist forgave me... but will the Gate? What if they shut it in my face?",
+      "face": "worried",
+      "emo": 0.9
+    },
+    {
+      "id": "m3",
+      "speaker": "Christian",
+      "text": "Help said it. Evangelist said it. “Knock, and it will be opened.” Keep walking, Christian. Just keep walking.",
+      "say": "Help said it. Evangelist said it. Knock, and it will be opened. Keep walking, Christian. Just keep walking.",
+      "face": "determined",
+      "emo": 0.8
+    },
+    {
+      "id": "arrive",
+      "pause": 1.6
+    },
+    {
+      "id": "n2",
+      "speaker": "Narrator",
+      "text": "At last he came to a small gate in a high wall. Above it were written the words: “Knock, and it will be opened to you.”",
+      "say": "At last he came to a small gate in a high wall. Above it were written the words: Knock, and it will be opened to you.",
+      "react": {
+        "Christian": "worried"
+      },
+      "emo": 0.75
+    },
+    {
+      "id": "knock",
+      "pause": 1.8
+    },
+    {
+      "id": "k1",
+      "speaker": "Christian",
+      "text": "May I come in? Will the keeper open the gate for someone as lost and burdened as me?",
+      "say": "May I come in? Will the keeper open the gate, for someone as lost and burdened as me?",
+      "face": "worried",
+      "emo": 0.85
+    },
+    {
+      "id": "n3",
+      "speaker": "Narrator",
+      "text": "A deep, warm voice answered from behind the gate.",
+      "react": {
+        "Christian": "surprised"
+      },
+      "emo": 0.7
+    },
+    {
+      "id": "g1",
+      "speaker": "Goodwill",
+      "text": "Who knocks?",
+      "react": {
+        "Christian": "surprised"
+      },
+      "emo": 0.6
+    },
+    {
+      "id": "k2",
+      "speaker": "Christian",
+      "text": "I am a burdened traveller from the City of Destruction. I am going to the Celestial City, and they told me the road begins through this Gate.",
+      "face": "worried",
+      "emo": 0.8
+    },
+    {
+      "id": "g2",
+      "speaker": "Goodwill",
+      "text": "Then I gladly open it. We turn no one away who knocks — no one!",
+      "say": "Then I gladly open it! We turn no one away who knocks. No one!",
+      "face": "happy",
+      "react": {
+        "Christian": "surprised"
+      },
+      "emo": 0.9
+    },
+    {
+      "id": "open",
+      "pause": 1.6
+    },
+    {
+      "id": "g3",
+      "speaker": "Goodwill",
+      "text": "I am Goodwill, keeper of this Gate. But don't stand in the open, friend—",
+      "say": "I am Goodwill, keeper of this Gate. But don't stand in the open, friend!",
+      "face": "worried",
+      "react": {
+        "Christian": "surprised"
+      },
+      "emo": 0.85
+    },
+    {
+      "id": "g4",
+      "speaker": "Goodwill",
+      "text": "That castle belongs to BEELZEBUB, and his archers shoot at every pilgrim who reaches my door. QUICKLY — give me your paw!",
+      "say": "That castle belongs to Beelzebub, and his archers shoot at every pilgrim who reaches my door. Quickly! Give me your paw!",
+      "face": "scared",
+      "react": {
+        "Christian": "scared"
+      },
+      "emo": 1.2
+    },
+    {
+      "id": "volley",
+      "pause": 2.8
+    },
+    {
+      "id": "n5",
+      "speaker": "Narrator",
+      "text": "Arrows whistled through the air! But Goodwill pulled Christian through, just in time, and the gate banged shut behind them.",
+      "say": "Arrows whistled through the air! But Goodwill pulled Christian through, just in time, and the gate banged shut behind them!",
+      "emo": 1.0
+    },
+    {
+      "id": "g5",
+      "speaker": "Goodwill",
+      "text": "There. Behind this wall no arrow of his has ever reached. Be welcome, Christian — you are safe now.",
+      "say": "There. Behind this wall, no arrow of his has ever reached. Be welcome, Christian. You are safe now.",
+      "face": "happy",
+      "react": {
+        "Christian": "worried"
+      },
+      "emo": 0.75
+    },
+    {
+      "id": "k3",
+      "speaker": "Christian",
+      "text": "You… you know my name?",
+      "say": "You... you know my name?",
+      "face": "surprised",
+      "react": {
+        "Goodwill": "happy"
+      },
+      "emo": 0.9
+    },
+    {
+      "id": "g6",
+      "speaker": "Goodwill",
+      "text": "I know every pilgrim who knocks, little bear. I have been expecting you a long while.",
+      "face": "happy",
+      "react": {
+        "Christian": "surprised"
+      },
+      "emo": 0.75
+    },
+    {
+      "id": "k4",
+      "speaker": "Christian",
+      "text": "I fell in the Slough, and my neighbour turned home. Then a smooth-tongued gentleman sent me to Mount Sinai. I am ashamed of it all, sir.",
+      "say": "I fell in the Slough, and my neighbour turned home. Then a smooth tongued gentleman sent me to Mount Sinai. I am ashamed of it all, sir.",
+      "face": "sad",
+      "react": {
+        "Goodwill": "sad"
+      },
+      "emo": 0.8
+    },
+    {
+      "id": "g7",
+      "speaker": "Goodwill",
+      "text": "And yet you are HERE — muddy, singed, and standing at my Gate. This door was hung for the bruised and the muddy, or it was hung for no one.",
+      "say": "And yet, you are here! Muddy, singed, and standing at my Gate. This door was hung for the bruised and the muddy, or it was hung for no one.",
+      "face": "happy",
+      "react": {
+        "Christian": "surprised"
+      },
+      "emo": 0.9
+    },
+    {
+      "id": "k5",
+      "speaker": "Christian",
+      "text": "May I ask one thing more? This burden on my back… can it be taken off here?",
+      "say": "May I ask one thing more? This burden on my back... can it be taken off here?",
+      "face": "worried",
+      "emo": 0.8
+    },
+    {
+      "id": "g8",
+      "speaker": "Goodwill",
+      "text": "Not here, dear pilgrim. Be patient a little longer. Ahead is the place of rescue. There, the burden will fall from your back and roll away forever.",
+      "say": "Not here, dear pilgrim. Be patient a little longer. Ahead is the place of rescue. There, the burden will fall from your back, and roll away forever.",
+      "face": "happy",
+      "react": {
+        "Christian": "happy"
+      },
+      "emo": 0.75
+    },
+    {
+      "id": "g9",
+      "speaker": "Goodwill",
+      "text": "Look east. That is the King's Highway — straight and narrow. Stay on it, and you will not lose your way.",
+      "say": "Look east. That is the King's Highway. Straight, and narrow. Stay on it, and you will not lose your way.",
+      "face": "determined",
+      "react": {
+        "Christian": "happy"
+      },
+      "emo": 0.7
+    },
+    {
+      "id": "highway",
+      "pause": 2.4
+    },
+    {
+      "id": "k6",
+      "speaker": "Christian",
+      "text": "Straight and narrow. I will keep to it, Goodwill — I promise. My heart feels lighter already… though my back, I confess, does not.",
+      "say": "Straight and narrow. I will keep to it, Goodwill. I promise! My heart feels lighter already... though my back, I confess, does not.",
+      "face": "happy",
+      "react": {
+        "Goodwill": "happy"
+      },
+      "emo": 0.85
+    },
+    {
+      "id": "g10",
+      "speaker": "Goodwill",
+      "text": "Ha! It will, Christian. Sooner than you think. Now go — and grace go with you.",
+      "say": "Ha ha! It will, Christian. Sooner than you think. Now go, and grace go with you!",
+      "face": "happy",
+      "react": {
+        "Christian": "happy"
+      },
+      "emo": 0.9
+    },
+    {
+      "id": "n4",
+      "speaker": "Narrator",
+      "text": "So Christian set off along the King's Highway. And just a little way ahead, a warm cottage was waiting, where a wise old owl had wonderful things to show him…",
+      "say": "So Christian set off along the King's Highway. And just a little way ahead, a warm cottage was waiting, where a wise old owl had wonderful things to show him...",
+      "emo": 0.75
+    },
+    {
+      "id": "end",
+      "pause": 4.5
+    }
+  ]
+}

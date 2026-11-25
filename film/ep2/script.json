@@ -1,0 +1,365 @@
+{
+  "title": "Pilgrim's Progress",
+  "episode": "Episode 2 — The Slough of Despond",
+  "cast": {
+    "Narrator": {
+      "voice": "bm_lewis",
+      "speed": 0.95,
+      "fish": {
+        "reference_id": "8906b5268cae414fb9b8d3da6e84413d",
+        "title": "Measured Storyteller",
+        "tag": ""
+      },
+      "chatterbox": {
+        "exaggeration": 0.6
+      }
+    },
+    "Christian": {
+      "voice": "am_fenrir",
+      "speed": 0.98,
+      "fish": {
+        "reference_id": "5c8dc6a69c0b4edfb32634db6384bf34",
+        "title": "Warm Storyteller",
+        "tag": ""
+      },
+      "chatterbox": {
+        "exaggeration": 0.65
+      }
+    },
+    "Pliable": {
+      "voice": "am_puck",
+      "speed": 1.08,
+      "pitch": 1.06,
+      "fish": {
+        "reference_id": "a944c8e3d6274910ac6bd084ad467117",
+        "title": "mad man (young, energetic)",
+        "tag": "[excited]"
+      },
+      "chatterbox": {
+        "exaggeration": 0.95
+      }
+    },
+    "Help": {
+      "voice": "bm_daniel",
+      "speed": 0.92,
+      "chatterbox": {
+        "exaggeration": 0.6
+      }
+    }
+  },
+  "beats": [
+    {
+      "id": "title",
+      "pause": 4.5
+    },
+    {
+      "id": "establish",
+      "pause": 1.2
+    },
+    {
+      "id": "n1",
+      "speaker": "Narrator",
+      "text": "Christian and Pliable walked on together across the fields beyond the city, talking all the way."
+    },
+    {
+      "id": "p1",
+      "speaker": "Pliable",
+      "text": "So tell me MORE about this Celestial City! Do the crowns come in rabbit sizes? Is there clover?",
+      "say": "So tell me more about this Celestial City! Do the crowns come in rabbit sizes? Is there clover?",
+      "face": "happy",
+      "react": {
+        "Christian": "happy"
+      },
+      "emo": 1.0
+    },
+    {
+      "id": "ch1",
+      "speaker": "Christian",
+      "text": "Ha! The book says there is no night there, and no tears… Careful, friend — the ground past those reeds looks soft.",
+      "say": "Ha! The book says there is no night there, and no tears... Careful, friend. The ground past those reeds looks soft.",
+      "face": "happy",
+      "react": {
+        "Pliable": "happy"
+      }
+    },
+    {
+      "id": "p2",
+      "speaker": "Pliable",
+      "text": "Soft, schmoft! With GLORY ahead, who has time to look down? Hop hop — race you to the far side!",
+      "say": "Soft, schmoft! With glory ahead, who has time to look down? Hop hop! Race you to the far side!",
+      "face": "happy",
+      "react": {
+        "Christian": "worried"
+      },
+      "emo": 1.1
+    },
+    {
+      "id": "n2",
+      "speaker": "Narrator",
+      "text": "But they were so busy dreaming of the golden city that they did not look where they were going…"
+    },
+    {
+      "id": "splash",
+      "pause": 1.8
+    },
+    {
+      "id": "f1",
+      "speaker": "Christian",
+      "text": "Wh—whoa! The ground — it is swallowing us! Hold fast, Pliable!",
+      "say": "Whoa! The ground! It is swallowing us! Hold fast, Pliable!",
+      "face": "scared",
+      "react": {
+        "Pliable": "scared"
+      },
+      "emo": 1.1
+    },
+    {
+      "id": "f2",
+      "speaker": "Pliable",
+      "text": "GLUB—! Mud! In my EARS! In my WHISKERS! Christian, I am DISSOLVING!",
+      "say": "Glub! Mud! In my ears! In my whiskers! Christian, I am dissolving!",
+      "face": "scared",
+      "react": {
+        "Christian": "worried"
+      },
+      "emo": 1.25
+    },
+    {
+      "id": "f3",
+      "speaker": "Pliable",
+      "text": "Is THIS the glorious happiness you spoke of?! Golden streets, you said! CROWNS, you said!",
+      "say": "Is this the glorious happiness you spoke of?! Golden streets, you said! Crowns, you said!",
+      "face": "angry",
+      "react": {
+        "Christian": "sad"
+      },
+      "emo": 1.2
+    },
+    {
+      "id": "f4",
+      "speaker": "Christian",
+      "text": "Courage, friend! If we press on together, the far bank cannot be—",
+      "say": "Courage, friend! If we press on together, the far bank cannot be...",
+      "face": "determined",
+      "react": {
+        "Pliable": "angry"
+      },
+      "emo": 0.9
+    },
+    {
+      "id": "f5",
+      "speaker": "Pliable",
+      "text": "FORWARD?! Into MORE of it?! Not for every crown in every city! Out of my way!",
+      "say": "Forward?! Into more of it?! Not for every crown in every city! Out of my way!",
+      "face": "angry",
+      "react": {
+        "Christian": "surprised"
+      },
+      "emo": 1.25
+    },
+    {
+      "id": "climb",
+      "pause": 2.2
+    },
+    {
+      "id": "p3",
+      "speaker": "Pliable",
+      "text": "Blegh! Mud in my ears, mud in my whiskers, mud in places a gentle-rabbit shan't MENTION!",
+      "say": "Blegh! Mud in my ears, mud in my whiskers, mud in places a gentle rabbit shan't mention!",
+      "face": "angry",
+      "react": {
+        "Christian": "worried"
+      },
+      "emo": 1.15
+    },
+    {
+      "id": "p4",
+      "speaker": "Pliable",
+      "text": "If this bog is the FIRST step of your glorious journey, Christian, you may keep all the rest of it!",
+      "say": "If this bog is the first step of your glorious journey, Christian, you may keep all the rest of it!",
+      "face": "angry",
+      "react": {
+        "Christian": "sad"
+      },
+      "emo": 1.0
+    },
+    {
+      "id": "c5",
+      "speaker": "Christian",
+      "text": "Pliable, wait! The crowns and the city are still real! One muddy place does not change the truth!",
+      "face": "worried",
+      "react": {
+        "Pliable": "angry"
+      },
+      "emo": 0.95
+    },
+    {
+      "id": "p5",
+      "speaker": "Pliable",
+      "text": "Then you may have my share of the crowns AND my share of the mud. I am going HOME. Farewell — and good luck to your poor back!",
+      "say": "Then you may have my share of the crowns, and my share of the mud. I am going home. Farewell! And good luck to your poor back!",
+      "face": "smug",
+      "react": {
+        "Christian": "sad"
+      },
+      "emo": 0.9
+    },
+    {
+      "id": "flee",
+      "pause": 1.8
+    },
+    {
+      "id": "c6",
+      "speaker": "Christian",
+      "text": "…And there he goes, hopping home. Then I will cross alone. There must be solid ground somewhere under this mud…",
+      "say": "And there he goes, hopping home. Oh dear. Then I will cross alone. There must be solid ground somewhere under this mud...",
+      "face": "sad",
+      "emo": 0.7
+    },
+    {
+      "id": "n3",
+      "speaker": "Narrator",
+      "text": "So Christian struggled on by himself. But the mud was deep, and his burden was so very heavy.",
+      "emo": 0.7
+    },
+    {
+      "id": "c7",
+      "speaker": "Christian",
+      "text": "The bank is right there — but I cannot climb it. This burden on my back drags me down and down…",
+      "say": "The bank is right there, but I cannot climb it. This burden on my back drags me down, and down...",
+      "face": "sad",
+      "emo": 0.85
+    },
+    {
+      "id": "c8",
+      "speaker": "Christian",
+      "text": "Is this how the journey ends? Stuck in deep mud when I can see the way out…?",
+      "say": "Is this how the journey ends? Stuck in deep mud, when I can see the way out?",
+      "face": "sad",
+      "emo": 0.8
+    },
+    {
+      "id": "despair",
+      "pause": 1.4
+    },
+    {
+      "id": "n4",
+      "speaker": "Narrator",
+      "text": "Just then, a kind voice called out across the marsh."
+    },
+    {
+      "id": "h1",
+      "speaker": "Help",
+      "text": "Hello there! Friend in the mud, how did you get stuck?",
+      "face": "surprised",
+      "react": {
+        "Christian": "surprised"
+      },
+      "emo": 0.8
+    },
+    {
+      "id": "c9",
+      "speaker": "Christian",
+      "text": "I fell in as I fled the City of Destruction — and this burden sinks me. I cannot reach the bank!",
+      "say": "I fell in as I fled the City of Destruction, and this burden sinks me. I cannot reach the bank!",
+      "face": "worried",
+      "emo": 0.9
+    },
+    {
+      "id": "h2",
+      "speaker": "Help",
+      "text": "I am called Help. But tell me — why did you not look for the Steps? Good solid stones lie through the very midst of this slough.",
+      "say": "I am called Help. But tell me, why did you not look for the Steps? Good solid stones lie through the very midst of this slough.",
+      "face": "worried",
+      "react": {
+        "Christian": "sad"
+      }
+    },
+    {
+      "id": "c10",
+      "speaker": "Christian",
+      "text": "Fear chased me in so fast, I never thought to look down…",
+      "say": "Fear chased me in so fast, I never thought to look down...",
+      "face": "sad"
+    },
+    {
+      "id": "h3",
+      "speaker": "Help",
+      "text": "So it goes with every pilgrim. Here — give me your paw!",
+      "say": "So it goes with every pilgrim. Here, give me your paw!",
+      "face": "determined",
+      "react": {
+        "Christian": "surprised"
+      },
+      "emo": 0.85
+    },
+    {
+      "id": "h4",
+      "speaker": "Help",
+      "text": "HEAVE!",
+      "say": "Heave!",
+      "face": "determined",
+      "react": {
+        "Christian": "worried"
+      },
+      "emo": 1.3
+    },
+    {
+      "id": "pull",
+      "pause": 1.6
+    },
+    {
+      "id": "c11",
+      "speaker": "Christian",
+      "text": "Solid ground! Thank you, Help. I had nearly given up hope.",
+      "say": "Phew... Solid ground! Thank you, Help. I had nearly given up hope.",
+      "face": "happy",
+      "react": {
+        "Help": "happy"
+      },
+      "emo": 0.9
+    },
+    {
+      "id": "h5",
+      "speaker": "Help",
+      "text": "This is the Slough of Despond, friend. When a pilgrim first wakes to how lost he is, all his fears and doubts and discouragements come running — and they settle here, in this low place.",
+      "say": "This is the Slough of Despond, friend. When a pilgrim first wakes to how lost he is, all his fears and doubts and discouragements come running, and they settle here, in this low place.",
+      "emo": 0.6
+    },
+    {
+      "id": "c12",
+      "speaker": "Christian",
+      "text": "And Pliable… he struggled out on the side nearest home.",
+      "say": "And Pliable... he struggled out on the side nearest home.",
+      "face": "sad"
+    },
+    {
+      "id": "h6",
+      "speaker": "Help",
+      "text": "Many travellers turn back at the first patch of mud. But you made it through, burden and all. Keep going, Christian — the true Gate is not far now.",
+      "say": "Many travellers turn back at the first patch of mud. But you made it through, burden and all! Keep going, Christian. The true Gate is not far now.",
+      "face": "happy",
+      "react": {
+        "Christian": "happy"
+      },
+      "emo": 0.8
+    },
+    {
+      "id": "n5",
+      "speaker": "Narrator",
+      "text": "So Christian thanked Help, and went on his way, still dripping with mud, toward the shining light ahead.",
+      "emo": 0.7
+    },
+    {
+      "id": "n6",
+      "speaker": "Narrator",
+      "text": "But just around the bend, a very fine gentleman in a tall black hat was waiting for him…",
+      "say": "But just around the bend, a very fine gentleman in a tall black hat was waiting for him...",
+      "emo": 0.75
+    },
+    {
+      "id": "end",
+      "pause": 4.5
+    }
+  ]
+}

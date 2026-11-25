@@ -1,0 +1,322 @@
+{
+  "title": "Pilgrim's Progress",
+  "episode": "Episode 6 — The Knight, the Cage and the Dream",
+  "cast": {
+    "Narrator": {
+      "voice": "bm_lewis",
+      "speed": 0.95,
+      "fish": {
+        "reference_id": "8906b5268cae414fb9b8d3da6e84413d",
+        "title": "Measured Storyteller",
+        "tag": ""
+      },
+      "chatterbox": {
+        "exaggeration": 0.6
+      }
+    },
+    "Christian": {
+      "voice": "am_fenrir",
+      "speed": 0.98,
+      "fish": {
+        "reference_id": "5c8dc6a69c0b4edfb32634db6384bf34",
+        "title": "Warm Storyteller",
+        "tag": ""
+      },
+      "chatterbox": {
+        "exaggeration": 0.65
+      }
+    },
+    "Interpreter": {
+      "voice": "am_santa",
+      "speed": 0.92,
+      "chatterbox": {
+        "exaggeration": 0.65
+      }
+    },
+    "Knight": {
+      "voice": "am_michael",
+      "speed": 1.0,
+      "pitch": 0.95,
+      "chatterbox": {
+        "exaggeration": 0.9
+      }
+    },
+    "Caged Man": {
+      "voice": "am_echo",
+      "speed": 0.88,
+      "pitch": 0.92,
+      "chatterbox": {
+        "exaggeration": 0.7
+      }
+    },
+    "Dreamer": {
+      "voice": "am_liam",
+      "speed": 1.02,
+      "pitch": 1.08,
+      "chatterbox": {
+        "exaggeration": 1.0
+      }
+    }
+  },
+  "beats": [
+    {
+      "id": "title",
+      "pause": 4.5
+    },
+    {
+      "id": "n1",
+      "speaker": "Narrator",
+      "text": "Christian had already seen three rooms in the House of the Interpreter. But the old owl had more to show him.",
+      "emo": 0.7
+    },
+    {
+      "id": "i1",
+      "speaker": "Interpreter",
+      "text": "This next room is a picture of courage. Watch closely, Christian.",
+      "face": "happy",
+      "react": {
+        "Christian": "happy"
+      },
+      "emo": 0.7
+    },
+    {
+      "id": "n2",
+      "speaker": "Narrator",
+      "text": "Before a splendid palace stood a crowd of people. They longed to go in, but none of them dared. For the doorway was guarded by armed men.",
+      "react": {
+        "Christian": "worried"
+      },
+      "emo": 0.7
+    },
+    {
+      "id": "c1",
+      "speaker": "Christian",
+      "text": "Why do they only stand there? The door is wide open!",
+      "face": "surprised",
+      "emo": 0.9
+    },
+    {
+      "id": "n3",
+      "speaker": "Narrator",
+      "text": "Then one brave man stepped up to the table, where a man sat with a book and a pen.",
+      "emo": 0.7
+    },
+    {
+      "id": "k1",
+      "speaker": "Knight",
+      "text": "Write down my name, sir! I am going in!",
+      "face": "determined",
+      "react": {
+        "Christian": "surprised"
+      },
+      "emo": 1.1
+    },
+    {
+      "id": "arm",
+      "pause": 1.6
+    },
+    {
+      "id": "n4",
+      "speaker": "Narrator",
+      "text": "He put on his helmet, drew his sword, and charged at the guards. He took many hard blows... but he would not turn back.",
+      "say": "He put on his helmet, drew his sword, and charged at the guards! He took many hard blows... but he would not turn back.",
+      "react": {
+        "Christian": "scared"
+      },
+      "emo": 0.9
+    },
+    {
+      "id": "fight",
+      "pause": 2.6
+    },
+    {
+      "id": "enter",
+      "pause": 1.4
+    },
+    {
+      "id": "n5",
+      "speaker": "Narrator",
+      "text": "And from inside the palace, a joyful song rang out: Come in, come in! Eternal glory you shall win!",
+      "say": "And from inside the palace, a joyful song rang out. Come in, come in! Eternal glory you shall win!",
+      "react": {
+        "Christian": "happy"
+      },
+      "emo": 0.95
+    },
+    {
+      "id": "c2",
+      "speaker": "Christian",
+      "text": "Oh! I think I know what this one means!",
+      "face": "happy",
+      "react": {
+        "Interpreter": "happy"
+      },
+      "emo": 1.0
+    },
+    {
+      "id": "i2",
+      "speaker": "Interpreter",
+      "text": "The road to the King's palace is not always easy, Christian. There will be hard days. Be brave, keep going, and never turn back.",
+      "face": "determined",
+      "react": {
+        "Christian": "determined"
+      },
+      "emo": 0.75
+    },
+    {
+      "id": "c3",
+      "speaker": "Christian",
+      "text": "Then I'll be like that knight. I'd rather take a few bruises at that door than turn away from it.",
+      "face": "determined",
+      "emo": 0.85
+    },
+    {
+      "id": "n6",
+      "speaker": "Narrator",
+      "text": "Next, the Interpreter led him into a dark room. In the corner sat a man inside an iron cage, with his head hanging low.",
+      "react": {
+        "Christian": "worried"
+      },
+      "emo": 0.7
+    },
+    {
+      "id": "c4",
+      "speaker": "Christian",
+      "text": "Friend... who are you? How did you come to be here?",
+      "face": "worried",
+      "emo": 0.75
+    },
+    {
+      "id": "m1",
+      "speaker": "Caged Man",
+      "text": "I was once a follower of the King, and I was glad. But I stopped watching over my heart. One wrong choice... then another... then another.",
+      "face": "sad",
+      "react": {
+        "Christian": "sad"
+      },
+      "emo": 0.75
+    },
+    {
+      "id": "m2",
+      "speaker": "Caged Man",
+      "text": "Now my heart has grown so hard, I can't find my way back. I'm shut in a cage I built for myself.",
+      "face": "sad",
+      "react": {
+        "Christian": "sad",
+        "Interpreter": "sad"
+      },
+      "emo": 0.8
+    },
+    {
+      "id": "i3",
+      "speaker": "Interpreter",
+      "text": "Remember this man, Christian. Never play with sin, not even a little. Keep your heart soft, and when you go wrong, run straight back to the King.",
+      "face": "worried",
+      "react": {
+        "Christian": "worried"
+      },
+      "emo": 0.75
+    },
+    {
+      "id": "c5",
+      "speaker": "Christian",
+      "text": "God help me to watch over my heart, and keep it soft, every single day.",
+      "face": "sad",
+      "emo": 0.8
+    },
+    {
+      "id": "n7",
+      "speaker": "Narrator",
+      "text": "In the last room, a man sat up in his bed. He was shaking all over, and his brow was wet with fear.",
+      "react": {
+        "Christian": "surprised"
+      },
+      "emo": 0.75
+    },
+    {
+      "id": "c6",
+      "speaker": "Christian",
+      "text": "Why are you trembling so?",
+      "face": "worried",
+      "emo": 0.8
+    },
+    {
+      "id": "d1",
+      "speaker": "Dreamer",
+      "text": "I had a dream! The sky went dark as night. A trumpet sounded, and I saw the King on a great white throne.",
+      "face": "scared",
+      "react": {
+        "Christian": "scared"
+      },
+      "emo": 1.15
+    },
+    {
+      "id": "d2",
+      "speaker": "Dreamer",
+      "text": "Everyone had to stand before Him... and I was not ready!",
+      "face": "scared",
+      "react": {
+        "Christian": "scared"
+      },
+      "emo": 1.2
+    },
+    {
+      "id": "i4",
+      "speaker": "Interpreter",
+      "text": "One day that dream will come true, for everyone. So live each day ready to meet the King, Christian, and that day will be a day of joy, not fear.",
+      "face": "happy",
+      "react": {
+        "Christian": "surprised"
+      },
+      "emo": 0.75
+    },
+    {
+      "id": "c7",
+      "speaker": "Christian",
+      "text": "I'll remember this room longest of all. It makes me a little afraid... and very glad I'm on the King's road.",
+      "face": "happy",
+      "emo": 0.8
+    },
+    {
+      "id": "n8",
+      "speaker": "Narrator",
+      "text": "At last, they came to the door at the end of the house.",
+      "emo": 0.65
+    },
+    {
+      "id": "c8",
+      "speaker": "Christian",
+      "text": "Thank you, sir, with all my heart. The dust and the water, the fire and the oil, the knight, the cage, and the dream. I'll carry every one of them with me.",
+      "face": "happy",
+      "react": {
+        "Interpreter": "happy"
+      },
+      "emo": 0.8
+    },
+    {
+      "id": "i5",
+      "speaker": "Interpreter",
+      "text": "Go then, Christian, and the Lord be with you on the King's Highway. Let what you've seen here make you brave, and comfort you on the road.",
+      "face": "happy",
+      "react": {
+        "Christian": "happy"
+      },
+      "emo": 0.75
+    },
+    {
+      "id": "out",
+      "pause": 2.4
+    },
+    {
+      "id": "n9",
+      "speaker": "Narrator",
+      "text": "So Christian set off again, still carrying his heavy burden. But just ahead, on a little hill, something was waiting that would change everything.",
+      "say": "So Christian set off again, still carrying his heavy burden. But just ahead, on a little hill, something was waiting... that would change everything.",
+      "emo": 0.85
+    },
+    {
+      "id": "end",
+      "pause": 4.5
+    }
+  ]
+}

@@ -1,0 +1,349 @@
+{
+  "title": "Pilgrim's Progress",
+  "episode": "Episode 1 — The Heavy Burden",
+  "cast": {
+    "Narrator": {
+      "voice": "bm_lewis",
+      "speed": 0.95,
+      "fish": {
+        "reference_id": "8906b5268cae414fb9b8d3da6e84413d",
+        "title": "Measured Storyteller",
+        "tag": ""
+      },
+      "chatterbox": {
+        "exaggeration": 0.6
+      }
+    },
+    "Christian": {
+      "voice": "am_fenrir",
+      "speed": 0.98,
+      "fish": {
+        "reference_id": "5c8dc6a69c0b4edfb32634db6384bf34",
+        "title": "Warm Storyteller",
+        "tag": ""
+      },
+      "chatterbox": {
+        "exaggeration": 0.65
+      }
+    },
+    "Christiana": {
+      "voice": "af_heart",
+      "speed": 0.95,
+      "fish": {
+        "reference_id": "098489dfd5504d96998415c723b4cab1",
+        "title": "Mother (gentle, nurturing)",
+        "tag": "[warm, gentle]"
+      },
+      "chatterbox": {
+        "exaggeration": 0.6
+      }
+    },
+    "Elsie": {
+      "voice": "af_sky",
+      "speed": 1.05,
+      "pitch": 1.22,
+      "fish": {
+        "reference_id": "085081f7c97c4c478f70f59bd8049f2a",
+        "title": "little girl (energetic)",
+        "tag": "[excited child]"
+      },
+      "chatterbox": {
+        "exaggeration": 0.95
+      }
+    },
+    "Anna": {
+      "voice": "af_nicole",
+      "speed": 1.0,
+      "pitch": 1.25,
+      "fish": {
+        "reference_id": "9a422fe397324ef796df540dededed52",
+        "title": "Little girl 5 year old soft warm",
+        "tag": "[shy, soft]"
+      },
+      "chatterbox": {
+        "exaggeration": 0.7
+      }
+    },
+    "Obstinate": {
+      "voice": "am_onyx",
+      "speed": 1.02,
+      "pitch": 0.93,
+      "fish": {
+        "reference_id": "3d40669a01e045329ab4d6d7e25ce10e",
+        "title": "Old man (deep, raspy)",
+        "tag": "[grumpy, annoyed]"
+      },
+      "chatterbox": {
+        "exaggeration": 0.95
+      }
+    },
+    "Pliable": {
+      "voice": "am_puck",
+      "speed": 1.08,
+      "pitch": 1.06,
+      "fish": {
+        "reference_id": "a944c8e3d6274910ac6bd084ad467117",
+        "title": "mad man (young, energetic)",
+        "tag": "[excited]"
+      },
+      "chatterbox": {
+        "exaggeration": 0.95
+      }
+    },
+    "Evangelist": {
+      "voice": "bm_lewis",
+      "speed": 0.86,
+      "fish": {
+        "reference_id": "98db2383e6a14132b75a79b565f731ab",
+        "title": "Wise Old Man (British)",
+        "tag": "[calm, kind]"
+      },
+      "chatterbox": {
+        "exaggeration": 0.55
+      }
+    }
+  },
+  "beats": [
+    {
+      "id": "title",
+      "pause": 4.5
+    },
+    {
+      "id": "aerial",
+      "pause": 1.5
+    },
+    {
+      "id": "n1",
+      "speaker": "Narrator",
+      "text": "Once upon a time, in a city called Destruction, there lived a bear named Christian."
+    },
+    {
+      "id": "n2",
+      "speaker": "Narrator",
+      "text": "On his back, Christian carried a great, heavy burden. And every day, it grew heavier… and heavier."
+    },
+    {
+      "id": "sigh",
+      "pause": 1.4
+    },
+    {
+      "id": "cw1",
+      "speaker": "Christiana",
+      "text": "Christian, dear, you have been sighing all week over that heavy burden on your back."
+    },
+    {
+      "id": "cw2",
+      "speaker": "Christiana",
+      "text": "You keep saying our city will not stand… it frightens the cubs, you know."
+    },
+    {
+      "id": "ch1",
+      "speaker": "Christian",
+      "text": "I know, my dear. But I read it in my book, and I cannot forget it. I must find a way to be saved."
+    },
+    {
+      "id": "cw3",
+      "speaker": "Christiana",
+      "text": "If you truly must find answers, they say a wise bear called Evangelist walks the east road."
+    },
+    {
+      "id": "cubs",
+      "pause": 0.6
+    },
+    {
+      "id": "el1",
+      "speaker": "Elsie",
+      "text": "Papa! Why do you always carry that big lumpy backpack?"
+    },
+    {
+      "id": "el2",
+      "speaker": "Elsie",
+      "text": "It looks SO heavy. I tried to lift it once and fell right over. Plop!",
+      "say": "It looks so heavy! I tried to lift it once, and fell right over. Plop!",
+      "emo": 1.15
+    },
+    {
+      "id": "plop",
+      "pause": 1.0
+    },
+    {
+      "id": "an1",
+      "speaker": "Anna",
+      "text": "Papa, I found a honey-flower by the well! Want to smell it?",
+      "say": "Papa, I found a honey flower by the well! Want to smell it?"
+    },
+    {
+      "id": "an2",
+      "speaker": "Anna",
+      "text": "It smells like… like honey!",
+      "say": "It smells like... like honey!",
+      "emo": 0.9
+    },
+    {
+      "id": "n3",
+      "speaker": "Narrator",
+      "text": "But Christian could not rest. So he set off down the east road, all alone, with his burden on his back."
+    },
+    {
+      "id": "ob1",
+      "speaker": "Obstinate",
+      "text": "Hmph. Still going on about the city falling down, Christian?",
+      "say": "Humph. Still going on about the city falling down, Christian?",
+      "fish": "[annoyed grunt] Hmph. Still going on about the city falling down, Christian?"
+    },
+    {
+      "id": "ob2",
+      "speaker": "Obstinate",
+      "text": "Leave if you like — but no sensible creature will go with you. Hmph!",
+      "say": "Leave if you like. But no sensible creature will go with you. Humph!",
+      "emo": 1.05
+    },
+    {
+      "id": "walk",
+      "pause": 1.2
+    },
+    {
+      "id": "n4",
+      "speaker": "Narrator",
+      "text": "There, on the road, he met a tall, kind bear in a shining white robe. His name was Evangelist."
+    },
+    {
+      "id": "ev1",
+      "speaker": "Evangelist",
+      "text": "Peace to you, burdened friend. I am called Evangelist. Why do you sigh so?"
+    },
+    {
+      "id": "ev2",
+      "speaker": "Christian",
+      "text": "This burden on my back grows heavier each day… and I fear our city will not stand. But I do not know where to go!",
+      "emo": 0.8
+    },
+    {
+      "id": "ev3",
+      "speaker": "Evangelist",
+      "text": "Then hear me. Beyond the fields lies a Wicket Gate, the beginning of the true way."
+    },
+    {
+      "id": "ev4",
+      "speaker": "Christian",
+      "text": "A gate? I look and look, but I cannot see any gate…"
+    },
+    {
+      "id": "ev5",
+      "speaker": "Evangelist",
+      "text": "Can you see that shining light far away?"
+    },
+    {
+      "id": "reveal",
+      "pause": 3.4
+    },
+    {
+      "id": "ev6",
+      "speaker": "Christian",
+      "text": "…I… yes! I think I see it!",
+      "say": "I... yes! I think I see it!",
+      "emo": 1.1
+    },
+    {
+      "id": "ev7",
+      "speaker": "Evangelist",
+      "text": "Keep that light in your eye and go straight toward it. There you will find the Gate. Now run, Christian — run and do not look back!",
+      "say": "Keep that light in your eye, and go straight toward it. There you will find the Gate. Now run, Christian! Run, and do not look back!",
+      "emo": 0.85
+    },
+    {
+      "id": "n5",
+      "speaker": "Narrator",
+      "text": "So Christian began to run!",
+      "emo": 0.9
+    },
+    {
+      "id": "run",
+      "pause": 2.2
+    },
+    {
+      "id": "c1",
+      "speaker": "Obstinate",
+      "text": "CHRISTIAN! Stop right there, you great woolly fool! Come back at once!",
+      "say": "Christian! Stop right there, you great woolly fool! Come back at once!",
+      "emo": 1.2
+    },
+    {
+      "id": "arrive",
+      "pause": 1.6
+    },
+    {
+      "id": "c2",
+      "speaker": "Christian",
+      "text": "I cannot stay, neighbours. This city will not last. I am searching for a country that can never crumble. You have seen the light ahead — come with me!",
+      "say": "I cannot stay, neighbours. This city will not last. I am searching for a country that can never crumble. You have seen the light ahead. Come with me!",
+      "emo": 0.85
+    },
+    {
+      "id": "c3",
+      "speaker": "Obstinate",
+      "text": "What?! Leave our friends, our comforts, our whole city — for a dream out of that book of yours?",
+      "say": "What?! Leave our friends, our comforts, our whole city, for a dream out of that book of yours?",
+      "emo": 1.1
+    },
+    {
+      "id": "c4",
+      "speaker": "Christian",
+      "text": "What I seek is worth more than all we would leave behind. Come and see for yourselves!",
+      "emo": 0.85
+    },
+    {
+      "id": "c5",
+      "speaker": "Obstinate",
+      "text": "Bah! I'll not be dragged on any fool's errand. Pliable — take his other arm. We are hauling him home.",
+      "say": "Bah! I'll not be dragged on any fool's errand. Pliable, take his other arm. We are hauling him home."
+    },
+    {
+      "id": "c6",
+      "speaker": "Pliable",
+      "text": "Weeeell… actually, Obstinate… golden crowns? Streets of light? A city that never crumbles? …My paws are tingling.",
+      "say": "Well... actually, Obstinate... golden crowns? Streets of light? A city that never crumbles? ... My paws are tingling!",
+      "emo": 0.75
+    },
+    {
+      "id": "c7",
+      "speaker": "Pliable",
+      "text": "I'm going WITH him! Think of it — glory, adventure, and no more of your grumbling!",
+      "say": "I'm going with him! Think of it! Glory, adventure, and no more of your grumbling!",
+      "emo": 1.25
+    },
+    {
+      "id": "c8",
+      "speaker": "Obstinate",
+      "text": "You TOO?! Of all the—! FINE! Go drown in a bog together, the pair of you! I am going home like a SENSIBLE creature. HMPH!",
+      "say": "You too?! Of all the... Fine! Go drown in a bog together, the pair of you! I am going home, like a sensible creature. Humph!",
+      "emo": 1.3
+    },
+    {
+      "id": "stomp",
+      "pause": 2.6
+    },
+    {
+      "id": "c9",
+      "speaker": "Pliable",
+      "text": "Don't mind him. Lead the way, friend Christian — hop hop!",
+      "say": "Don't mind him. Lead the way, friend Christian! Hop hop!",
+      "emo": 1.0
+    },
+    {
+      "id": "n6",
+      "speaker": "Narrator",
+      "text": "And so Christian and Pliable set off together, through the gate in the city wall, toward the shining light."
+    },
+    {
+      "id": "n7",
+      "speaker": "Narrator",
+      "text": "But the road ahead holds a very muddy surprise. Next time: the Slough of Despond!",
+      "emo": 0.8
+    },
+    {
+      "id": "end",
+      "pause": 4.5
+    }
+  ]
+}

@@ -4,3 +4,6 @@ dist/
 .DS_Store
 .vite/
 .claude/worktrees/
+film/out/
+film/.env
+film/.venv/
