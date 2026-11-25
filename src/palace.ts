@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { PALETTE } from './palette';
 import { makeBear, animateBear, addPilgrimArmorDetails, BearParts, block, mat } from './bear';
 import { makeShiningLight, animateShiningLight, ShiningLight, setupSunShadow } from './light';
+import { makePalaceLion, type LionRig } from './lion';
 import { DialogueLine } from './npcs';
 import { addHighwayPaving } from './road';
 import { dressExterior } from './world/dress';
@@ -59,10 +60,15 @@ const EAST_GATE_X = 26;
 const HALL = new THREE.Vector3(100, 0, 0);
 const ROOF = new THREE.Vector3(170, 12, 0);
 
+const UP = new THREE.Vector3(0, 1, 0);
+
 interface Lion {
   root: THREE.Group;
-  head: THREE.Group;
+  rig: LionRig;
   home: THREE.Vector3;
+  facing: number;
+  post: THREE.Vector3;
+  chain: THREE.Mesh[];
   lunge: number; // 0..1 toward the path
 }
 
@@ -212,53 +218,25 @@ export class PalaceScene {
 
   // a proper four-footed lion, nothing like gentle Goodwill
   private makeLion(side: number): Lion {
-    const root = new THREE.Group();
-    const FUR = 0xd9a860;
-    const MANE = 0xb0793a;
-    root.add(block(2.0, 1.05, 1.05, FUR, 0, 1.0, 0)); // body, horizontal
-    for (const [lx, lz] of [[-0.7, -0.32], [-0.7, 0.32], [0.7, -0.32], [0.7, 0.32]] as const) {
-      root.add(block(0.34, 0.72, 0.34, FUR, lx, 0.36, lz));
-      root.add(block(0.38, 0.16, 0.4, 0xc49450, lx, 0.08, lz));
-    }
-    // tail with a dark tuft
-    root.add(block(0.16, 0.16, 0.9, FUR, -1.15, 1.2, 0));
-    root.add(block(0.26, 0.26, 0.26, MANE, -1.15, 1.28, -0.55));
-    // head at the front, wrapped in a great mane
-    const head = new THREE.Group();
-    head.add(block(0.95, 0.85, 0.85, FUR, 0, 0, 0));
-    head.add(block(1.35, 1.25, 0.5, MANE, 0, 0, -0.4));
-    head.add(block(1.15, 0.35, 0.8, MANE, 0, 0.62, -0.1));
-    head.add(block(1.15, 0.35, 0.8, MANE, 0, -0.62, -0.1));
-    head.add(block(0.35, 1.0, 0.8, MANE, -0.68, 0, -0.1));
-    head.add(block(0.35, 1.0, 0.8, MANE, 0.68, 0, -0.1));
-    // muzzle, bared teeth, fierce eyes
-    head.add(block(0.5, 0.36, 0.24, 0xe8c898, 0, -0.16, 0.5));
-    head.add(block(0.18, 0.12, 0.08, 0x4a3428, 0, 0.0, 0.6));
-    for (const tx of [-0.14, 0.02, 0.16]) {
-      head.add(block(0.09, 0.16, 0.06, 0xffffff, tx, -0.32, 0.56));
-    }
-    head.add(block(0.12, 0.14, 0.06, 0xc9353f, -0.22, 0.14, 0.46));
-    head.add(block(0.12, 0.14, 0.06, 0xc9353f, 0.22, 0.14, 0.46));
-    head.position.set(1.25, 1.15, 0);
-    head.rotation.y = 0;
-    root.add(head);
+    const rig = makePalaceLion();
+    const root = rig.root;
     // the chain post is anchored to the world — it must not move when the lion lunges
-    const postWX = side < 0 ? -5.5 : 4.5;
-    const postWZ = 3.4 * side;
-    const post = block(0.24, 1.4, 0.24, 0x5e5a55, postWX, 0.7, postWZ);
-    this.scene.add(post);
-    for (let c = 0; c < 4; c++) {
-      const link = new THREE.Mesh(new THREE.TorusGeometry(0.14, 0.05, 6, 10), mat(0x6e6a64));
-      link.position.set(-2.2 + c * 0.42, 0.32, 0.06 * (c % 2));
-      link.rotation.set(Math.PI / 2, 0, c * 0.6);
-      root.add(link);
+    const post = new THREE.Vector3(side < 0 ? -5.6 : 4.6, 0.95, 3.9 * side);
+    this.scene.add(block(0.3, 1.5, 0.3, 0x5e5a55, post.x, 0.75, post.z), block(0.42, 0.16, 0.42, 0x77727c, post.x, 1.2, post.z));
+    const chain: THREE.Mesh[] = [];
+    for (let c = 0; c < 11; c++) {
+      const link = new THREE.Mesh(new THREE.TorusGeometry(0.14, 0.05, 6, 10), mat(0x77727c));
+      link.castShadow = true;
+      this.scene.add(link);
+      chain.push(link);
     }
-    const home = new THREE.Vector3((LION_X0 + LION_X1) / 2 + (side < 0 ? -2.4 : 2.4), 0, 3.4 * side);
+    const home = new THREE.Vector3((LION_X0 + LION_X1) / 2 + (side < 0 ? -2.4 : 2.4), 0, 4.0 * side);
     root.position.copy(home);
-    // face the road (north lion faces south +z, south lion faces north -z)
-    root.rotation.y = side < 0 ? 0 : Math.PI;
+    // both watch the road, turned toward whoever comes along it from the west
+    const facing = side < 0 ? -0.6 : Math.PI + 0.8;
+    root.rotation.y = facing;
     this.scene.add(root);
-    return { root, head, home, lunge: 0 };
+    return { root, rig, home, facing, post, chain, lunge: 0 };
   }
 
   // ------------------------------------------------------------ build
@@ -1315,14 +1293,28 @@ export class PalaceScene {
     for (let i = 0; i < this.lions.length; i++) {
       const lion = this.lions[i];
       const near = p.x > LION_X0 - 3 && p.x < LION_X1 + 3 && p.x < 60;
+      const rig = lion.rig;
       // heads track Christian while he is near
+      let look = 0;
       if (near) {
-        lion.head.rotation.x = Math.sin(t * (6 + i)) * 0.12; // roaring toss
-        lion.root.position.y = Math.abs(Math.sin(t * (5 + i))) * 0.1;
-      } else {
-        lion.head.rotation.x = Math.sin(t * 1.2 + i) * 0.05;
-        lion.root.position.y = 0;
+        const to = Math.atan2(p.x - lion.root.position.x, p.z - lion.root.position.z) - lion.facing;
+        look = THREE.MathUtils.clamp(Math.atan2(Math.sin(to), Math.cos(to)), -0.75, 0.75);
       }
+      rig.head.rotation.y += (look - rig.head.rotation.y) * Math.min(1, dt * 4);
+      const roar = near ? Math.max(0, Math.sin(t * 1.9 + i * 2.2)) : 0;
+      const bite = Math.max(roar, lion.lunge);
+      rig.head.rotation.x = -bite * 0.28 + Math.sin(t * 1.2 + i) * 0.04;
+      rig.jaw.rotation.x = 0.04 + bite * 0.6;
+      rig.trunk.position.y = Math.sin(t * 1.8 + i) * 0.02;
+      rig.tail.forEach((seg, k) => { seg.rotation.y = Math.sin(t * (near ? 3.4 : 1.6) - k * 0.6 + i) * 0.16; });
+      // the chain hangs from collar to post
+      const from = rig.collar.clone().applyAxisAngle(UP, lion.facing).add(lion.root.position);
+      lion.chain.forEach((link, k) => {
+        const u = (k + 0.5) / lion.chain.length;
+        link.position.lerpVectors(from, lion.post, u);
+        link.position.y = Math.max(0.12, link.position.y - Math.sin(u * Math.PI) * 0.75);
+        link.rotation.set(k % 2 ? Math.PI / 2 : 0.3, Math.atan2(lion.post.x - from.x, lion.post.z - from.z), 0);
+      });
       // lunge springs toward the path, then eases home
       lion.lunge = Math.max(0, lion.lunge - dt * 2.2);
       const side = i === 0 ? -1 : 1;

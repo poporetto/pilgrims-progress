@@ -119,6 +119,7 @@ export function makeApollyon(): ApollyonRig {
     [0.9, 0.16, 0.6, RED_DARK, 0, 0.17, 1.2],
   ];
   headBoxes.push(...both((s) => [
+    [0.2, 0.24, 0.62, RED, s * 1.2, 0.56, 0.62, 0.2],
     // brows pulled down into a scowl
     [0.86, 0.3, 0.42, RED, s * 0.66, 0.56, 1.0, 0, 0, s * 0.3],
     [0.4, 0.5, 0.2, RED_DARK, s * 0.98, -0.28, 0.98],
@@ -139,7 +140,10 @@ export function makeApollyon(): ApollyonRig {
   ]));
   for (let i = 0; i < 3; i++) headBoxes.push([0.28, 0.5 - i * 0.08, 0.4, RED, 0, 1.2 - i * 0.28, -0.3 - i * 0.4, -0.5 - i * 0.2]);
   head.add(model(headBoxes));
-  const eyes = ember(0xff3b2a, [-1, 1].map((s): Box => [0.5, 0.36, 0.1, 0, s * 0.62, 0.22, 1.0, 0, 0, s * 0.12]));
+  const eyes = ember(0xff3b2a, [-1, 1].flatMap((s): Box[] => [
+    [0.5, 0.36, 0.1, 0, s * 0.62, 0.22, 1.0, 0, 0, s * 0.12],
+    [0.1, 0.3, 0.42, 0, s * 1.17, 0.26, 0.6], // glaring from the side as well
+  ]));
   const pupils = model(both((s) => [[0.12, 0.3, 0.06, 0x2b0d0c, s * 0.6, 0.2, 1.06]]));
   head.add(eyes.group, pupils);
   const maw = ember(0xff7a35, [[1.1, 0.2, 0.9, 0, 0, -0.68, 1.22]]);
@@ -160,7 +164,7 @@ export function makeApollyon(): ApollyonRig {
   const wings = ([-1, 1] as const).map((s) => {
     const wing = new THREE.Group();
     const sweep = new THREE.Group();
-    sweep.rotation.y = s * 0.12; // swept back, so they read from the side too
+    sweep.rotation.y = s * 0.8; // swept back, so they read from the side too
     const shape = new THREE.Shape();
     shape.moveTo(0, 0.3);
     shape.lineTo(...wrist);

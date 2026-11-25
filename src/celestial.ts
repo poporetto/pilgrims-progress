@@ -3,6 +3,9 @@ import { PALETTE } from './palette';
 import { makeBear, animateBear, addPilgrimArmorDetails, addShiningOneDetails, BearParts, Species, block, mat } from './bear';
 import { dressExterior } from './world/dress';
 import { createRiverMaterial } from './world/water';
+import { bakeStatic, foliageMaterial, voxelMesh } from './world/voxels';
+import { createBush, createRock, createTree } from './world/props';
+import { mistTexture } from './beulah';
 import { band } from './world/terrain';
 import { makeShiningLight, animateShiningLight, ShiningLight, setupSunShadow } from './light';
 import { DialogueLine } from './npcs';
@@ -107,6 +110,8 @@ export class CelestialScene {
   private gatewaySmoke: THREE.Mesh[] = [];
   private gatewaySmokeT = -1;
   private ignoranceSweat: THREE.Mesh[] = [];
+  private ignMist: THREE.Sprite[] = [];
+  private ferry: THREE.Group | null = null;
   private ignoranceAfraid = false;
   private ignoranceNoteTimer = 0;
   private ignoranceNotes: Array<{ group: THREE.Group; life: number }> = [];
@@ -767,23 +772,31 @@ export class CelestialScene {
     const d = IGN;
     const rng = (a: number, b: number) => a + Math.random() * (b - a);
 
-    // A compact continuation of Chapter XV's Beulah Land: the same green
-    // meadow, flower colours, layered river, pale road, and golden far shore.
-    // Oversize the meadow beyond every epilogue camera angle. The earlier
-    // compact patch exposed the Celestial scene's yellow base at the top and
-    // left edges when the camera pulled back to follow Ignorance.
-    const meadow = new THREE.Mesh(new THREE.PlaneGeometry(100, 110), mat(0x9ed67e));
-    meadow.rotation.x = -Math.PI / 2;
-    // Keep the Beulah turf above Chapter XVI's large base plane. At the same
-    // height the depth buffer alternates between both surfaces and flickers.
-    meadow.position.set(d.x - 14, 0.03, d.z);
-    meadow.receiveShadow = true;
-    s.add(meadow);
-    const farShore = new THREE.Mesh(new THREE.PlaneGeometry(80, 110), mat(0xe8d69a));
-    farShore.rotation.x = -Math.PI / 2;
-    farShore.position.set(d.x + 32, 0.04, d.z);
-    farShore.receiveShadow = true;
-    s.add(farShore);
+    // The same country as the Beulah Land chapter, dressed the same way: lush
+    // meadow, orchard and songbirds on this side, a golden shore across the River.
+    const BANK_W = d.x - 5.7; const BANK_E = d.x + 3.7;
+    const GOLD = new THREE.Color(0xeedb9f);
+    dressExterior(s, {
+      seed: 162,
+      butterflies: 30, petals: 60,
+      bounds: { minX: d.x - 56, maxX: d.x + 66, minZ: -56, maxZ: 56 },
+      flat: (_x, z) => band(Math.max(0, Math.abs(z) - 23), 0, 6),
+      hills: 3.4,
+      blocked: (x, z) => Math.abs(z) < 2.6 || (x > BANK_W - 0.8 && x < BANK_E + 0.8)
+        || (x > d.x + 9 && x < d.x + 24 && z > -7 && z < 16),
+      palette: {
+        grass: [0xa8dc88, 0x9fd57e, 0xb4e396, 0x96cf76],
+        highGrass: 0xcfeab0,
+        blossom: true,
+        flowers: [0xf4c2d4, 0xfff0a0, 0xe8d4f8, 0xffb3c6, 0xaecbff, 0xff9ec4, 0xffffff],
+      },
+      tint: (x, _z, _y, c) => { const g = THREE.MathUtils.smoothstep(x, BANK_E - 1, BANK_E + 5); if (g > 0) c.lerp(GOLD, g * 0.8); },
+      grass: 2400,
+      flowers: 620,
+      trees: 46,
+      shrubs: 36,
+      treeZone: (x, z) => Math.abs(z) > 18 && Math.abs(z) < 42 && (x < BANK_W - 3 || x > BANK_E + 8),
+    });
 
     const addPlankWalk = (fromX: number, toX: number, colors: number[]): void => {
       const count = Math.ceil((toX - fromX) / 1.55);
@@ -811,29 +824,81 @@ export class CelestialScene {
     river.receiveShadow = true;
     s.add(river);
 
-    const flowerColors = [0xf4c2d4, 0xfff0a0, 0xe8d4f8, 0xffb3c6, 0xaecbff, 0xff9ec4];
-    for (let i = 0; i < 46; i++) {
-      const fx = rng(d.x - 31, d.x - 6.5);
-      const fz = (Math.random() < 0.5 ? -1 : 1) * rng(3.4, 18);
-      s.add(block(0.16, 0.32, 0.16, flowerColors[i % flowerColors.length], fx, 0.16, fz));
+    // reeds and mossy rocks along both banks
+    for (let i = 0; i < 14; i++) {
+      const west = i % 2 === 0;
+      const rz = (i % 4 < 2 ? -1 : 1) * (3.2 + (i * 1.37) % 13);
+      const rock = createRock({ seed: 1710 + i, size: 0.5 + (i % 3) * 0.2, moss: i % 2 === 0 });
+      rock.position.x = west ? BANK_W - 0.9 : BANK_E + 0.9;
+      rock.position.z = rz + 1;
+      s.add(rock);
+      const reeds = voxelMesh(Array.from({ length: 5 }, (_, k) => ({
+        w: 0.07, h: 0.8 + ((k * 7 + i) % 5) * 0.14, d: 0.07,
+        x: (k - 2) * 0.16, y: 0.45, z: ((k * 3) % 5) * 0.1 - 0.2, rz: (k - 2) * 0.08, color: 0x7fb866,
+      })), foliageMaterial);
+      reeds.position.set(west ? BANK_W - 0.4 : BANK_E + 0.4, 0, rz);
+      s.add(reeds);
     }
-    for (let i = 0; i < 7; i++) {
-      const rz = (Math.random() < 0.5 ? -1 : 1) * rng(4, 15);
-      s.add(block(0.12, rng(0.8, 1.4), 0.12, 0x6fae5a, d.x - 5.7, 0.5, rz));
-      s.add(block(rng(0.5, 0.9), rng(0.3, 0.5), rng(0.5, 0.9), 0xb9b0a2, d.x - 6.2, 0.2, rz + 0.8));
+    // mist drifting on the water
+    for (let i = 0; i < 8; i++) {
+      const m = new THREE.Sprite(new THREE.SpriteMaterial({ map: mistTexture(), color: 0xfff4e0, transparent: true, opacity: 0.26, depthWrite: false }));
+      m.scale.set(4.2, 2, 1);
+      m.position.set(rng(BANK_W + 1, BANK_E - 1), rng(0.6, 1.8), d.z + (i - 3.5) * 2.6);
+      m.userData.baseY = m.position.y;
+      s.add(m);
+      this.ignMist.push(m);
     }
-    for (let i = 0; i < 5; i++) {
-      const tree = new THREE.Group();
-      tree.add(block(0.48, 1.7, 0.48, PALETTE.trunk, 0, 0.85, 0));
-      tree.add(block(2.0, 1.35, 2.0, 0x86cc6c, 0, 2.15, 0));
-      tree.add(block(1.25, 0.9, 1.25, 0x93d477, 0, 3.0, 0));
+    // orchard, flowering bushes and harvest baskets
+    ([[-27, -6.5], [-21, 6.2], [-17, -8.5], [-12, -5.6], [-9.5, 7], [-24, 11], [-14, 12], [-28, 5.5]] as const).forEach(([x, z], i) => {
+      const t = createTree({ seed: 1730 + i, kind: 'fruit' });
+      t.position.set(d.x + x, 0, d.z + z);
+      t.rotation.y = i * 1.3;
+      s.add(t);
+    });
+    for (let i = 0; i < 14; i++) {
+      const bush = createBush({ seed: 1760 + i, flowers: true });
+      bush.position.set(rng(d.x - 33, BANK_W - 2), 0, d.z + (i % 2 ? -1 : 1) * rng(4.6, 16));
+      s.add(bush);
+    }
+    ([[-19, -4], [-10, 4.2], [-25, 4]] as const).forEach(([x, z]) => {
+      const basket = new THREE.Group();
+      basket.add(block(0.9, 0.34, 0.7, 0xa97b4f, 0, 0.17, 0), block(0.12, 0.65, 0.12, 0x8d633f, -0.38, 0.48, 0), block(0.12, 0.65, 0.12, 0x8d633f, 0.38, 0.48, 0));
       for (let f = 0; f < 5; f++) {
-        const a = (f / 5) * Math.PI * 2;
-        tree.add(block(0.2, 0.2, 0.2, f % 2 ? 0xff8a4a : 0xf25b6a,
-          Math.cos(a) * 0.8, 2.2, Math.sin(a) * 0.8));
+        basket.add(block(0.2, 0.2, 0.2, f % 2 ? 0xf25b6a : 0xff9b52, -0.32 + (f % 3) * 0.3, 0.48 + Math.floor(f / 3) * 0.17, (f % 2) * 0.2 - 0.1));
       }
-      tree.position.set(rng(d.x - 30, d.x - 8), 0, (i % 2 ? -1 : 1) * rng(8, 18));
-      s.add(tree);
+      basket.position.set(d.x + x, 0, d.z + z);
+      s.add(bakeStatic(basket));
+    });
+    // the songbirds on their perch
+    const perch = new THREE.Group();
+    perch.add(block(0.2, 1.5, 0.2, 0x94704f, -1.3, 0.75, 0), block(0.2, 1.5, 0.2, 0x94704f, 1.3, 0.75, 0), block(3.2, 0.16, 0.22, 0xa9825d, 0, 1.55, 0));
+    [0x8fc4e4, 0xf3afc0, 0xf4d77e, 0xa5d3a0].forEach((c, i) => {
+      const x = -1.05 + i * 0.7;
+      perch.add(block(0.36, 0.32, 0.4, c, x, 1.83, 0), block(0.3, 0.28, 0.28, c, x, 2.09, 0.08), block(0.1, 0.08, 0.14, 0xeb9f55, x, 2.08, 0.28));
+    });
+    perch.position.set(d.x - 16.5, 0, d.z - 3.6);
+    s.add(bakeStatic(perch));
+    // Vain-hope's little ferry, which takes him over so easily
+    const ferry = new THREE.Group();
+    ferry.add(block(2.6, 0.16, 1.4, 0xb98657, 0, 0.14, 0));
+    for (const side of [-1, 1]) ferry.add(block(2.7, 0.42, 0.16, 0xa06f45, 0, 0.36, side * 0.72));
+    ferry.add(block(0.16, 0.42, 1.4, 0xa06f45, -1.32, 0.36, 0), block(0.5, 0.36, 0.9, 0xcf9c69, 1.45, 0.4, 0), block(0.1, 2.2, 0.1, 0x8b6446, -0.9, 1.3, -0.55));
+    ferry.position.set(BANK_W + 0.9, 0, d.z);
+    s.add(ferry);
+    this.ferry = ferry;
+    // the Celestial City shining on the cliffs beyond the gate
+    const city = (w: number, h: number, dp: number, color: number, x: number, y: number, z: number, lit: number): void => {
+      const b = block(w, h, dp, color, d.x + x, y, d.z + z);
+      b.material = new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: lit, roughness: 0.75, fog: false });
+      s.add(b);
+    };
+    city(16, 5, 34, 0xe6c878, 34, 2.5, 0, 0.18);
+    for (let i = 0; i < 9; i++) {
+      const h = 11 - Math.abs(i - 4) * 1.7;
+      const z = (i - 4) * 3.4;
+      city(2.4, h, 2.4, i % 2 ? 0xffe08a : 0xffeab0, 31, 5 + h / 2, z, 0.35);
+      city(1.4, 1.2, 1.4, 0xf7bfae, 31, 5.6 + h, z, 0.3);
+      city(0.5, 0.9, 0.5, 0xfff8dd, 31, 6.6 + h, z, 0.8);
     }
 
     // a smaller echo of the pearl gate on the far shore
@@ -1288,8 +1353,20 @@ export class CelestialScene {
       (chr.root.position.x - HILL_X0) / (HILL_X1 - HILL_X0), 0, 1,
     );
     const inBeulahEpilogue = this.phase === 'ignorance' || this.phase === 'done';
+    if (inBeulahEpilogue) {
+      for (const m of this.ignMist) m.position.y = (m.userData.baseY as number) + Math.sin(t * 0.8 + m.position.z) * 0.3;
+      if (this.ferry) {
+        this.ferry.position.x = THREE.MathUtils.clamp(this.ignorance.root.position.x, IGN.x - 4.6, IGN.x + 2.6);
+        this.ferry.position.y = Math.sin(t * 1.6) * 0.04;
+      }
+    }
     const bright = inBeulahEpilogue ? 0.35 : climb;
-    this.hemi.intensity = 1.1 + bright * 0.55;
+    this.hemi.intensity = inBeulahEpilogue ? 1.15 : 1.1 + bright * 0.55;
+    // Beulah's own golden-hour light for the epilogue
+    this.hemi.color.set(inBeulahEpilogue ? 0xffe6c0 : 0xfff2d8);
+    this.hemi.groundColor.set(inBeulahEpilogue ? 0xd8c090 : 0xe8d8b0);
+    this.sun.color.set(inBeulahEpilogue ? 0xffd489 : 0xffeab0);
+    this.sun.intensity = inBeulahEpilogue ? 1.5 : 1.72;
     const skyFrom = new THREE.Color(0xffedc4);
     const skyTo = new THREE.Color(0xfff8e2);
     const sky = inBeulahEpilogue

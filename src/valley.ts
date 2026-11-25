@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { PALETTE } from './palette';
+import { BladeBeam, FireFx } from './combatFx';
 import { makeApollyon, type ApollyonRig } from './apollyon';
 import { makeBear, animateBear, addPilgrimArmorDetails, BearParts, block, mat } from './bear';
 import { dressExterior } from './world/dress';
@@ -30,6 +31,7 @@ interface ValleyCallbacks {
   blipSound: () => void;
   setMusic?: (style: 'sinai' | 'cross' | 'battle') => void;
   blockSound?: () => void;
+  shake?: (amount: number) => void;
   battleUI: (show: boolean) => void;
   setHP: (christian: number, apollyon: number) => void;
 }
@@ -54,6 +56,10 @@ const APOLLYON_X = 8;
 const DART_FLIGHT = 1.25; // seconds for a blockable dart to arrive
 const MUTTER_1 = -24;
 const MUTTER_2 = -15;
+
+function turnTo(a: number, b: number, k: number): number {
+  return a + Math.atan2(Math.sin(b - a), Math.cos(b - a)) * k;
+}
 
 export class ValleyScene {
   scene = new THREE.Scene();
@@ -84,12 +90,12 @@ export class ValleyScene {
   private guardGlow: THREE.Mesh;
   private dartThrown = false;
   private knockT = 0; // Christian knocked down, getting back up
-  private dart: THREE.Mesh;
+  private dart: THREE.Group;
   private swingArc: THREE.Mesh;
   // a blade ray hurled from the sword on each swing, flying out to strike Apollyon
-  private bladeRay: THREE.Group;
-  private bladeRayCore: THREE.Mesh;
-  private bladeRayHalo: THREE.Mesh;
+  private beam = new BladeBeam();
+  private fx = new FireFx();
+  private recoilT = 0;       // Apollyon staggering from a hit
   private rayActive = false;
   private rayDamages = false;
   private rayT = 0;
@@ -168,12 +174,8 @@ export class ValleyScene {
     this.groundSword.rotation.z = Math.PI / 2.3;
     this.groundSword.visible = false;
 
-    // the fiery dart
-    this.dart = new THREE.Mesh(
-      new THREE.BoxGeometry(0.7, 0.22, 0.22),
-      new THREE.MeshBasicMaterial({ color: 0xff8a3d }),
-    );
-    this.dart.visible = false;
+    // the fiery dart, as a fireball
+    this.dart = this.fx.ball;
 
     // the grey sword-swing arc
     this.swingArc = new THREE.Mesh(
@@ -181,45 +183,6 @@ export class ValleyScene {
       new THREE.MeshBasicMaterial({ color: 0xd8dee4, transparent: true, opacity: 0, depthWrite: false, side: THREE.DoubleSide }),
     );
     this.swingArc.visible = false;
-
-    // A layered, tapered blade beam: a white-blue cutting edge wrapped in a
-    // broader translucent aura, with a curved wake left by Christian's swing.
-    const rayGroup = new THREE.Group();
-    const haloGeometry = new THREE.TorusGeometry(1.45, 0.34, 4, 20, Math.PI * 1.18);
-    this.bladeRayHalo = new THREE.Mesh(
-      haloGeometry,
-      new THREE.MeshBasicMaterial({
-        color: 0x4f9fff, transparent: true, opacity: 0,
-        depthWrite: false, blending: THREE.AdditiveBlending,
-      }),
-    );
-    const coreGeometry = new THREE.TorusGeometry(1.45, 0.12, 4, 20, Math.PI * 1.18);
-    this.bladeRayCore = new THREE.Mesh(
-      coreGeometry,
-      new THREE.MeshBasicMaterial({
-        color: 0xf4fbff, transparent: true, opacity: 0,
-        depthWrite: false, blending: THREE.AdditiveBlending,
-      }),
-    );
-    this.bladeRayHalo.rotation.z = -Math.PI * 0.59;
-    this.bladeRayCore.rotation.z = -Math.PI * 0.59;
-    rayGroup.add(this.bladeRayHalo, this.bladeRayCore);
-    for (const [y, scale] of [[-0.58, 0.72], [0.58, 0.72]] as const) {
-      const wake = new THREE.Mesh(
-        new THREE.TorusGeometry(1.45, 0.14, 4, 16, Math.PI * 1.08),
-        new THREE.MeshBasicMaterial({
-          color: 0x77c7ff, transparent: true, opacity: 0.34,
-          depthWrite: false, blending: THREE.AdditiveBlending,
-        }),
-      );
-      wake.rotation.z = -Math.PI * 0.56;
-      wake.position.set(0, y * 0.25, -0.55 - Math.abs(y) * 0.35);
-      wake.scale.setScalar(scale);
-      rayGroup.add(wake);
-    }
-    rayGroup.visible = false;
-    rayGroup.renderOrder = 5;
-    this.bladeRay = rayGroup;
 
     // ---------- APOLLYON ----------
     this.apRig = makeApollyon();
@@ -327,9 +290,9 @@ export class ValleyScene {
     this.apollyon.position.copy(this.apHome);
     s.add(this.apollyon);
     s.add(this.groundSword);
-    s.add(this.dart);
+    s.add(this.fx.root);
     s.add(this.swingArc);
-    s.add(this.bladeRay);
+    s.add(this.beam.root);
 
     // belly smoke pool
     for (let i = 0; i < 12; i++) {
@@ -418,7 +381,10 @@ export class ValleyScene {
     this.rayDamages = false;
     this.flourishT = -1;
     this.flourishLaunched = false;
-    this.bladeRay.visible = false;
+    this.beam.stop();
+    this.fx.clear();
+    this.recoilT = 0;
+    this.apollyon.rotation.order = 'YXZ';
     this.dartThrown = false;
     this.spiritSword = false;
     this.mutters = 0;
@@ -438,7 +404,7 @@ export class ValleyScene {
       if (object instanceof THREE.Mesh) object.castShadow = true;
     });
     this.apollyon.position.copy(this.apHome);
-    this.apollyon.rotation.set(0, -Math.PI / 2 + 0.72, 0); // west toward Christian, turned a little to the camera
+    this.apollyon.rotation.set(0, -Math.PI / 2, 0); // west, toward Christian
     if (this.healBeam) (this.healBeam.material as THREE.MeshBasicMaterial).opacity = 0;
     if (this.healProps) this.healProps.visible = false;
     this.cb.battleUI(false);
@@ -505,13 +471,15 @@ export class ValleyScene {
       this.learnedBlock = true;
       this.guardT = Math.max(this.guardT, 0.25);
       this.cb.blockSound?.();
-      this.burst(p.x + 1, 1.4, p.z, 9, 0xffe3a0);
+      this.fx.deflect(new THREE.Vector3(p.x + 1.05, p.y + 1.4, p.z));
+      this.cb.shake?.(0.16);
     } else {
       this.missed++;
       this.chp = Math.max(this.dartThrown ? 12 : 20, this.chp - 6);
       this.cb.setHP(this.chp, this.ahp);
       this.cb.rumbleSound();
-      this.burst(p.x, 1.2, p.z, 5, 0xff8a3d);
+      this.fx.explode(new THREE.Vector3(p.x + 0.5, p.y + 1.2, p.z));
+      this.cb.shake?.(0.4);
     }
     this.volleyLeft--;
     this.animT = -0.45;
@@ -521,7 +489,7 @@ export class ValleyScene {
     this.turn = 'player';
     this.cb.setObjective(this.learnedBlock
       ? '⚔ Well blocked! Swing your sword!'
-      : '⚔ Swing your sword! Raise your shield when a dart comes close');
+      : '⚔ Swing your sword!');
   }
 
   tryAttack(): void {
@@ -593,17 +561,12 @@ export class ValleyScene {
     } else {
       this.rayTo.set(p.x + fx * 7.5, 1.8, p.z + fz * 7.5);
     }
-    this.bladeRay.position.copy(this.rayFrom);
+    this.beam.root.position.copy(this.rayFrom);
     const dx = this.rayTo.x - this.rayFrom.x;
     const dz = this.rayTo.z - this.rayFrom.z;
-    this.bladeRay.rotation.set(0, Math.atan2(dx, dz), 0);
-    const haloMat = this.bladeRayHalo.material as THREE.MeshBasicMaterial;
-    const coreMat = this.bladeRayCore.material as THREE.MeshBasicMaterial;
-    haloMat.color.set(this.spiritSword ? 0x3296ff : 0xb9d9f5);
-    coreMat.color.set(this.spiritSword ? 0xf4fbff : 0xffffff);
-    haloMat.opacity = this.spiritSword ? 0.72 : 0.38;
-    coreMat.opacity = this.spiritSword ? 1 : 0.7;
-    this.bladeRay.visible = true;
+    this.beam.root.rotation.set(0, Math.atan2(dx, dz), 0);
+    this.beam.root.rotation.z = -0.62; // tilted so the cut shows its face to the camera
+    this.beam.start(this.spiritSword);
     this.rayActive = true;
     this.rayDamages = damaging;
     this.rayT = 0;
@@ -683,8 +646,9 @@ export class ValleyScene {
     const dmg = this.spiritSword ? 20 + Math.floor(Math.random() * 9) : 8 + Math.floor(Math.random() * 6);
     this.ahp = Math.max(0, this.ahp - dmg);
     this.cb.setHP(this.chp, this.ahp);
-    this.burst(this.apollyon.position.x - 1, 3, this.apollyon.position.z, this.spiritSword ? 10 : 5,
-      this.spiritSword ? 0x7ab8ff : 0xd8dee4);
+    this.fx.cut(new THREE.Vector3(this.apollyon.position.x - 1.4, 2.9, this.apollyon.position.z), this.spiritSword);
+    this.recoilT = 1;
+    this.cb.shake?.(this.spiritSword ? 0.4 : 0.22);
     if (this.ahp <= 0) {
       this.beginDefeat();
       return;
@@ -706,7 +670,7 @@ export class ValleyScene {
     this.animKind = 'volley';
     this.volleyLeft = this.counters === 1 ? 1 : this.spiritSword ? 3 : 2;
     this.animT = -0.9;
-    this.cb.setObjective('🛡 Fiery darts! Raise your shield as each one comes close');
+    this.cb.setObjective('🛡 Fiery darts! Raise your shield');
   }
 
   private enemyHit(): void {
@@ -716,6 +680,7 @@ export class ValleyScene {
     this.cb.setHP(this.chp, this.ahp);
     this.cb.rumbleSound();
     this.burst(this.christian.root.position.x, 1.2, this.christian.root.position.z, 5, 0xff8a3d);
+    this.cb.shake?.(0.4);
     if (Math.random() < 0.5) this.knockT = 1.0; // knocked off his feet, gets back up
     this.phase = 'battle';
     this.turn = 'player';
@@ -727,7 +692,8 @@ export class ValleyScene {
     this.cb.setHP(this.chp, this.ahp);
     this.cb.rumbleSound();
     const p = this.christian.root.position;
-    this.burst(p.x, 1.4, p.z, 12, 0xff8a3d);
+    this.fx.explode(new THREE.Vector3(p.x + 0.4, p.y + 1.2, p.z), true);
+    this.cb.shake?.(0.75);
     this.sword.visible = false;
     this.groundSword.position.set(p.x - 2.2, this.groundY(p.x - 2.2) + 0.5, p.z + 1.4);
     this.groundSword.visible = true;
@@ -893,10 +859,9 @@ export class ValleyScene {
           this.dart.visible = true;
           const u = THREE.MathUtils.clamp(this.animT / DART_FLIGHT, 0, 1);
           this.dart.position.set(
-            THREE.MathUtils.lerp(this.apollyon.position.x - 1.8, p.x + 0.8, u),
-            4.1 - u * 2.7 + Math.sin(u * Math.PI) * 0.5, this.apollyon.position.z + (p.z - this.apollyon.position.z) * u,
+            THREE.MathUtils.lerp(this.apollyon.position.x - 2.6, p.x + 0.8, u),
+            4.4 - u * 3 + Math.sin(u * Math.PI) * 0.5, this.apollyon.position.z + (p.z - this.apollyon.position.z) * u,
           );
-          this.dart.rotation.z = -0.4;
           if (u >= 1) this.dartLands();
         }
       } else if (this.animKind === 'dart') {
@@ -906,14 +871,13 @@ export class ValleyScene {
           if (!this.dartThrown) {
             this.dartThrown = true;
             this.dart.visible = true;
-            this.dart.position.set(this.apollyon.position.x - 1, 2.2, this.apollyon.position.z);
+            this.dart.position.set(this.apollyon.position.x - 2.6, 4.4, this.apollyon.position.z);
           }
         }
         if (this.dart.visible) {
           const u = THREE.MathUtils.clamp(this.animT / 0.6, 0, 1);
-          this.dart.position.x = THREE.MathUtils.lerp(this.apollyon.position.x - 1, p.x, u);
-          this.dart.position.y = 2.2 - u * 1.2;
-          this.dart.rotation.z = -0.4;
+          this.dart.position.x = THREE.MathUtils.lerp(this.apollyon.position.x - 2.6, p.x + 0.4, u);
+          this.dart.position.y = 4.4 - u * 3.2;
           if (u >= 1) {
             this.dart.visible = false;
             this.animKind = null;
@@ -939,28 +903,32 @@ export class ValleyScene {
     // ---------- the flung blade ray in flight ----------
     if (this.rayActive) {
       this.rayT += dt;
-      const u = THREE.MathUtils.clamp(this.rayT / 0.22, 0, 1);
-      this.bladeRay.position.lerpVectors(this.rayFrom, this.rayTo, u);
-      const flare = Math.sin(u * Math.PI);
-      const haloMat = this.bladeRayHalo.material as THREE.MeshBasicMaterial;
-      const coreMat = this.bladeRayCore.material as THREE.MeshBasicMaterial;
-      haloMat.opacity = (this.spiritSword ? 0.72 : 0.4) * (0.3 + flare * 0.7);
-      coreMat.opacity = (this.spiritSword ? 1 : 0.72) * (0.45 + flare * 0.55);
-      // The wave widens through the middle of its flight like a released slash.
-      this.bladeRay.scale.set(1 + flare * 0.7, 1 + flare * 0.28, 1 + u * 0.75);
-      this.bladeRay.rotation.z = (u - 0.5) * 0.32;
+      const u = THREE.MathUtils.clamp(this.rayT / 0.36, 0, 1);
+      this.beam.root.position.lerpVectors(this.rayFrom, this.rayTo, u);
+      this.beam.update(u, this.spiritSword);
       if (u >= 1) {
         this.rayActive = false;
-        this.bladeRay.visible = false;
-        this.bladeRay.scale.set(1, 1, 1);
-        this.bladeRay.rotation.z = 0;
+        this.beam.stop();
         if (this.rayDamages) this.playerHit();
         this.rayDamages = false;
       }
     }
 
     // ---------- Apollyon presence ----------
+    this.fx.update(dt, t);
+    this.recoilT = Math.max(0, this.recoilT - dt * 2.4);
     if (this.apollyon.visible) {
+      // the two stand squarely face to face
+      if (this.phase !== 'defeated') {
+        const ap = this.apollyon.position;
+        const toChristian = Math.atan2(p.x - ap.x, p.z - ap.z);
+        const ease = 1 - Math.exp(-dt * 6);
+        this.apollyon.rotation.y = turnTo(this.apollyon.rotation.y, toChristian, ease);
+        if (this.phase === 'confront' || this.phase === 'battle' || this.phase === 'anim') {
+          this.christian.root.rotation.y = turnTo(this.christian.root.rotation.y, toChristian + Math.PI, ease);
+        }
+        this.apollyon.rotation.x = -Math.sin(this.recoilT * Math.PI) * 0.14;
+      }
       const clawU = this.animKind === 'claw' && this.animT > -0.4 ? Math.sin(THREE.MathUtils.clamp((this.animT + 0.4) / 0.95, 0, 1) * Math.PI) : 0;
       const breathing = this.animKind === 'volley' || this.animKind === 'dart';
       this.apRig.animate(t, this.phase === 'anim' ? clawU : 0, this.phase === 'anim' && breathing ? 1 : 0);

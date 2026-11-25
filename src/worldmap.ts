@@ -61,11 +61,39 @@ const ISLANDS: Array<{ c: THREE.Vector3; r: number }> = [
   { c: CELESTIAL, r: 4.4 },
 ];
 
+const REGIONS: Array<{ c: THREE.Vector3; color: number; k: number }> = [
+  { c: CITY, color: 0xcdc79c, k: 0.6 }, { c: SLOUGH, color: 0x8f9264, k: 0.9 }, { c: MORALITY, color: 0xc8dfae, k: 0.6 },
+  { c: BEYOND, color: 0xa8dcbc, k: 0.6 }, { c: CROSS, color: 0xd2f0b0, k: 0.75 }, { c: HIGHWAY, color: 0xb4c496, k: 0.7 },
+  { c: HILL, color: 0xb9e39a, k: 0.6 }, { c: PALACE, color: 0xdfe6b8, k: 0.65 }, { c: VALLEY, color: 0xa39a70, k: 0.9 },
+  { c: SHADOW, color: 0x6a7089, k: 0.95 }, { c: VANITY, color: 0xdfc287, k: 0.9 }, { c: LUCRE, color: 0xbcd9b4, k: 0.6 },
+  { c: CASTLE, color: 0x949880, k: 0.85 }, { c: MOUNTAIN, color: 0xb0e387, k: 0.75 }, { c: ENCHANTED, color: 0xe6c878, k: 0.95 },
+  { c: BEULAH, color: 0xb6ea97, k: 0.8 }, { c: CELESTIAL, color: 0xf2d992, k: 0.95 },
+];
+const tmpTint = new THREE.Color();
+
 const ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII', 'XIII', 'XIV', 'XV', 'XVI', 'XVII'];
 
 function mapRng(seed: number): () => number {
   let a = seed >>> 0;
   return () => { a = (a + 0x6d2b79f5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+}
+
+/** A soft storybook sky: deep powder blue melting to a warm cream horizon. */
+function skyTexture(): THREE.Texture {
+  const c = document.createElement('canvas');
+  c.width = 4;
+  c.height = 256;
+  const g = c.getContext('2d')!;
+  const grad = g.createLinearGradient(0, 0, 0, 256);
+  grad.addColorStop(0, '#bfe0fa');
+  grad.addColorStop(0.3, '#d9eefc');
+  grad.addColorStop(0.5, '#fdf1e4');
+  grad.addColorStop(1, '#e4f3f8');
+  g.fillStyle = grad;
+  g.fillRect(0, 0, 4, 256);
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
 }
 
 export class WorldMap {
@@ -117,7 +145,8 @@ export class WorldMap {
   private clouds: THREE.Group[] = [];
   private islands: THREE.Group[] = [];
   private sparkles: THREE.Mesh[] = [];
-  private mist: THREE.Mesh[] = [];
+  private sun: THREE.DirectionalLight | null = null;
+  private boats: THREE.Group[] = [];
   private sinaiGlow: THREE.Mesh | null = null;
   private sunHalos: THREE.Mesh[] = [];
   private crossGlow: THREE.Mesh | null = null;
@@ -331,28 +360,8 @@ export class WorldMap {
 
   // A shallow regional terrain patch embedded in the shared continent. The
   // chapter landmarks remain grouped locally, but there is no island cliff.
-  private island(x: number, z: number, r: number, top: number): THREE.Group {
+  private island(x: number, z: number, r: number, _top: number): THREE.Group {
     const g = new THREE.Group();
-    const seg = 14;
-    const disc = (radius: number, h: number, color: number, y: number) => {
-      const m = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius, h, seg), mat(color));
-      m.position.y = y;
-      m.castShadow = true;
-      m.receiveShadow = true;
-      g.add(m);
-    };
-    // pastel regional tint, sitting just proud of the continent's grass
-    const soft = new THREE.Color(top).lerp(new THREE.Color(0xf6f4e4), 0.3).getHex();
-    const edge = new THREE.Color(soft).multiplyScalar(0.93).getHex();
-    disc(r + 0.3, 0.06, edge, 0.52);
-    disc(r + 0.12, 0.06, soft, 0.55);
-    // A few edge tufts soften the regional colour change without tracing a
-    // complete circular rim that would make it read as another island.
-    for (let i = 0; i < 4; i++) {
-      const a = i * 1.67 + 0.45;
-      g.add(block(0.38, 0.16, 0.38, edge,
-        Math.cos(a) * (r - 0.15), 0.7, Math.sin(a) * (r - 0.15)));
-    }
     g.position.set(x, 0, z);
     g.userData.r = r;
     this.scene.add(g);
@@ -362,11 +371,136 @@ export class WorldMap {
 
   private miniTree(px: number, pz: number, blossom = false): THREE.Group {
     const t = new THREE.Group();
-    t.add(block(0.16, 0.5, 0.16, PALETTE.trunk, 0, 0.25, 0));
-    t.add(block(0.6, 0.45, 0.6, blossom ? PALETTE.leafPink : PALETTE.leaf, 0, 0.7, 0));
-    t.add(block(0.35, 0.3, 0.35, blossom ? PALETTE.leafPink : PALETTE.leaf, 0, 1.0, 0));
+    const leaf = blossom ? [0xf6bccb, 0xfacdd8, 0xfde0e6] : [0x9fd48a, 0xb2e09a, 0xc5eaac];
+    t.add(block(0.18, 0.6, 0.18, 0xa07a58, 0, 0.28, 0));
+    t.add(block(0.86, 0.5, 0.84, leaf[0], 0, 0.76, 0), block(0.66, 0.42, 0.64, leaf[1], 0.04, 1.14, 0.02), block(0.36, 0.28, 0.36, leaf[2], 0.02, 1.44, 0));
     t.position.set(px, 0.55, pz);
     return t;
+  }
+
+  private readonly moundMaterial = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, flatShading: true });
+
+  /** A faceted little hill; returns its surface height at an offset from its centre. */
+  private mound(
+    g: THREE.Group, x: number, z: number, rx: number, rz: number, h: number, top: number, foot: number, seed: number,
+  ): (dx: number, dz: number) => number {
+    const r = mapRng(seed * 97);
+    const SEG = 15; const RINGS = 6;
+    const spread = (u: number): number => Math.pow(Math.cos(u * Math.PI * 0.5), 0.85);
+    const rings: THREE.Vector3[][] = [];
+    const lobes = Array.from({ length: SEG }, () => 0.9 + r() * 0.2);
+    for (let i = 0; i < RINGS; i++) {
+      const u = i / RINGS; const s = spread(u);
+      rings.push(lobes.map((l, k) => {
+        const a = (k / SEG) * Math.PI * 2 + (i % 2) * 0.16;
+        const wob = (1 + (l - 1) * (1 - u * 0.6)) * (0.97 + r() * 0.06);
+        return new THREE.Vector3(Math.cos(a) * rx * s * wob, 0.5 + h * u + (i ? (r() - 0.5) * 0.09 : -0.05), Math.sin(a) * rz * s * wob);
+      }));
+    }
+    const peak = new THREE.Vector3(0, 0.5 + h * 0.98, 0);
+    const pos: number[] = []; const col: number[] = [];
+    const cTop = new THREE.Color(top); const cFoot = new THREE.Color(foot); const c = new THREE.Color();
+    const face = (...p: THREE.Vector3[]): void => {
+      const y = (p[0].y + p[1].y + p[2].y) / 3;
+      c.copy(cFoot).lerp(cTop, THREE.MathUtils.clamp((y - 0.5) / h * 1.25, 0, 1)).multiplyScalar(0.96 + r() * 0.08);
+      for (const q of p) { pos.push(q.x, q.y, q.z); col.push(c.r, c.g, c.b); }
+    };
+    for (let i = 0; i < RINGS; i++) {
+      for (let k = 0; k < SEG; k++) {
+        const a = rings[i][k]; const b = rings[i][(k + 1) % SEG];
+        if (i === RINGS - 1) { face(a, peak, b); continue; }
+        const d = rings[i + 1][k]; const e = rings[i + 1][(k + 1) % SEG];
+        face(a, d, b);
+        face(b, d, e);
+      }
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+    geo.computeVertexNormals();
+    const m = new THREE.Mesh(geo, this.moundMaterial);
+    m.position.set(x, 0, z);
+    m.castShadow = true;
+    m.receiveShadow = true;
+    g.add(m);
+    return (dx, dz) => {
+      const s = Math.min(1, Math.hypot(dx / rx, dz / rz));
+      return 0.5 + h * (Math.acos(Math.pow(s, 1 / 0.85)) / (Math.PI * 0.5));
+    };
+  }
+
+  /** A flat strip of constant width along smoothed local points (rivers, roads). */
+  private ribbon(g: THREE.Object3D, points: ReadonlyArray<readonly [number, number]>, width: number, color: number, y: number, wobble = 0.12): void {
+    const curve = new THREE.CatmullRomCurve3(points.map(([x, z]) => new THREE.Vector3(x, y, z)));
+    this.strip(g, curve, Math.max(24, points.length * 8), width, color, y, wobble);
+  }
+  private strip(g: THREE.Object3D, curve: THREE.CatmullRomCurve3, segs: number, width: number, color: number, y: number, wobble: number): void {
+    const pos: number[] = [];
+    let prev: [THREE.Vector3, THREE.Vector3] | null = null;
+    for (let i = 0; i <= segs; i++) {
+      const p = curve.getPointAt(i / segs); const t = curve.getTangentAt(i / segs);
+      const n = new THREE.Vector3(-t.z, 0, t.x).normalize();
+      const w = width / 2;
+      const l = p.clone().addScaledVector(n, w + Math.sin(i * 1.7) * wobble).setY(y);
+      const r = p.clone().addScaledVector(n, -w + Math.sin(i * 2.3 + 1) * wobble).setY(y);
+      if (prev) for (const q of [prev[0], l, prev[1], prev[1], l, r]) pos.push(q.x, q.y, q.z);
+      prev = [l, r];
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    geo.computeVertexNormals();
+    const m = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color, roughness: 0.95, side: THREE.DoubleSide }));
+    m.receiveShadow = true;
+    g.add(m);
+  }
+
+  private pool(g: THREE.Group, x: number, z: number, rx: number, rz: number, seed: number, colors: readonly number[] = [0xeadfba, 0x8dd0ea, 0x6bbce2]): void {
+    const r = mapRng(seed);
+    const lobes = Array.from({ length: 16 }, () => 0.88 + r() * 0.2);
+    for (const [k, color, y] of [[1.18, colors[0], 0.59], [1, colors[1], 0.6], [0.6, colors[2], 0.61]] as const) {
+      const shape = new THREE.Shape(lobes.map((l, i) => {
+        const a = (i / 16) * Math.PI * 2;
+        return new THREE.Vector2(Math.cos(a) * rx * l * k, Math.sin(a) * rz * l * k);
+      }));
+      const geo = new THREE.ShapeGeometry(shape, 1);
+      geo.rotateX(-Math.PI / 2);
+      const m = new THREE.Mesh(geo, mat(color));
+      m.position.set(x, y, z);
+      m.receiveShadow = true;
+      g.add(m);
+    }
+  }
+
+  private makeCloud(seed: number): THREE.Group {
+    const r = mapRng(seed * 131);
+    const parts: THREE.BufferGeometry[] = [];
+    const n = 5 + Math.floor(r() * 3);
+    for (let i = 0; i < n; i++) {
+      const u = (i / (n - 1)) * 2 - 1;
+      const size = 0.95 * (1 - Math.abs(u) * 0.5) + r() * 0.25;
+      const p = new THREE.IcosahedronGeometry(size, 1);
+      p.scale(1.25, 0.82, 1);
+      p.translate(u * 1.9, (r() - 0.3) * 0.25 + size * 0.25, (r() - 0.5) * 0.7);
+      parts.push(p);
+    }
+    const geo = mergeGeometries(parts, false)!;
+    // a soft flat underside
+    const pos = geo.getAttribute('position');
+    for (let i = 0; i < pos.count; i++) if (pos.getY(i) < -0.28) pos.setY(i, -0.28);
+    geo.computeVertexNormals();
+    const m = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({
+      color: 0xffffff, emissive: 0xfff3ee, emissiveIntensity: 0.32, roughness: 1, flatShading: true, fog: false,
+    }));
+    const g = new THREE.Group();
+    g.add(m);
+    return g;
+  }
+
+  private makeBoat(color: number): THREE.Group {
+    const g = new THREE.Group();
+    g.add(block(1.3, 0.26, 0.5, 0xb98657, 0, 0.1, 0), block(0.3, 0.22, 0.4, 0xcf9c69, 0.75, 0.18, 0), block(0.07, 1.5, 0.07, 0x8b6446, 0, 0.9, 0));
+    for (let i = 0; i < 4; i++) g.add(block(0.82 - i * 0.2, 0.3, 0.05, i % 2 ? 0xfffaf0 : color, 0.42 - i * 0.1, 0.5 + i * 0.3, 0));
+    return g;
   }
 
   // ------------------------------------------------------------ build
@@ -375,23 +509,27 @@ export class WorldMap {
     if (this.built) return;
     this.built = true;
     const s = this.scene;
-    s.background = new THREE.Color(0xd3ecff);
+    s.background = skyTexture();
     // Portrait phones previously looked washed out because their extra-distant
     // map camera sat deep inside the desktop fog range. Keep the atmosphere in
     // the distance without laying a pale veil across the continent.
     const narrowMap = this.camera.aspect < 0.8;
-    s.fog = new THREE.Fog(0xd3ecff, narrowMap ? 72 : 36, narrowMap ? 160 : 100);
+    s.fog = new THREE.Fog(0xdff0fa, narrowMap ? 78 : 44, narrowMap ? 170 : 120);
 
-    s.add(new THREE.HemisphereLight(0xf2f9ff, 0xcde4f2, 1.3));
-    const sun = new THREE.DirectionalLight(PALETTE.sun, 1.7);
-    sun.position.set(-8, 14, 10);
+    s.add(new THREE.HemisphereLight(0xf6fbff, 0xd9d4b8, 1.35));
+    const sun = new THREE.DirectionalLight(0xffe9c8, 2.15);
     sun.castShadow = true;
-    sun.shadow.mapSize.set(1024, 1024);
-    sun.shadow.camera.left = -30;
-    sun.shadow.camera.right = 30;
-    sun.shadow.camera.top = 18;
-    sun.shadow.camera.bottom = -18;
-    s.add(sun);
+    sun.shadow.mapSize.set(2048, 2048);
+    sun.shadow.camera.left = -34;
+    sun.shadow.camera.right = 34;
+    sun.shadow.camera.top = 30;
+    sun.shadow.camera.bottom = -30;
+    sun.shadow.camera.far = 70;
+    sun.shadow.radius = 4;
+    sun.shadow.normalBias = 0.03;
+    s.add(sun, sun.target);
+    this.sun = sun;
+    this.followSun();
 
     // a proper round, bright sun with soft halos
     const sunCore = new THREE.Mesh(
@@ -414,20 +552,25 @@ export class WorldMap {
     // Extend well beyond the final island in every direction. The earlier sea
     // ended almost exactly beneath the Celestial City, exposing an empty edge
     // as the camera panned through the final chapters.
-    const sea = new THREE.Mesh(new THREE.BoxGeometry(380, 1, 190), mat(0xb6e1f1));
-    sea.position.set(45, -1.6, 0);
-    sea.receiveShadow = true;
-    s.add(sea);
-    // Broad pastel bands give the enlarged ocean gentle voxel depth.
-    for (const [z, color] of [[-28, 0xaddbee], [25, 0xc2e7f4]] as const) {
-      const band = block(380, 0.04, 24, color, 45, -1.07, z);
-      band.castShadow = false;
-      s.add(band);
+    const SEA_LIGHT = new THREE.Color(0xb9ecec); const SEA_MID = new THREE.Color(0x8fd0e6); const SEA_DEEP = new THREE.Color(0x78bbdf);
+    const seaGeo = new THREE.PlaneGeometry(380, 190, 190, 80).rotateX(-Math.PI / 2).toNonIndexed();
+    const sp = seaGeo.getAttribute('position');
+    const seaCol = new Float32Array(sp.count * 3);
+    const sc = new THREE.Color();
+    for (let i = 0; i < sp.count; i++) {
+      const x = sp.getX(i) + 45; const z = sp.getZ(i);
+      const out = Math.max(Math.abs(z + 3) - 11, -26 - x, x - 130, 0) + Math.sin(x * 0.21) * 1.6 + Math.sin(z * 0.3 + x * 0.1) * 1.4;
+      sc.copy(SEA_LIGHT).lerp(SEA_MID, THREE.MathUtils.smoothstep(out, 0, 9)).lerp(SEA_DEEP, THREE.MathUtils.smoothstep(out, 8, 34));
+      sc.toArray(seaCol, i * 3);
     }
+    seaGeo.setAttribute('color', new THREE.BufferAttribute(seaCol, 3));
+    const sea = new THREE.Mesh(seaGeo, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.7 }));
+    sea.position.set(45, -1.13, 0);
+    s.add(sea);
     for (let i = 0; i < 110; i++) {
       const w = new THREE.Mesh(
-        new THREE.BoxGeometry(0.5 + Math.random() * 0.9, 0.06, 0.16),
-        new THREE.MeshBasicMaterial({ color: 0xe4f3fc, transparent: true, opacity: 0.8 }),
+        new THREE.BoxGeometry(0.4 + Math.random() * 0.7, 0.04, 0.09),
+        new THREE.MeshBasicMaterial({ color: 0xf7fdff, transparent: true, opacity: 0.8 }),
       );
       w.position.set(-65 + Math.random() * 235, -1.02, (Math.random() - 0.5) * 70);
       w.castShadow = false;
@@ -462,7 +605,9 @@ export class WorldMap {
     ) => {
       const peak = makeAlpineMountain({
         width, height, depth: width * 0.6, rock: blue, snow,
+        rockLight: new THREE.Color(blue).lerp(new THREE.Color(0xd3e2c9), z > -12 ? 0.6 : 0.25).getHex(),
       });
+      peak.rotation.y = Math.sin(x * 3.1) * 0.28;
       peak.position.set(x, 0, z);
       s.add(peak);
     };
@@ -472,26 +617,27 @@ export class WorldMap {
       alpinePeak(
         x, -14.5 - (i % 3) * 0.7,
         10.8 + (i % 4) * 0.75, 5.4 + (i % 5) * 0.55,
-        i % 2 ? 0xb4cbdd : 0xbed3e3, 0xfbfcf8,
+        i % 2 ? 0xc3d5ea : 0xcedff0, 0xffffff,
       );
     }
     for (let x = -20, i = 0; x <= 125; x += 9.0, i++) {
       alpinePeak(
         x, -10.2 - (i % 2) * 0.55,
         11.0 + (i % 3) * 0.8, 4.3 + (i % 4) * 0.55,
-        i % 2 ? 0x9bb8cf : 0xa7c1d6, 0xfffdf5,
+        i % 3 === 0 ? 0xb3c3e0 : i % 3 === 1 ? 0xa9c4dc : 0xbcc6e2, 0xfffcf6,
       );
     }
 
     // Compact voxel conifers tie the mountain range into the continent.
-    for (let x = -19, i = 0; x <= 123; x += 6.4, i++) {
+    for (let x = -21, i = 0; x <= 124; x += 2.1, i++) {
+      if (i % 7 === 3) continue;
       const pine = new THREE.Group();
       pine.add(block(0.18, 0.8, 0.18, 0x765d45, 0, 0.4, 0));
       pine.add(block(1.0, 0.42, 0.9, 0x7fa88f, 0, 0.82, 0));
       pine.add(block(0.74, 0.42, 0.7, 0x8cb59b, 0, 1.15, 0));
       pine.add(block(0.46, 0.4, 0.44, 0x9dc3a7, 0, 1.47, 0));
-      pine.position.set(x, 0.5, -6.1 - (i % 3) * 0.45);
-      pine.scale.setScalar(0.72 + (i % 2) * 0.12);
+      pine.position.set(x, 0.5, -6.6 - (i % 4) * 0.5 - Math.sin(i * 1.9) * 0.3);
+      pine.scale.setScalar(0.62 + (i % 5) * 0.1);
       s.add(pine);
     }
 
@@ -534,8 +680,7 @@ export class WorldMap {
     // ---------- Slough of Despond island ----------
     const slough = this.island(SLOUGH.x, SLOUGH.z, 4.4, 0x9ec78f);
     const bog = new THREE.Group();
-    bog.add(block(4.0, 0.18, 3.0, 0x8a7355, 0, 0.62, 0));
-    bog.add(block(3.0, 0.2, 2.1, 0x6f5a42, 0, 0.68, 0.1));
+    this.pool(bog, 0, 0, 2.5, 1.9, 91, [0x9a8562, 0x7f6a4c, 0x6a563e]);
     bog.add(block(0.55, 0.14, 0.55, 0x8a7355, -1.8, 0.66, 1.3));
     bog.add(block(0.45, 0.12, 0.45, 0x6f5a42, 2.0, 0.66, -1.2));
     bog.add(block(0.16, 0.16, 0.16, 0xa79272, 0.4, 0.84, 0.3));
@@ -584,342 +729,315 @@ export class WorldMap {
     }
     // Mount Sinai looming behind the village — gray, with a fiery seam
     const sinai = new THREE.Group();
-    sinai.add(block(2.6, 1.4, 1.8, 0x8d8d96, 0, 0.7, 0));
-    sinai.add(block(1.9, 1.2, 1.4, 0x7d7d88, 0.1, 1.7, -0.1));
-    sinai.add(block(1.2, 1.0, 1.0, 0x8d8d96, -0.1, 2.6, 0));
-    sinai.add(block(0.7, 0.7, 0.7, 0x6f6f7a, 0.05, 3.3, 0));
+    this.mound(sinai, 0, -0.4, 2.3, 1.5, 3.9, 0xa9a6b4, 0x858390, 92);
+    this.mound(sinai, 1.7, 0, 1.2, 1.0, 1.9, 0xa9a6b4, 0x7f7d8a, 93);
     const seam = new THREE.Mesh(
-      new THREE.BoxGeometry(0.5, 0.9, 0.12),
+      new THREE.BoxGeometry(0.3, 1.1, 0.12),
       new THREE.MeshBasicMaterial({ color: 0xff9a4d, transparent: true, opacity: 0.9 }),
     );
-    seam.position.set(0.2, 1.6, 0.66);
+    seam.position.set(0.15, 2.3, 0.88);
+    seam.rotation.set(-0.5, 0, 0.3);
     sinai.add(seam);
     this.sinaiGlow = seam;
-    sinai.position.set(0.3, 0.55, -1.8);
+    sinai.position.set(0.4, 0.05, -2.0);
     mor.add(sinai);
-    this.label('Morality', MORALITY.x, MORALITY.z, 4.6);
+    this.label('Morality', MORALITY.x + 0.4, MORALITY.z - 2.2, 5.9);
 
-    // ---------- the misty island beyond ----------
+    // ---------- the Wicket Gate ----------
+    // Landmarks stand north of the road, so the party walks past them in view.
     const beyond = this.island(BEYOND.x, BEYOND.z, 4.2, 0x9ec7a8);
-    beyond.add(this.miniTree(-2.4, 1.6));
-    beyond.add(this.miniTree(2.5, -1.4, true));
-    // a tiny glowing gate silhouette, barely visible in the mist
-    beyond.add(block(0.2, 1.3, 0.2, PALETTE.woodDark, 1.0, 1.2, 0.2));
-    beyond.add(block(0.2, 1.3, 0.2, PALETTE.woodDark, 2.0, 1.2, 0.2));
-    beyond.add(block(1.3, 0.2, 0.2, PALETTE.woodDark, 1.5, 1.9, 0.2));
-    const gateGlow = new THREE.Mesh(
-      new THREE.BoxGeometry(0.9, 1.1, 0.1),
-      new THREE.MeshBasicMaterial({ color: 0xfff3b8, transparent: true, opacity: 0.7 }),
-    );
-    gateGlow.position.set(1.5, 1.15, 0.15);
-    beyond.add(gateGlow);
-    // mist blocks shrouding it
-    for (let i = 0; i < 7; i++) {
-      const m = new THREE.Mesh(
-        new THREE.BoxGeometry(2.2 + Math.random() * 1.6, 1.0 + Math.random() * 0.8, 1.6),
-        new THREE.MeshStandardMaterial({ color: 0xf2f6f8, transparent: true, opacity: 0.55 }),
-      );
-      m.position.set(BEYOND.x - 3 + Math.random() * 6, 1.0 + Math.random() * 1.4, BEYOND.z - 2 + Math.random() * 4);
-      m.castShadow = false;
-      s.add(m);
-      this.mist.push(m);
+    beyond.add(this.miniTree(-2.6, 1.9), this.miniTree(2.9, -2.0, true), this.miniTree(-2.9, -2.3));
+    // a white wall with the narrow gate in it, its door standing in light
+    for (const [x, w] of [[-1.45, 1.6], [1.45, 1.6]] as const) {
+      beyond.add(block(w, 1.2, 0.5, 0xfaf4e8, x, 1.15, -1.75), block(w + 0.12, 0.18, 0.64, 0xe3d6c2, x, 1.84, -1.75));
     }
-    this.label('Wicket Gate', BEYOND.x, BEYOND.z, 4.4);
+    for (const side of [-1, 1]) beyond.add(block(0.5, 1.8, 0.66, 0xf2e8d8, side * 0.62, 1.45, -1.75), block(0.62, 0.22, 0.78, 0xd9b36a, side * 0.62, 2.44, -1.75));
+    beyond.add(block(1.5, 0.28, 0.6, PALETTE.woodDark, 0, 2.28, -1.75), block(0.28, 0.28, 0.28, 0xffdf85, 0, 2.62, -1.6));
+    const gateGlow = new THREE.Mesh(
+      new THREE.BoxGeometry(0.76, 1.55, 0.12),
+      new THREE.MeshBasicMaterial({ color: 0xfff0b0 }),
+    );
+    gateGlow.position.set(0, 1.34, -1.6);
+    beyond.add(gateGlow);
+    for (let i = 0; i < 4; i++) beyond.add(block(0.5, 0.07, 0.4, i % 2 ? 0xf3e6cb : 0xe7d5b3, 0, 0.6, -1.25 + i * 0.32));
+    this.label('Wicket Gate', BEYOND.x, BEYOND.z, 5.0);
 
     // ---------- the hill of the Cross ----------
     const crossIsle = this.island(CROSS.x, CROSS.z, 4.2, PALETTE.grassLight);
-    // a soft green hill rising from the island
-    crossIsle.add(block(4.6, 0.7, 4.0, PALETTE.grass, 0, 0.85, -0.4));
-    crossIsle.add(block(3.2, 0.7, 2.8, 0x9ede97, 0, 1.5, -0.4));
-    crossIsle.add(block(2.0, 0.6, 1.8, PALETTE.grassLight, 0, 2.1, -0.4));
-    // the Cross on the summit
-    crossIsle.add(block(0.22, 1.5, 0.22, PALETTE.woodDark, 0, 3.1, -0.4));
-    crossIsle.add(block(0.95, 0.22, 0.22, PALETTE.woodDark, 0, 3.45, -0.4));
+    const calvary = this.mound(crossIsle, -0.2, -2.3, 2.7, 1.9, 2.0, 0xb5e29c, 0x8fc98a, 11);
+    crossIsle.add(block(0.26, 1.9, 0.26, 0x8b6446, -0.2, calvary(0, 0) + 0.85, -2.3));
+    crossIsle.add(block(1.2, 0.26, 0.26, 0x8b6446, -0.2, calvary(0, 0) + 1.25, -2.3));
     const crossHalo = new THREE.Mesh(
-      new THREE.SphereGeometry(1.0, 18, 14),
+      new THREE.SphereGeometry(1.15, 18, 14),
       new THREE.MeshBasicMaterial({ color: 0xfff3b8, transparent: true, opacity: 0.35, depthWrite: false }),
     );
-    crossHalo.position.set(0, 3.3, -0.4);
+    crossHalo.position.set(-0.2, calvary(0, 0) + 1.15, -2.3);
     crossIsle.add(crossHalo);
     this.crossGlow = crossHalo;
+    for (let i = 0; i < 5; i++) {
+      const dz = 1.7 - i * 0.36;
+      crossIsle.add(block(0.46, 0.08, 0.34, 0xeeddb9, -0.2 + Math.sin(i * 1.3) * 0.24, calvary(Math.sin(i * 1.3) * 0.24, dz) + 0.03, -2.3 + dz));
+    }
     // the open tomb at the hill's foot
-    crossIsle.add(block(1.1, 0.8, 0.9, 0xb9b4ac, 1.9, 0.9, 0.9));
-    crossIsle.add(block(0.5, 0.5, 0.1, 0x4a4440, 1.9, 0.85, 1.36));
-    const tombStone = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.34, 0.16, 12), mat(0xa8a29a));
+    this.mound(crossIsle, 2.75, -1.35, 0.95, 0.75, 1.0, 0xcfc8be, 0xaaa29a, 12);
+    crossIsle.add(block(0.52, 0.6, 0.3, 0x4f4742, 2.75, 0.85, -0.72));
+    const tombStone = new THREE.Mesh(new THREE.CylinderGeometry(0.36, 0.36, 0.16, 12), mat(0xbdb5ab));
     tombStone.rotation.x = Math.PI / 2;
-    tombStone.rotation.z = Math.PI / 2;
-    tombStone.position.set(2.7, 0.9, 1.3);
+    tombStone.position.set(3.3, 0.88, -0.55);
     crossIsle.add(tombStone);
-    crossIsle.add(this.miniTree(-2.6, 1.8, true));
-    this.label('The Cross', CROSS.x, CROSS.z, 5.4);
+    crossIsle.add(this.miniTree(-2.9, 1.8, true), this.miniTree(-3.2, -1.2));
+    this.label('The Cross', CROSS.x, CROSS.z, 6.0);
 
     // ---------- the King's Highway at evening ----------
     const hwy = this.island(HIGHWAY.x, HIGHWAY.z, 4.0, 0x8fb583);
     // a low stone wall running along the road
-    for (let i = 0; i < 4; i++) {
-      hwy.add(block(0.9, 0.4, 0.25, 0xb9b0a2, -1.6 + i * 1.1, 0.78, -1.3));
+    for (let i = 0; i < 7; i++) {
+      hwy.add(block(0.82, 0.5 + (i % 2) * 0.06, 0.36, i % 2 ? 0xcabfae : 0xb9ad9b, -2.5 + i * 0.84, 0.8, -1.6 - Math.sin(i * 0.5) * 0.12));
     }
     // three tiny sleepers beside the way
-    for (const [sx, sz, c] of [[-0.8, 1.2, 0xdfb56e], [0.2, 1.5, 0x9a8f7a], [1.2, 1.2, 0xe6cfc0]] as const) {
-      hwy.add(block(0.55, 0.28, 0.32, c, sx, 0.72, sz));
+    for (const [sx, sz, c] of [[-0.9, 1.5, 0xdfb56e], [0.3, 1.9, 0x9a8f7a], [1.5, 1.5, 0xe6cfc0]] as const) {
+      hwy.add(block(0.62, 0.3, 0.36, c, sx, 0.72, sz), block(0.32, 0.32, 0.32, c, sx - 0.42, 0.74, sz), block(0.26, 0.1, 0.44, 0xf7f0e2, sx + 0.1, 0.9, sz));
     }
-    // a lamp post glowing against the dusk
-    hwy.add(block(0.12, 1.5, 0.12, 0x5e5a55, 2.4, 1.3, -0.4));
-    const lamp = new THREE.Mesh(
-      new THREE.SphereGeometry(0.22, 12, 10),
-      new THREE.MeshBasicMaterial({ color: 0xffe9a0 }),
-    );
-    lamp.position.set(2.4, 2.1, -0.4);
-    hwy.add(lamp);
-    hwy.add(this.miniTree(-2.6, -1.6));
-    this.label("King's Highway", HIGHWAY.x, HIGHWAY.z, 4.4);
+    for (const [lx, lz] of [[-2.8, 0.9], [2.8, -0.9]] as const) {
+      hwy.add(block(0.14, 1.5, 0.14, 0x6f655d, lx, 1.3, lz), block(0.5, 0.12, 0.5, 0x6f655d, lx, 2.36, lz));
+      const lamp = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.36, 0.34), new THREE.MeshBasicMaterial({ color: 0xffe9a0 }));
+      lamp.position.set(lx, 2.14, lz);
+      hwy.add(lamp);
+    }
+    hwy.add(this.miniTree(-2.6, -2.7), this.miniTree(0.6, -2.9, true), this.miniTree(2.4, -2.5));
+    this.label("King's Highway", HIGHWAY.x, HIGHWAY.z, 4.6);
 
     // ---------- the Hill Difficulty ----------
     const hillIsle = this.island(HILL.x, HILL.z, 4.0, PALETTE.grass);
-    // a steep little mountain with a path zig-zagging up it
-    hillIsle.add(block(4.4, 1.2, 3.6, 0x9ede97, 0, 1.1, -0.5));
-    hillIsle.add(block(3.0, 1.2, 2.6, PALETTE.grass, 0, 2.2, -0.5));
-    hillIsle.add(block(1.8, 1.1, 1.6, 0x9ede97, 0, 3.3, -0.5));
-    for (let i = 0; i < 4; i++) {
-      hillIsle.add(block(0.4, 0.08, 0.5, PALETTE.path, -0.6 + (i % 2) * 1.2, 0.6 + i * 0.9, 1.35 - i * 0.55));
+    const steep = this.mound(hillIsle, 0, -2.5, 2.7, 1.95, 4.0, 0xb2e09a, 0x93b585, 21);
+    // the way winding up it, and the arbor halfway
+    for (let i = 0; i < 11; i++) {
+      const u = i / 10;
+      const dx = Math.sin(u * 7.5) * 1.25 * (1 - u * 0.75);
+      const dz = 1.6 * (1 - u * 0.96);
+      hillIsle.add(block(0.4, 0.1, 0.32, i % 2 ? 0xf3e2bd : 0xe5cfa5, dx, steep(dx, dz) + 0.03, -2.5 + dz));
     }
-    // the arbor halfway up
-    hillIsle.add(block(0.7, 0.3, 0.5, 0x7ba05f, 1.0, 2.1, 0.4));
-    hillIsle.add(block(0.08, 0.5, 0.08, PALETTE.woodDark, 0.8, 1.75, 0.5));
-    hillIsle.add(block(0.08, 0.5, 0.08, PALETTE.woodDark, 1.25, 1.75, 0.5));
+    const ay = steep(1.15, 0.95);
+    hillIsle.add(block(0.95, 0.3, 0.75, 0x86b56d, 1.15, ay + 0.75, -1.55), block(0.08, 0.7, 0.08, 0x8b6446, 0.8, ay + 0.35, -1.3), block(0.08, 0.7, 0.08, 0x8b6446, 1.5, ay + 0.35, -1.3));
     // the two easy ways skirting the foot
-    hillIsle.add(block(0.5, 0.08, 1.6, 0xd9c9a8, -2.4, 0.62, 0.8));
-    hillIsle.add(block(0.5, 0.08, 1.6, 0xd9c9a8, 2.4, 0.62, 0.8));
-    hillIsle.add(this.miniTree(-2.8, -1.8, true));
-    this.label('Hill Difficulty', HILL.x, HILL.z, 5.4);
+    for (const side of [-1, 1]) for (let i = 0; i < 4; i++) hillIsle.add(block(0.46, 0.07, 0.4, 0xd9c9a8, side * (1.9 + i * 0.36), 0.6, -0.6 - i * 0.42));
+    hillIsle.add(this.miniTree(-3.1, 1.6, true), this.miniTree(3.0, 1.7));
+    this.label('Hill Difficulty', HILL.x, HILL.z, 6.6);
 
     // ---------- Palace Beautiful ----------
     const palIsle = this.island(PALACE.x, PALACE.z, 4.0, PALETTE.grass);
-    palIsle.add(block(2.6, 1.4, 1.8, 0xfaf8f2, 0, 1.25, -0.6));
-    palIsle.add(block(2.9, 0.3, 2.0, 0xe8e2d2, 0, 2.1, -0.6));
-    for (const tx of [-1.5, 1.5]) {
-      palIsle.add(block(0.7, 2.0, 0.7, 0xfaf8f2, tx, 1.55, -0.6));
-      palIsle.add(block(0.6, 0.5, 0.6, PALETTE.roofPink, tx, 2.8, -0.6));
+    const PEARL = 0xfffaf2; const PINK = 0xf0aebb;
+    palIsle.add(block(3.0, 1.5, 1.7, PEARL, 0, 1.3, -2.2), block(3.2, 0.22, 1.9, 0xeadfcd, 0, 2.1, -2.2));
+    palIsle.add(block(1.5, 1.2, 1.3, PEARL, 0, 2.7, -2.35), block(1.75, 0.3, 1.5, PINK, 0, 3.42, -2.35), block(1.1, 0.3, 0.95, PINK, 0, 3.7, -2.35), block(0.45, 0.35, 0.4, PINK, 0, 3.98, -2.35));
+    for (const tx of [-1.75, 1.75]) {
+      palIsle.add(block(0.9, 2.5, 0.9, PEARL, tx, 1.8, -2.1), block(1.05, 0.2, 1.05, 0xeadfcd, tx, 3.1, -2.1));
+      palIsle.add(block(0.9, 0.36, 0.9, PINK, tx, 3.36, -2.1), block(0.58, 0.36, 0.58, PINK, tx, 3.68, -2.1), block(0.26, 0.36, 0.26, PINK, tx, 4.0, -2.1));
     }
-    const palWin = new THREE.Mesh(
-      new THREE.BoxGeometry(0.4, 0.5, 0.08),
-      new THREE.MeshBasicMaterial({ color: 0xffe9a0 }),
-    );
-    palWin.position.set(0, 1.4, 0.35);
-    palIsle.add(palWin);
+    for (const [wx, wy, wz] of [[-0.95, 1.5, -1.33], [0.95, 1.5, -1.33], [0, 2.75, -1.68], [-1.75, 2.2, -1.63], [1.75, 2.2, -1.63]] as const) {
+      const w = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.46, 0.08), new THREE.MeshBasicMaterial({ color: 0xffe9a0 }));
+      w.position.set(wx, wy, wz);
+      palIsle.add(w);
+    }
+    palIsle.add(block(0.7, 0.95, 0.12, 0xa5774f, 0, 1.04, -1.32));
     // the two lions before the gate
-    palIsle.add(block(0.5, 0.35, 0.3, 0xd9a860, -0.6, 0.72, 1.4));
-    palIsle.add(block(0.5, 0.35, 0.3, 0xd9a860, 0.6, 0.72, 1.4));
-    this.label('Palace Beautiful', PALACE.x, PALACE.z, 4.6);
+    for (const side of [-1, 1]) {
+      palIsle.add(block(0.4, 0.36, 0.62, 0xe0b068, side * 0.95, 0.76, -0.75), block(0.56, 0.52, 0.3, 0xbb8345, side * 0.95, 1.0, -0.45), block(0.36, 0.36, 0.3, 0xe8bd7a, side * 0.95, 1.0, -0.28));
+    }
+    this.label('Palace Beautiful', PALACE.x, PALACE.z, 5.8);
 
     // ---------- Valley of Humiliation ----------
-    const valIsle = this.island(VALLEY.x, VALLEY.z, 4.0, 0x8aa87a);
-    valIsle.add(block(1.6, 1.6, 2.4, 0x74855f, -1.9, 1.1, -0.4));
-    valIsle.add(block(1.6, 1.6, 2.4, 0x74855f, 1.9, 1.1, -0.4));
-    valIsle.add(block(2.2, 0.1, 1.4, 0xb8a888, 0, 0.62, 0));
-    // a scorch mark and one red eye of the fled monster
-    valIsle.add(block(1.0, 0.06, 1.0, 0x4a4440, 0.3, 0.6, 0.9));
-    const eye = new THREE.Mesh(
-      new THREE.BoxGeometry(0.18, 0.18, 0.1),
-      new THREE.MeshBasicMaterial({ color: 0xff4a3d }),
-    );
-    eye.position.set(-1.9, 2.1, 0.85);
-    valIsle.add(eye);
-    this.label('Valley of Humiliation', VALLEY.x, VALLEY.z, 4.4);
+    const valIsle = this.island(VALLEY.x, VALLEY.z, 4.0, 0x9aab7a);
+    this.mound(valIsle, -1.9, -2.2, 2.0, 1.7, 2.6, 0xa3b584, 0x86906f, 31);
+    this.mound(valIsle, 1.9, -2.4, 2.1, 1.6, 3.0, 0xa9ba88, 0x8a9472, 32);
+    this.mound(valIsle, -2.2, 2.6, 1.5, 0.95, 0.9, 0xa3b584, 0x86906f, 33);
+    this.mound(valIsle, 2.4, 2.6, 1.5, 0.95, 1.0, 0xa9ba88, 0x8a9472, 34);
+    // scorched ground, and the fled monster's wings far up between the hills
+    valIsle.add(block(1.1, 0.05, 0.8, 0x6a5a52, 0.4, 0.6, 1.2), block(0.6, 0.06, 0.5, 0x55473f, 0.5, 0.61, 1.2));
+    const imp = new THREE.Group();
+    imp.add(block(0.42, 0.36, 0.5, 0x5b5762, 0, 0, 0), block(0.3, 0.28, 0.28, 0x6d6874, 0, 0.18, 0.3));
+    for (const side of [-1, 1]) {
+      const wing = block(0.9, 0.07, 0.5, 0xa64a43, side * 0.6, 0.16, -0.05);
+      wing.rotation.z = side * 0.45;
+      imp.add(wing, block(0.08, 0.2, 0.08, 0xb9544a, side * 0.1, 0.42, 0.28));
+    }
+    imp.position.set(0.1, 3.5, -2.9);
+    imp.rotation.y = 0.5;
+    valIsle.add(imp);
+    this.label('Valley of Humiliation', VALLEY.x, VALLEY.z, 5.8);
 
     // ---------- Valley of the Shadow of Death ----------
-    const shIsle = this.island(SHADOW.x, SHADOW.z, 4.0, 0x3a4258);
-    shIsle.add(block(2.0, 1.2, 1.6, 0x232838, -1.6, 1.15, -0.8));
-    shIsle.add(block(2.0, 1.2, 1.6, 0x232838, 1.6, 1.15, -0.8));
+    const shIsle = this.island(SHADOW.x, SHADOW.z, 4.0, 0x6d7590);
+    for (const [x, z, rx, rz, h, seed] of [[-2.0, -2.1, 1.8, 1.5, 2.6, 41], [0.4, -2.7, 1.7, 1.3, 3.3, 42], [2.4, -2.1, 1.5, 1.4, 2.3, 43], [-2.3, 2.5, 1.4, 0.8, 1.0, 44], [2.3, 2.5, 1.4, 0.8, 0.9, 45]] as const) {
+      this.mound(shIsle, x, z, rx, rz, h, 0x5f6780, 0x444a60, seed);
+    }
+    for (const [tx, tz] of [[-3.1, 0.9], [3.2, -0.6]] as const) {
+      shIsle.add(block(0.16, 1.2, 0.16, 0x3f3d4c, tx, 1.15, tz), block(0.6, 0.12, 0.12, 0x3f3d4c, tx + 0.2, 1.6, tz), block(0.12, 0.4, 0.12, 0x3f3d4c, tx + 0.46, 1.8, tz));
+    }
     // the one narrow line of light through the dark
     const lane = new THREE.Mesh(
-      new THREE.BoxGeometry(3.4, 0.08, 0.5),
+      new THREE.BoxGeometry(5.6, 0.05, 0.34),
       new THREE.MeshBasicMaterial({ color: 0xffeec4 }),
     );
-    lane.position.set(0, 0.62, 0.4);
+    lane.position.set(0, 0.66, 0.75);
     shIsle.add(lane);
-    this.label('Shadow of Death', SHADOW.x, SHADOW.z, 4.4);
+    this.label('Shadow of Death', SHADOW.x, SHADOW.z, 5.6);
 
     // ---------- Vanity Fair ----------
-    const vanIsle = this.island(VANITY.x, VANITY.z, 4.2, 0xa8d99a);
+    const vanIsle = this.island(VANITY.x, VANITY.z, 4.2, 0xd9c894);
     // a huddle of gaudy painted houses and striped stalls
-    const gaudy = [0xe06a7a, 0xf2a83a, 0x7fb8d9, 0xa06ac9, 0x6ac98a];
-    for (let i = 0; i < 4; i++) {
-      const hx = -1.6 + (i % 2) * 2.0;
-      const hz = -1.4 + Math.floor(i / 2) * 1.6;
-      vanIsle.add(block(0.95, 0.8, 0.8, 0xfaf3e3, hx, 1.0, hz));
-      vanIsle.add(block(1.1, 0.4, 0.95, gaudy[i % gaudy.length], hx, 1.6, hz));
+    const gaudy = [0xe98390, 0xf4b65c, 0x8cc3e0, 0xb38ad6, 0x86d3a0];
+    [[-2.4, -2.0], [-1.0, -2.7], [0.5, -2.2], [1.9, -2.7], [3.0, -1.8]].forEach(([hx, hz], i) => {
+      const h = 0.9 + (i % 3) * 0.35;
+      vanIsle.add(block(1.05, h, 0.95, 0xfff4e2, hx, 0.55 + h / 2, hz));
+      vanIsle.add(block(1.25, 0.28, 1.15, gaudy[i], hx, 0.65 + h, hz), block(0.9, 0.28, 0.8, gaudy[i], hx, 0.9 + h, hz), block(0.45, 0.24, 0.4, gaudy[i], hx, 1.14 + h, hz));
+      vanIsle.add(block(0.26, 0.44, 0.06, 0x8b6446, hx, 0.8, hz + 0.49), block(0.24, 0.24, 0.06, 0xffe9a0, hx + 0.3, 0.75 + h * 0.5, hz + 0.49));
+    });
+    for (const [sx, c] of [[-2.0, 0], [0.1, 2], [2.1, 3]] as const) {
+      vanIsle.add(block(1.0, 0.36, 0.5, 0xc79a68, sx, 0.76, 1.9));
+      for (let k = 0; k < 5; k++) vanIsle.add(block(0.26, 0.1, 0.8, k % 2 ? 0xfffaf0 : gaudy[c], sx - 0.52 + k * 0.26, 1.48, 1.85));
+      for (const px of [-0.5, 0.5]) vanIsle.add(block(0.07, 0.9, 0.07, 0x8b6446, sx + px, 1.02, 2.1));
     }
-    // a mini stall with a striped canopy
-    vanIsle.add(block(0.8, 0.3, 0.4, PALETTE.wood, 1.6, 0.75, 0.6));
-    vanIsle.add(block(1.0, 0.08, 0.6, gaudy[0], 1.6, 1.15, 0.6));
-    vanIsle.add(block(1.0, 0.08, 0.2, 0xfaf6ec, 1.6, 1.15, 0.85));
-    // pennant pole
-    vanIsle.add(block(0.08, 1.6, 0.08, PALETTE.woodDark, 0.2, 1.4, 1.6));
-    vanIsle.add(block(0.5, 0.28, 0.05, gaudy[3], 0.5, 2.05, 1.6));
-    this.label('Vanity Fair', VANITY.x, VANITY.z, 4.6);
+    // bunting strung over the fair
+    for (let i = 0; i < 9; i++) vanIsle.add(block(0.2, 0.22, 0.05, gaudy[i % 5], -2.4 + i * 0.6, 2.75 - Math.sin((i / 8) * Math.PI) * 0.35, -1.1));
+    for (const px of [-2.6, 2.6]) vanIsle.add(block(0.09, 2.3, 0.09, 0x8b6446, px, 1.7, -1.1));
+    this.label('Vanity Fair', VANITY.x, VANITY.z, 4.9);
 
     // ---------- the Hill Lucre ----------
     const lucIsle = this.island(LUCRE.x, LUCRE.z, 4.0, 0x9ecf8c);
-    // Plain of Ease in front, with a stepped silver hill rising sharply behind.
-    lucIsle.add(block(3.8, 0.12, 1.5, 0x86c6e6, -0.4, 0.64, 1.8));
-    lucIsle.add(block(2.8, 0.08, 0.8, 0xb9e2f0, -0.4, 0.72, 1.8));
-    lucIsle.add(block(3.4, 0.7, 2.7, 0x9aa4b2, -0.55, 0.95, -0.9));
-    lucIsle.add(block(2.5, 0.75, 2.1, 0x8995a5, -0.25, 1.67, -1.0));
-    lucIsle.add(block(1.65, 0.78, 1.5, 0xaab7c7, 0.05, 2.42, -1.05));
-    lucIsle.add(block(0.85, 0.7, 0.85, 0xc3ced8, -0.1, 3.12, -1.0));
-    // Blocky silver seams make the temptation visible from map scale.
-    lucIsle.add(block(0.18, 1.2, 0.12, 0xe8f3f6, -1.05, 1.75, 0.48));
-    lucIsle.add(block(0.16, 0.85, 0.12, 0xd7edf2, 0.62, 2.4, -0.25));
+    const silver = this.mound(lucIsle, -0.4, -2.4, 2.6, 1.9, 3.2, 0xc3ceda, 0x98a5b4, 51);
+    for (let i = 0; i < 9; i++) {
+      const dx = Math.sin(i * 2.3) * 1.6; const dz = 0.4 + (i % 3) * 0.42;
+      lucIsle.add(block(0.18, 0.34, 0.18, i % 2 ? 0xf3fbff : 0xd8ecf6, -0.4 + dx, silver(dx, dz) + 0.1, -2.4 + dz));
+    }
     const mineGlow = new THREE.Mesh(
       new THREE.BoxGeometry(0.7, 0.8, 0.12),
-      new THREE.MeshBasicMaterial({ color: 0xb8e8c9 }),
+      new THREE.MeshBasicMaterial({ color: 0xc9eed6 }),
     );
-    mineGlow.position.set(-0.6, 0.95, 0.25);
-    lucIsle.add(mineGlow);
-    // the King's road passes safely between the water and the mine.
-    for (let i = 0; i < 7; i++) {
-      lucIsle.add(block(0.48, 0.1, 0.72, i % 2 ? 0xd9c9a8 : 0xe5d6b7,
-        -1.45 + i * 0.5, 0.66, 0.85 + Math.sin(i) * 0.12));
-    }
+    mineGlow.position.set(-0.5, 0.98, -0.62);
+    lucIsle.add(block(1.1, 1.15, 0.3, 0x7f6a56, -0.5, 1.05, -0.82), mineGlow, block(1.3, 0.2, 0.4, 0x99805f, -0.5, 1.68, -0.8));
     // Lot's wife: the little pillar of salt at the roadside.
-    lucIsle.add(block(0.3, 0.8, 0.3, 0xf4f0e8, 2.2, 1.0, 0.7));
-    lucIsle.add(block(0.24, 0.24, 0.2, 0xf4f0e8, 2.24, 1.5, 0.7));
-    lucIsle.add(this.miniTree(-2.6, 1.8, true));
-    this.label('Hill Lucre', LUCRE.x, LUCRE.z, 5.0);
+    lucIsle.add(block(0.4, 0.95, 0.36, 0xfdf9f2, 2.5, 1.05, -0.9), block(0.32, 0.32, 0.3, 0xfdf9f2, 2.5, 1.68, -0.9));
+    this.pool(lucIsle, -0.4, 2.2, 1.9, 0.75, 52);
+    lucIsle.add(this.miniTree(-3.1, 1.2, true), this.miniTree(3.0, 1.9));
+    this.label('Hill Lucre', LUCRE.x, LUCRE.z, 5.8);
 
-    // ---------- Doubting Castle island ----------
-    const castleIsle = this.island(CASTLE.x, CASTLE.z, 4.0, 0x9ecf8c);
-    // The rough King's Highway and the inviting green Bypath split visibly.
-    for (let i = 0; i < 7; i++) {
-      castleIsle.add(block(0.48, 0.1, 0.64, i % 2 ? 0xb0a18a : 0xc3b395,
-        -1.6 + i * 0.52, 0.65, 1.45));
-      castleIsle.add(block(0.5, 0.08, 0.5, 0x79c266,
-        -1.45 + i * 0.48, 0.65, 0.78 - i * 0.2));
+    // ---------- Doubting Castle ----------
+    const castleIsle = this.island(CASTLE.x, CASTLE.z, 4.0, 0x9fc489);
+    // The inviting green Bypath splits from the rough King's Highway.
+    for (let i = 0; i < 9; i++) castleIsle.add(block(0.44, 0.07, 0.4, 0x86cc72, -2.9 + i * 0.42, 0.6, 0.75 + Math.sin(i * 0.45) * 1.1));
+    this.mound(castleIsle, 0, -2.3, 3.0, 1.8, 0.8, 0x8f9a80, 0x77766e, 61);
+    const WALL = 0x8d849b; const WALL_D = 0x716881; const ROOF_D = 0x5b5069;
+    castleIsle.add(block(2.6, 1.7, 1.4, WALL, 0, 1.75, -2.3));
+    for (const [tx, h, tz] of [[-1.55, 2.6, -2.0], [1.55, 3.1, -2.0], [0.2, 3.7, -2.8]] as const) {
+      castleIsle.add(block(1.05, h, 1.05, WALL_D, tx, 0.7 + h / 2, tz), block(1.25, 0.26, 1.25, WALL, tx, 0.8 + h, tz));
+      castleIsle.add(block(1.0, 0.34, 1.0, ROOF_D, tx, 1.08 + h, tz), block(0.64, 0.34, 0.64, ROOF_D, tx, 1.4 + h, tz), block(0.28, 0.36, 0.28, ROOF_D, tx, 1.72 + h, tz));
+      castleIsle.add(block(0.22, 0.42, 0.08, 0xd9b8e8, tx, 0.3 + h, tz + 0.54));
     }
-    // dark stone towers — the castle looming beyond the pleasant meadow
-    const castleC = 0x4a4250;
-    castleIsle.add(block(2.7, 1.7, 1.55, 0x595166, 0, 1.45, -1.05));
-    castleIsle.add(block(1.15, 2.9, 1.15, castleC,  1.0, 2.0, -1.05));
-    castleIsle.add(block(1.15, 2.6, 1.15, castleC, -1.0, 1.85, -1.05));
-    for (const tx of [-1.15, -0.38, 0.38, 1.15]) {
-      castleIsle.add(block(0.36, 0.45, 0.42, 0x3a3248, tx, 2.55, -0.98));
-    }
-    // Tiny barred gate and violet windows.
-    castleIsle.add(block(0.58, 0.9, 0.12, 0x201b25, 0, 1.05, -0.22));
-    for (const side of [-1, 1]) {
-      castleIsle.add(block(0.18, 0.42, 0.08, 0xa58bb5, side * 0.82, 1.9, -0.45));
-    }
+    for (const bx of [-0.9, -0.3, 0.3, 0.9]) castleIsle.add(block(0.34, 0.32, 0.4, WALL_D, bx, 2.72, -1.75));
+    castleIsle.add(block(0.8, 1.05, 0.14, 0x3d3546, 0, 1.35, -1.6));
+    for (const gx of [-0.2, 0, 0.2]) castleIsle.add(block(0.06, 0.95, 0.06, 0x9c92a8, gx, 1.35, -1.5));
     // small warning sign post
-    castleIsle.add(block(0.1, 0.7, 0.1, 0x7a5c38, -1.4, 0.97, 1.2));
-    castleIsle.add(block(0.8, 0.2, 0.08, 0xfff8ef, -1.4, 1.4, 1.2));
-    this.label('Doubting Castle', CASTLE.x, CASTLE.z, 5.2);
+    castleIsle.add(block(0.1, 0.8, 0.1, 0x7a5c38, -2.9, 0.97, -0.5), block(0.85, 0.34, 0.1, 0xfff8ef, -2.9, 1.42, -0.48));
+    this.label('Doubting Castle', CASTLE.x, CASTLE.z, 6.6);
 
-    // ---------- Delectable Mountains island ----------
+    // ---------- Delectable Mountains ----------
     const mtnIsle = this.island(MOUNTAIN.x, MOUNTAIN.z, 4.2, 0x8fd06a);
-    // Animal-Crossing-like grassy terraces with warm rock faces, matching the
-    // chapter's climb rather than generic needle-shaped mountains.
-    mtnIsle.add(block(4.4, 0.65, 3.2, 0xb7a287, 0, 0.88, -0.55));
-    mtnIsle.add(block(4.0, 0.32, 2.9, 0x83c665, 0, 1.34, -0.55));
-    mtnIsle.add(block(3.0, 0.65, 2.1, 0xa9957d, 0.25, 1.72, -0.8));
-    mtnIsle.add(block(2.7, 0.3, 1.9, 0x91d172, 0.25, 2.18, -0.8));
-    mtnIsle.add(block(1.6, 0.62, 1.2, 0x9b8974, 0.2, 2.55, -0.95));
-    mtnIsle.add(block(1.4, 0.28, 1.05, 0xa0db83, 0.2, 2.98, -0.95));
-    // Tiny lookout path climbing across the terraces.
-    for (let i = 0; i < 5; i++) {
-      mtnIsle.add(block(0.45, 0.09, 0.38, 0xeed9b4,
-        -1.1 + i * 0.5, 1.42 + i * 0.38, 0.55 - i * 0.35));
+    this.mound(mtnIsle, -1.9, -2.4, 1.9, 1.6, 2.7, 0xa9de88, 0x86bd78, 71);
+    const peak = this.mound(mtnIsle, 0.4, -2.8, 2.0, 1.6, 4.0, 0xb9e79a, 0x8cc27c, 72);
+    this.mound(mtnIsle, 2.3, -2.2, 1.6, 1.4, 2.3, 0xa9de88, 0x86bd78, 73);
+    for (let i = 0; i < 7; i++) {
+      const u = i / 6; const dx = Math.sin(u * 5) * 0.7 * (1 - u * 0.7); const dz = 1.4 * (1 - u * 0.95);
+      mtnIsle.add(block(0.34, 0.09, 0.28, 0xf3e2bd, 0.4 + dx, peak(dx, dz) + 0.03, -2.8 + dz));
     }
-    // a tiny fruit tree, blue lake, and shepherd's crook
-    mtnIsle.add(this.miniTree(1.9, 0.6, false));
-    mtnIsle.add(block(1.6, 0.08, 1.0, 0x8fd0ea, -1.6, 0.6, 1.2)); // lake
-    mtnIsle.add(block(0.1, 1.1, 0.1, 0x8d6848, 2.65, 1.15, 0.55));
-    mtnIsle.add(block(0.5, 0.1, 0.1, 0x8d6848, 2.43, 1.67, 0.55));
-    this.label('Delectable Mountains', MOUNTAIN.x, MOUNTAIN.z, 5.4);
+    // the shepherds' glass on the summit
+    const top = peak(0, 0);
+    mtnIsle.add(block(0.1, 0.6, 0.1, 0x8d6848, 0.4, top + 0.25, -2.8));
+    const glass = block(0.7, 0.2, 0.2, 0xd9ab50, 0.5, top + 0.62, -2.8);
+    glass.rotation.z = 0.25;
+    mtnIsle.add(glass);
+    this.pool(mtnIsle, -2.0, 2.1, 1.3, 0.8, 74);
+    for (const [sx, sz] of [[1.4, 1.5], [2.2, 2.1], [0.6, 2.2]] as const) {
+      mtnIsle.add(block(0.5, 0.4, 0.4, 0xfffcf5, sx, 0.84, sz), block(0.24, 0.26, 0.24, 0x8f7560, sx + 0.32, 0.92, sz));
+    }
+    mtnIsle.add(this.miniTree(3.2, 0.9, true), this.miniTree(-3.4, 0.6));
+    this.label('Delectable Mountains', MOUNTAIN.x, MOUNTAIN.z, 6.6);
 
     // ---------- Enchanted Ground ----------
-    const enchIsle = this.island(ENCHANTED.x, ENCHANTED.z, 4.2, 0xd8bd68);
-    enchIsle.add(block(5.0, 0.08, 0.62, 0xe9d89a, 0, 0.66, 0.15));
-    enchIsle.add(block(2.4, 0.08, 0.48, 0xe9d89a, -0.7, 0.67, -0.8));
-    enchIsle.add(block(2.4, 0.08, 0.48, 0xe9d89a, -0.7, 0.67, 1.05));
-    enchIsle.add(this.miniTree(-2.25, -1.45, false));
-    enchIsle.add(this.miniTree(2.2, 1.35, false));
-    enchIsle.add(block(1.15, 0.16, 0.8, 0xd7cfbd, 0.7, 0.77, -1.2));
-    enchIsle.add(block(0.62, 0.1, 0.46, 0xa9865e, 1.45, 0.74, -1.25));
-    for (let i = 0; i < 5; i++) {
-      enchIsle.add(block(0.07, 0.34, 0.07, 0xb58c55, -1.6 + i * 0.7, 0.88, 1.75));
-      enchIsle.add(block(0.18, 0.14, 0.18, [0xffe28b, 0xdac6ec, 0xfff0bd][i % 3], -1.6 + i * 0.7, 1.08, 1.75));
+    const enchIsle = this.island(ENCHANTED.x, ENCHANTED.z, 4.2, 0xe2cf8c);
+    // drowsy golden meadow: swaying wheat with poppies through it
+    const er = mapRng(77);
+    for (let i = 0; i < 130; i++) {
+      const a = er() * Math.PI * 2; const d = 0.8 + Math.sqrt(er()) * 3.0;
+      const wx = Math.cos(a) * d; const wz = Math.sin(a) * d * 0.95;
+      if (Math.abs(wz) < 0.75) continue;
+      const h = 0.35 + er() * 0.4;
+      const stalk = block(0.09, h, 0.09, er() < 0.5 ? 0xdcbc68 : 0xeacb7c, wx, 0.55 + h / 2, wz);
+      stalk.rotation.z = (er() - 0.5) * 0.4;
+      enchIsle.add(stalk);
+      if (i % 5 === 0) enchIsle.add(block(0.22, 0.16, 0.22, [0xf09a94, 0xd9bdf0, 0xfff0bd][i % 3], wx, 0.62 + h, wz));
     }
-    this.label('Enchanted Ground', ENCHANTED.x, ENCHANTED.z, 5.4);
+    // two sleepers on a blanket, and a hammock tree
+    enchIsle.add(block(1.5, 0.08, 1.0, 0xd8c8ea, 1.4, 0.62, -1.7), block(0.6, 0.26, 0.34, 0x9b8bb5, 1.2, 0.78, -1.85), block(0.28, 0.28, 0.28, 0xcfa27a, 0.8, 0.8, -1.85));
+    enchIsle.add(block(0.6, 0.26, 0.34, 0xb58e74, 1.6, 0.78, -1.45), block(0.28, 0.28, 0.28, 0xe6cfb0, 2.0, 0.8, -1.45));
+    enchIsle.add(this.miniTree(-2.4, -1.9, true), this.miniTree(2.9, 1.7), this.miniTree(-2.9, 1.5));
+    this.label('Enchanted Ground', ENCHANTED.x, ENCHANTED.z, 4.6);
 
     // ---------- Beulah Land (in sight of the City) ----------
-    const beuIsle = this.island(BEULAH.x, BEULAH.z, 4.2, 0x9ed67e);
-    // Lush gardens and a layered River match Chapter XV itself; the City is
-    // reserved for the next island so Beulah has its own visual identity.
-    beuIsle.add(block(4.8, 0.08, 1.8, 0x9ddcf0, 0.2, 0.63, 0.15));
-    beuIsle.add(block(3.2, 0.09, 1.45, 0x69b8df, 0.2, 0.67, 0.15));
-    beuIsle.add(block(1.45, 0.1, 1.25, 0x355da4, 0.2, 0.71, 0.15));
-    // Divided wooden planks lead toward the crossing.
-    for (let i = 0; i < 6; i++) {
-      beuIsle.add(block(0.48, 0.13, 0.72, i % 2 ? 0xd9b98b : 0xcda878,
-        -2.3 + i * 0.48, 0.72, 1.15 + Math.sin(i * 0.8) * 0.12));
-    }
+    const beuIsle = this.island(BEULAH.x, BEULAH.z, 4.2, 0xa5dc86);
+    // the River winds across the land, with planks where the road meets it
+    this.ribbon(beuIsle, [[0.7, -4.4], [1.3, -2.4], [0.3, -0.6], [0.9, 1.2], [0.0, 3.0], [0.6, 4.6]], 1.75, 0xd9f1f2, 0.6);
+    this.ribbon(beuIsle, [[0.7, -4.4], [1.3, -2.4], [0.3, -0.6], [0.9, 1.2], [0.0, 3.0], [0.6, 4.6]], 1.4, 0x8dd0ea, 0.615);
+    this.ribbon(beuIsle, [[0.7, -4.4], [1.3, -2.4], [0.3, -0.6], [0.9, 1.2], [0.0, 3.0], [0.6, 4.6]], 0.6, 0x62b2dd, 0.63);
     // Orchard and flower garden.
-    beuIsle.add(this.miniTree(-2.45, -1.25, true));
-    beuIsle.add(this.miniTree(2.35, -1.45, true));
-    for (let i = 0; i < 9; i++) {
-      const fx = -2.2 + (i % 5) * 1.05;
-      const fz = -0.95 + Math.floor(i / 5) * 0.45;
-      beuIsle.add(block(0.08, 0.28, 0.08, 0x69a95b, fx, 0.76, fz));
-      beuIsle.add(block(0.2, 0.16, 0.2, [0xffb3c6, 0xfff0a0, 0xcbdcff][i % 3], fx, 0.96, fz));
+    for (const [tx, tz] of [[-2.6, -2.0], [-1.3, -2.7], [-3.1, 1.6], [2.9, -2.2], [3.0, 1.8]] as const) {
+      beuIsle.add(this.miniTree(tx, tz, true));
     }
-    // Two tiny white-robed angels wait in one row on the far bank.
-    for (const z of [-0.62, 0.72]) {
-      beuIsle.add(block(0.42, 0.72, 0.35, 0xfffcf4, 2.65, 1.02, z));
-      beuIsle.add(block(0.35, 0.35, 0.35, 0xf1d0b0, 2.65, 1.55, z));
-      beuIsle.add(block(0.12, 0.58, 0.38, 0xfff7df, 2.45, 1.2, z));
+    for (let i = 0; i < 26; i++) {
+      const fx = -3.2 + (i % 13) * 0.27; const fz = (i < 13 ? -1.15 : 1.25) + Math.sin(i * 2.1) * 0.22;
+      beuIsle.add(block(0.07, 0.26, 0.07, 0x69a95b, fx, 0.68, fz), block(0.2, 0.15, 0.2, [0xffb3c6, 0xfff0a0, 0xcbdcff, 0xffffff][i % 4], fx, 0.86, fz));
     }
-    this.label('Beulah Land', BEULAH.x, BEULAH.z, 5.4);
+    // Two tiny white-robed angels wait on the far bank.
+    for (const z of [-1.25, 1.1]) {
+      beuIsle.add(block(0.44, 0.76, 0.36, 0xfffcf4, 2.5, 0.98, z), block(0.36, 0.36, 0.36, 0xf1d0b0, 2.5, 1.54, z), block(0.1, 0.1, 0.1, 0xffdf85, 2.5, 1.85, z));
+      for (const side of [-1, 1]) beuIsle.add(block(0.34, 0.6, 0.08, 0xfff7df, 2.5 + side * 0.36, 1.15, z - 0.16));
+    }
+    this.label('Beulah Land', BEULAH.x, BEULAH.z, 4.6);
 
-    // ---------- the Celestial City island (journey's end) ----------
-    const celIsle = this.island(CELESTIAL.x, CELESTIAL.z, 4.4, 0xf0d894);
-    // A stepped shining hill leads clearly upward into the Pearl Gates.
-    for (let i = 0; i < 6; i++) {
-      celIsle.add(block(0.72, 0.18 + i * 0.04, 1.25,
-        i % 2 ? 0xffe5a3 : 0xffefbf, -2.45 + i * 0.65, 0.69 + i * 0.13, 1.35 - i * 0.18));
-    }
-    // shining golden towers with pearl-white caps, glowing
-    const gold = 0xffe08a;
-    for (const [cx, ch, cz] of [
-      [-1.1, 3.2, -0.9], [0.0, 4.4, -1.2], [1.1, 3.0, -0.8], [0.2, 2.4, 0.4],
-    ] as const) {
-      const tw = block(0.85, ch, 0.85, gold, cx, 0.6 + ch / 2, cz);
-      const m = tw.material as THREE.MeshStandardMaterial;
-      m.emissive = new THREE.Color(0xffd76a); m.emissiveIntensity = 0.75;
-      celIsle.add(tw);
-      const cap = block(0.5, 0.5, 0.5, 0xfffdf4, cx, 0.6 + ch + 0.2, cz);
-      (cap.material as THREE.MeshStandardMaterial).emissive = new THREE.Color(0xfff0c0);
-      (cap.material as THREE.MeshStandardMaterial).emissiveIntensity = 0.6;
-      celIsle.add(cap);
-    }
-    // the pearl gates at the front, with pillars, pearls, and an arch.
+    // ---------- the Celestial City (journey's end) ----------
+    const celIsle = this.island(CELESTIAL.x, CELESTIAL.z, 4.4, 0xf3e2b0);
+    const shine = (w: number, h: number, d: number, color: number, x: number, y: number, z: number, lit = 0.35): void => {
+      const b = block(w, h, d, color, x, y, z);
+      b.material = new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: lit, roughness: 0.7 });
+      celIsle.add(b);
+    };
+    this.mound(celIsle, 0, -2.6, 3.6, 2.1, 1.2, 0xfbeec4, 0xe9d296, 81);
+    ([[0, 5.2, -3.0], [-1.2, 3.9, -2.7], [1.2, 3.9, -2.7], [-2.3, 2.8, -2.4], [2.3, 2.8, -2.4]] as const).forEach(([x, h, z], i) => {
+      shine(0.95, h, 0.95, i % 2 ? 0xffdf8c : 0xffe9a8, x, 0.9 + h / 2, z, 0.3);
+      shine(1.15, 0.2, 1.15, 0xfff3cf, x, 0.95 + h, z, 0.4);
+      shine(0.75, 0.32, 0.75, 0xf7bfae, x, 1.2 + h, z, 0.25);
+      shine(0.42, 0.34, 0.42, 0xf7bfae, x, 1.5 + h, z, 0.25);
+      shine(0.16, 0.4, 0.16, 0xfffbe6, x, 1.84 + h, z, 0.9);
+      for (let k = 0; k < Math.floor(h) - 1; k++) shine(0.2, 0.34, 0.06, 0xfffef4, x, 1.6 + k * 0.85, z + 0.49, 0.9);
+    });
+    // the wall and the pearl gates, and shining steps down to the road
     for (const side of [-1, 1]) {
-      celIsle.add(block(0.52, 2.55, 0.52, 0xfdf8f0, side * 0.9, 1.87, 1.3));
-      celIsle.add(block(0.68, 0.28, 0.68, 0xffe7a0, side * 0.9, 3.25, 1.3));
-      for (let p = 0; p < 3; p++) {
-        celIsle.add(block(0.18, 0.18, 0.18, 0xffffff, side * 0.9, 1.05 + p * 0.62, 1.61));
-      }
+      shine(1.9, 1.3, 0.5, 0xffeec4, side * 1.95, 1.2, -1.25, 0.2);
+      for (let k = 0; k < 3; k++) shine(0.36, 0.26, 0.54, 0xfff6dc, side * (1.3 + k * 0.62), 1.96, -1.25, 0.3);
+      shine(0.6, 2.2, 0.6, 0xfff8ee, side * 0.85, 1.65, -1.2, 0.25);
+      shine(0.78, 0.24, 0.78, 0xffe39a, side * 0.85, 2.86, -1.2, 0.4);
+      shine(0.42, 1.5, 0.14, 0xfffdf8, side * 0.27, 1.35, -1.2, 0.5);
     }
-    celIsle.add(block(2.45, 0.42, 0.52, 0xffe08a, 0, 3.12, 1.3));
-    celIsle.add(block(1.15, 1.8, 0.18, 0xfff4d0, 0, 1.62, 1.52));
-    // A tiny radiant throne silhouette at the heart of the City.
-    const throne = block(0.72, 1.15, 0.62, 0xffcf62, 0.1, 1.35, -0.05);
-    const throneMat = throne.material as THREE.MeshStandardMaterial;
-    throneMat.emissive = new THREE.Color(0xffd76a);
-    throneMat.emissiveIntensity = 0.75;
-    celIsle.add(throne);
-    celIsle.add(block(1.1, 0.2, 0.82, 0xfff0a8, 0.1, 0.78, -0.05));
-    this.label('The Celestial City', CELESTIAL.x, CELESTIAL.z, 5.6);
+    shine(1.4, 0.34, 0.56, 0xffe39a, 0, 2.66, -1.2, 0.4);
+    shine(0.36, 0.36, 0.3, 0xfffbe6, 0, 3.0, -1.2, 0.9);
+    for (let i = 0; i < 4; i++) celIsle.add(block(1.5 - i * 0.12, 0.1, 0.34, i % 2 ? 0xffefc6 : 0xffe4a6, 0, 0.6 + i * 0.06, -0.1 - i * 0.26));
+    const halo = new THREE.Mesh(
+      new THREE.SphereGeometry(3.4, 20, 14),
+      new THREE.MeshBasicMaterial({ color: 0xfff6cf, transparent: true, opacity: 0.2, depthWrite: false }),
+    );
+    halo.position.set(0, 3.2, -2.9);
+    celIsle.add(halo);
+    celIsle.add(this.miniTree(-3.4, 1.8, true), this.miniTree(3.3, 1.8, true));
+    this.label('The Celestial City', CELESTIAL.x, CELESTIAL.z - 1.5, 7.9);
 
     // ---------- tiny chapter keepsakes ----------
     // These sit around the island edges so every stop has a readable story
@@ -962,9 +1080,6 @@ export class WorldMap {
     // Two stone tablets beneath Mount Sinai.
     mor.add(block(0.42, 0.62, 0.12, 0xd8d4ce, -2.5, 0.95, -1.2));
     mor.add(block(0.42, 0.62, 0.12, 0xd8d4ce, -2.0, 0.95, -1.2));
-    // A rolled promise beside the Cross.
-    crossIsle.add(block(0.62, 0.12, 0.28, 0xfff5dc, 2.2, 0.72, -1.5));
-    crossIsle.add(block(0.12, 0.18, 0.34, PALETTE.robeGold, 2.5, 0.76, -1.5));
     // Highway milestones.
     for (const mx of [-2.5, 2.5]) {
       hwy.add(block(0.3, 0.72, 0.3, 0xded7c9, mx, 0.96, 1.65));
@@ -972,8 +1087,8 @@ export class WorldMap {
     }
     // Palace banners, the Valley's dropped sword, and Shadow's safe lantern.
     for (const side of [-1, 1]) {
-      palIsle.add(block(0.08, 1.1, 0.08, PALETTE.woodDark, side * 2.35, 1.2, -1.3));
-      palIsle.add(block(0.42, 0.34, 0.06, side < 0 ? 0xf2b8cc : 0xb9d9f2, side * 2.15, 1.62, -1.3));
+      palIsle.add(block(0.08, 1.1, 0.08, PALETTE.woodDark, side * 2.6, 1.1, -0.8));
+      palIsle.add(block(0.42, 0.34, 0.06, side < 0 ? 0xf2b8cc : 0xb9d9f2, side * 2.4, 1.48, -0.8));
     }
     const sword = block(1.25, 0.1, 0.12, 0xd9e0e5, 1.45, 0.72, 1.55);
     sword.rotation.y = -0.55;
@@ -988,42 +1103,34 @@ export class WorldMap {
     // The Key of Promise outside Doubting Castle.
     castleIsle.add(block(0.72, 0.1, 0.12, 0xffd66b, 2.15, 0.75, 1.65));
     castleIsle.add(block(0.22, 0.28, 0.12, 0xffd66b, 2.52, 0.75, 1.65));
-    // One little sheep on the Delectable Mountains.
-    mtnIsle.add(block(0.62, 0.42, 0.42, 0xfffcf5, 2.45, 0.86, -1.25));
-    mtnIsle.add(block(0.32, 0.34, 0.3, 0xd2b08a, 2.78, 0.94, -1.25));
     // Pearl stepping stones and welcoming banners at journey's end.
     for (let i = 0; i < 4; i++) {
-      beuIsle.add(block(0.34, 0.08, 0.42, 0xf7e9ca, -0.6 + i * 0.42, 0.72, 0.3));
+      beuIsle.add(block(0.4, 0.1, 0.9, i % 2 ? 0xd9b98b : 0xcda878, -0.15 + i * 0.44, 0.65, 0.45));
     }
     for (const side of [-1, 1]) {
-      celIsle.add(block(0.1, 1.45, 0.1, 0xc69a52, side * 2.35, 1.28, 0.65));
-      celIsle.add(block(0.55, 0.5, 0.08, side < 0 ? 0xf3c7dd : 0xc9dfff, side * 2.08, 1.82, 0.65));
+      celIsle.add(block(0.1, 1.45, 0.1, 0xc69a52, side * 1.7, 1.28, -0.5));
+      celIsle.add(block(0.55, 0.5, 0.08, side < 0 ? 0xf3c7dd : 0xc9dfff, side * 1.95, 1.82, -0.5));
     }
 
     // ---------- both roads: stones on land, plank bridges over water ----------
-    this.buildRoad(this.mainCurve, 86);
+    this.buildRoad(this.mainCurve, 300);
     this.buildRoad(this.branchCurve, 26);
 
     // ---------- drifting clouds: layered pastel voxel clusters ----------
-    const cloudColors = [0xffffff, 0xf7fbff, 0xe9f3ff];
-    for (let i = 0; i < 10; i++) {
-      const c = new THREE.Group();
-      const puff = (w: number, h: number, d: number, px: number, py: number, pz: number, shade: number) => {
-        const p = block(w, h, d, cloudColors[shade], px, py, pz);
-        p.castShadow = false;
-        c.add(p);
-      };
-      puff(2.1, 0.65, 1.0, 0, 0, 0, 1);
-      puff(1.25, 0.75, 1.05, -1.25, 0.08, 0.04, 0);
-      puff(1.35, 0.9, 1.1, 1.15, 0.14, 0.02, 0);
-      puff(0.95, 0.75, 0.9, -0.38, 0.62, 0.02, 0);
-      puff(0.82, 0.58, 0.82, 0.55, 0.56, 0.08, 0);
-      puff(2.6, 0.22, 0.86, 0, -0.42, 0.05, 2);
-      c.scale.setScalar(0.8 + Math.random() * 0.55);
-      c.position.set(-28 + i * 17 + Math.random() * 5, 6.2 + Math.random() * 2.8, -7 - Math.random() * 5);
+    for (let i = 0; i < 8; i++) {
+      const c = this.makeCloud(i + 1);
+      c.scale.setScalar(0.75 + (i % 3) * 0.22);
+      c.position.set(-40 + i * 10.5, 7.2 + (i % 3) * 1.1, -11 - (i % 2) * 3.5);
       this.clouds.push(c);
       s.add(c);
     }
+    [0xf2a7a0, 0x8fbfe0, 0xf5d27c].forEach((color, i) => {
+      const b = this.makeBoat(color);
+      b.position.set(-18 + i * 24, -1.05, 11 + i * 2);
+      b.rotation.y = -0.2;
+      this.boats.push(b);
+      s.add(b);
+    });
 
     // ---------- birds that fly across the sky now and then ----------
     for (let i = 0; i < 3; i++) {
@@ -1054,7 +1161,7 @@ export class WorldMap {
 
     // merge every static opaque mesh on the continent into one draw call;
     // animated pieces (party, clouds, birds, halos) stay separate
-    const live = new Set<THREE.Object3D>([this.christian.root, ...this.followers.map((f) => f.root), ...this.clouds, ...this.birds.map((b) => b.g), ...this.sunHalos]);
+    const live = new Set<THREE.Object3D>([this.christian.root, ...this.followers.map((f) => f.root), ...this.clouds, ...this.boats, this.sun!, this.sun!.target, ...this.birds.map((b) => b.g), ...this.sunHalos]);
     const statics = new THREE.Group();
     for (const o of [...s.children]) if (!live.has(o) && (o as THREE.Mesh).isMesh || o.type === 'Group' && !live.has(o)) statics.add(o);
     s.add(statics);
@@ -1120,7 +1227,7 @@ export class WorldMap {
       return m;
     };
     // shallows, beach and a foam line where the island meets the sea
-    slab(2.4, -1.12, -1.09, 0xcbeef6);
+    slab(2.4, -1.12, -1.09, 0xc9f2ee);
     slab(1.05, -1.11, -1.05, 0xf4e7c6);
     const foam = new THREE.Shape(outline(1.3));
     foam.holes.push(new THREE.Path(outline(1.05)));
@@ -1136,9 +1243,19 @@ export class WorldMap {
     slab(-0.08, 0.3, 0.5, 0xb9dea3, 0.1);
     // faceted pastel meadow on top, clipped inside the lip
     const terr = createTerrain({
-      minX: W - 1, maxX: E + 1, minZ: NORTH, maxZ: 14, cell: 1.1, seed: 91,
-      flat: () => 1, y: 0.505,
-      grass: [0xc1e4ab, 0xb6dca0, 0xcbe9b6, 0xaed59b],
+      minX: W - 1, maxX: E + 1, minZ: NORTH, maxZ: 14, cell: 0.85, seed: 91,
+      flat: () => 1, y: 0.535, // just proud of the grass lip beneath it
+      grass: [0xabd98c, 0x9dcf80, 0xb8e29a, 0x92c676],
+      // every chapter's country melts softly into its neighbours
+      tint: (x, z, _y, c) => {
+        for (const reg of REGIONS) {
+          const dx = x - reg.c.x;
+          if (Math.abs(dx) > 7) continue;
+          const d = Math.hypot(dx, (z - reg.c.z) * 1.05) + Math.sin(x * 1.1 + z * 0.7) * 0.5 + Math.sin(z * 1.9 - x * 0.4) * 0.35;
+          const k = 1 - THREE.MathUtils.smoothstep(d, 2.6, 5.4);
+          if (k > 0) c.lerp(tmpTint.set(reg.color), k * reg.k);
+        }
+      },
     });
     const g = terr.mesh.geometry;
     const pos = g.getAttribute('position'); const col = g.getAttribute('color');
@@ -1204,19 +1321,19 @@ export class WorldMap {
         return;
       }
     };
-    const LEAVES = [0xa8d69a, 0xb4dea6, 0x9fcf93];
-    const BLOSSOM = [0xf7c9d4, 0xf3b9c8, 0xfad6de];
-    for (let k = 0; k < 64; k++) {
+    const LEAVES = [0x9fd48a, 0xb2e09a, 0x93c983];
+    const BLOSSOM = [0xf6bccb, 0xfacdd8, 0xfde0e6];
+    for (let k = 0; k < 120; k++) {
       const blossom = r() > 0.78;
       place(createTree({ seed: 900 + k, kind: blossom ? 'blossom' : 'leafy', leaves: blossom ? BLOSSOM : LEAVES, canopy: 1.5 + r() * 0.8 }), 0.26);
     }
-    for (let k = 0; k < 28; k++) place(createPine({ seed: 1900 + k, colors: [0x8fb9a0, 0x9cc4ab, 0x86b198] }), 0.26);
-    for (let k = 0; k < 40; k++) place(createBush({ seed: 2900 + k, flowers: r() > 0.5, colors: [0xa9d79a, 0xb7dfa6] }), 0.3);
+    for (let k = 0; k < 46; k++) place(createPine({ seed: 1900 + k, colors: [0x8fb9a0, 0x9cc4ab, 0x86b198] }), 0.26);
+    for (let k = 0; k < 70; k++) place(createBush({ seed: 2900 + k, flowers: r() > 0.5, colors: [0xa9d79a, 0xb7dfa6] }), 0.3);
     for (let k = 0; k < 24; k++) place(createRock({ seed: 3900 + k, size: 0.5 + r() * 0.5, moss: r() > 0.5 }), 0.35);
     // flower dots scattered through the meadows
     const petals = new THREE.Group();
     const FLOWERS = [0xfff1a8, 0xffd1e3, 0xd9e6ff, 0xffffff, 0xffd9b8];
-    for (let k = 0; k < 420; k++) {
+    for (let k = 0; k < 620; k++) {
       const x = this.WEST_TIP + r() * (this.EAST_TIP - this.WEST_TIP);
       const z = -5 + r() * 18;
       if (!clear(x, z)) continue;
@@ -1280,33 +1397,20 @@ export class WorldMap {
     return false;
   }
 
+  // a worn sandy lane with a pale verge and scattered paving
   private buildRoad(curve: THREE.CatmullRomCurve3, segs: number): void {
-    for (let i = 0; i <= segs; i++) {
-      const t = i / segs;
-      const p = curve.getPointAt(t);
-      const tan = curve.getTangentAt(t);
-      if (this.nearLand(p.x, p.z)) {
-        const stone = block(0.5, 0.1, 0.6, PALETTE.path, p.x, p.y - 0.02, p.z);
-        stone.rotation.y = Math.atan2(tan.x, tan.z) + Math.PI / 2;
-        stone.castShadow = false;
-        this.scene.add(stone);
-      } else {
-        const plank = block(0.5, 0.14, 1.1, PALETTE.wood, p.x, 0.5, p.z);
-        plank.rotation.y = Math.atan2(tan.x, tan.z) + Math.PI / 2;
-        plank.castShadow = false;
-        this.scene.add(plank);
-        // railings + posts, offset perpendicular to the road
-        if (i % 4 === 0) {
-          const nx = -tan.z;
-          const nz = tan.x;
-          for (const side of [-1, 1]) {
-            this.scene.add(block(0.14, 2.0, 0.14, PALETTE.woodDark,
-              p.x + nx * 0.62 * side, -0.4, p.z + nz * 0.62 * side));
-            this.scene.add(block(0.1, 0.5, 0.1, PALETTE.woodDark,
-              p.x + nx * 0.58 * side, 0.85, p.z + nz * 0.58 * side));
-          }
-        }
-      }
+    this.strip(this.scene, curve, segs, 1.2, 0xd6e0ab, 0.585, 0.1);
+    this.strip(this.scene, curve, segs, 0.92, 0xf1dfb8, 0.6, 0.06);
+    const r = mapRng(segs);
+    const paving = [0xe3c99b, 0xf8ecd0, 0xdabd8d];
+    for (let i = 1; i < segs; i++) {
+      const p = curve.getPointAt(i / segs);
+      const tan = curve.getTangentAt(i / segs);
+      const side = (r() - 0.5) * 0.5;
+      const stone = block(0.2 + r() * 0.14, 0.05, 0.18 + r() * 0.14, paving[i % 3], p.x - tan.z * side, 0.612, p.z + tan.x * side);
+      stone.rotation.y = Math.atan2(tan.x, tan.z) + (r() - 0.5) * 0.6;
+      stone.castShadow = false;
+      this.scene.add(stone);
     }
   }
 
@@ -1331,6 +1435,14 @@ export class WorldMap {
     });
   }
 
+  /** The light and its shadows travel with the view. */
+  private followSun(): void {
+    if (!this.sun) return;
+    const x = Math.round((5 + this.camPan) * 2) / 2; // whole steps keep shadow edges still
+    this.sun.position.set(x - 14, 22, 14);
+    this.sun.target.position.set(x, 0, 0);
+  }
+
   private camPan = 0; // eastward pan as Christian travels past the classic islands
 
   resize(aspect: number): void {
@@ -1343,8 +1455,8 @@ export class WorldMap {
     this.camera.lookAt(5.0 + this.camPan, 0.4, 1.4);
     if (this.scene.fog instanceof THREE.Fog) {
       const narrowMap = aspect < 0.8;
-      this.scene.fog.near = narrowMap ? 72 : 36;
-      this.scene.fog.far = narrowMap ? 160 : 100;
+      this.scene.fog.near = narrowMap ? 78 : 44;
+      this.scene.fog.far = narrowMap ? 170 : 120;
     }
     this.camera.updateProjectionMatrix();
   }
@@ -1463,6 +1575,7 @@ export class WorldMap {
     this.camPan += (panTarget - this.camPan) * Math.min(dt * 2.5, 1);
     this.camera.position.x = 5.0 + this.camPan;
     this.camera.lookAt(5.0 + this.camPan, 0.4, 1.4);
+    this.followSun();
     const tan = curve.getTangentAt(THREE.MathUtils.clamp(param, 0, 1));
     this.christian.root.rotation.y = Math.atan2(tan.x * this.facing, tan.z * this.facing);
     animateBear(this.christian, t, this.moving);
@@ -1480,11 +1593,11 @@ export class WorldMap {
     // ambient life
     for (let i = 0; i < this.clouds.length; i++) {
       const c = this.clouds[i];
-      c.position.x += dt * (0.2 + i * 0.06);
+      c.position.x += dt * 0.32; // one breeze, so they never bunch up
       // Recycle around the travelling camera so later chapter islands retain
       // the same cheerful cloud layer as the beginning of the map.
-      if (c.position.x > this.camPan + 42) c.position.x = this.camPan - 42;
-      if (c.position.x < this.camPan - 46) c.position.x = this.camPan + 38;
+      if (c.position.x > this.camPan + 47) c.position.x -= 84;
+      if (c.position.x < this.camPan - 37) c.position.x += 84;
     }
     // birds: launch one across the sky every so often
     this.birdTimer -= dt;
@@ -1527,11 +1640,16 @@ export class WorldMap {
       (sp.material as THREE.MeshBasicMaterial).opacity =
         0.35 + 0.45 * Math.abs(Math.sin(t * 1.3 + i * 1.7));
     }
-    for (let i = 0; i < this.mist.length; i++) {
-      const m = this.mist[i];
-      m.position.x += Math.sin(t * 0.4 + i) * dt * 0.15;
-      (m.material as THREE.MeshStandardMaterial).opacity =
-        0.45 + 0.15 * Math.sin(t * 0.5 + i * 1.3);
+    for (let i = 0; i < this.boats.length; i++) {
+      const b = this.boats[i];
+      b.position.x += dt * (0.28 + i * 0.05);
+      if (b.position.x > this.camPan + 42) b.position.x = this.camPan - 36;
+      if (b.position.x < this.camPan - 44) b.position.x = this.camPan + 34;
+      // keep clear of the headlands
+      const shore = this.southCoast(THREE.MathUtils.clamp(b.position.x, this.WEST_TIP, this.EAST_TIP));
+      b.position.z += (shore + 3.6 + i * 0.9 - b.position.z) * Math.min(1, dt * 0.5);
+      b.position.y = -1.05 + Math.sin(t * 1.4 + i * 2) * 0.06;
+      b.rotation.z = Math.sin(t * 1.1 + i) * 0.04;
     }
     if (this.sinaiGlow) {
       (this.sinaiGlow.material as THREE.MeshBasicMaterial).opacity =

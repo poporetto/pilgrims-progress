@@ -63,7 +63,7 @@ interface Balloon {
 }
 
 let mistTex: THREE.Texture | null = null;
-function mistTexture(): THREE.Texture {
+export function mistTexture(): THREE.Texture {
   if (mistTex) return mistTex;
   const c = document.createElement('canvas');
   c.width = c.height = 64;

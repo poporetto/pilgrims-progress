@@ -345,10 +345,6 @@ function buildBear(opts: CharacterOptions = {}): BearParts {
     head.add(beakTop);
     const beakTip = block(0.14, 0.12, 0.15, 0xc98428, 0, 0.2, 0.64);
     head.add(beakTip);
-    // Layered breast plumage and short wing feathers.
-    body.add(block(0.68, 0.22, 0.1, belly, 0, 0.66, bodyD / 2 + 0.08));
-    body.add(block(0.54, 0.2, 0.11, belly, 0, 0.43, bodyD / 2 + 0.09));
-    body.add(block(0.4, 0.18, 0.12, belly, 0, 0.22, bodyD / 2 + 0.1));
     // Bare-armed owls get feathered wings. When an owl wears a robe or shirt
     // the sleeve fully covers these feathers, and the coplanar overlap made the
     // arm flicker (z-fighting), so we skip them for clothed owls.

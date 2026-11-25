@@ -28,6 +28,7 @@ import { makeAlpineMountain } from './alpine';
 import { CameraController, type CameraFrame } from './core/camera';
 import { Atmosphere, configureRenderer } from './render/atmosphere';
 import { windUniforms } from './world/voxels';
+import { setHearts } from './ui/hearts';
 import { PlayLayer } from './play/layer';
 import { PLAY, ALL_KEEPSAKES, type CompanionName, type PlayMode } from './play/content';
 import { MiniGames } from './play/minigames';
@@ -1162,8 +1163,10 @@ const battleUI = document.getElementById('battle-ui')!;
 const sleepUI = document.getElementById('sleep-ui')!;
 const sleepFill = document.querySelector('#sleep-ui .sleep-fill')! as HTMLElement;
 const swordBtn = document.getElementById('sword-btn')! as HTMLButtonElement;
-const battleFillChr = document.querySelector('#battle-ui .brow.chr .bfill')! as HTMLElement;
-const battleFillApo = document.querySelector('#battle-ui .brow.apo .bfill')! as HTMLElement;
+const heartsChr = document.querySelector('#battle-ui .brow.chr .hearts')! as HTMLElement;
+const heartsApo = document.querySelector('#battle-ui .brow.apo .hearts')! as HTMLElement;
+setHearts(heartsChr, 100);
+setHearts(heartsApo, 100);
 
 const valley = new ValleyScene({
   playScript,
@@ -1172,11 +1175,12 @@ const valley = new ValleyScene({
   rumbleSound: () => music.rumble(),
   blipSound: () => music.blip(),
   setMusic: (style) => music.setStyle(style),
+  shake: (n) => cameraRig.kick(n * 0.6, -n, n * 0.3),
   blockSound: () => music.chime([1175, 1568], 0.05),
   battleUI: (show) => battleUI.classList.toggle('show', show),
   setHP: (c, a) => {
-    battleFillChr.style.width = `${Math.max(0, c)}%`;
-    battleFillApo.style.width = `${Math.max(0, a)}%`;
+    setHearts(heartsChr, c);
+    setHearts(heartsApo, a);
   },
   onComplete: () => {
     quest.valleyDone = true;
@@ -1423,7 +1427,7 @@ const lucre = new LucreScene({
     battleUI.classList.toggle('show', show);
     battleUI.classList.toggle('solo', show);
   },
-  setHP: (c) => { battleFillChr.style.width = `${Math.max(0, c)}%`; },
+  setHP: (c) => { setHearts(heartsChr, c); },
   fade: (mid) => fadeTransition(() => {
     mid();
     if (lucreActors) camTarget.copy(lucreActors.christian.root.position);
@@ -1484,8 +1488,8 @@ const castle = new CastleScene({
     battleUI.classList.toggle('solo', false); // show both bars: Christian + Hopeful
   },
   setHP: (c, h) => {
-    battleFillChr.style.width = `${Math.max(0, c)}%`;
-    battleFillApo.style.width = `${Math.max(0, h)}%`;
+    setHearts(heartsChr, c);
+    setHearts(heartsApo, h);
   },
   fade: (mid) => fadeTransition(() => {
     mid();
@@ -2048,8 +2052,7 @@ keepsakeBtn.title = 'Open Keepsake Book (K)';
 document.body.append(keepsakeBtn);
 function updateKeepsakeBtn(): void {
   const n = keepsakeCount();
-  keepsakeBtn.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.6l2.8 6 6.5.8-4.8 4.5 1.3 6.5L12 17.2l-5.8 3.2 1.3-6.5L2.7 9.4l6.5-.8z" fill="#f3c969" stroke="#b9853a" stroke-width="1.6" stroke-linejoin="round"/></svg>'
-    + `<span>${n}</span>`;
+  keepsakeBtn.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.6l2.8 6 6.5.8-4.8 4.5 1.3 6.5L12 17.2l-5.8 3.2 1.3-6.5L2.7 9.4l6.5-.8z" fill="#f3c969" stroke="#c2914a" stroke-width="1.6" stroke-linejoin="round"/></svg>';
   keepsakeBtn.setAttribute('aria-label', `Open Keepsake Book, ${n} of ${ALL_KEEPSAKES.length} found`);
 }
 updateKeepsakeBtn();
@@ -3162,13 +3165,12 @@ const CHAPTERS: Partial<Record<GameMode, ChapterAdapter>> = {
     moveFactor: () => valley.moveFactor(),
     afterMove: () => valley.afterMove(),
     update: (dt, t, moving) => valley.update(dt, t, moving),
-    prompt: () => (valley.canBlock() ? { text: 'Raise your shield as the dart comes close!', button: null } : valley.canAttack() ? { text: 'Swing the sword!', button: null } : null),
+    prompt: () => (valley.canBlock() ? { text: 'Raise your shield!', button: null } : valley.canAttack() ? { text: 'Swing the sword!', button: null } : null),
     extra: () => {
       swordBtn.classList.toggle('show', battleUI.classList.contains('show') && !dialogueOpen && !endingOpen);
       const shield = valley.canBlock();
       if (swordBtn.classList.contains('shield') !== shield) {
         swordBtn.classList.toggle('shield', shield);
-        (swordBtn.children[0] as HTMLElement).textContent = shield ? '🛡' : '⚔';
         (swordBtn.children[1] as HTMLElement).textContent = shield ? 'Raise the Shield' : 'Swing the Sword';
         swordBtn.setAttribute('aria-label', shield ? 'Raise the Shield of Faith' : 'Swing the Sword of the Spirit');
       }

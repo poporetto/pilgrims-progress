@@ -91,7 +91,10 @@ export function openBook(chapterNames: readonly string[], here?: string): void {
   let target: HTMLElement | null = null;
   Object.entries(PLAY as Record<string, ChapterPlay>).forEach(([key, ch], i) => {
     const s = el('section');
-    s.append(el('h3', '', chapterNames[i + 1]));
+    const got = ch.keepsakes.filter((k) => found.has(k.id)).length;
+    const head = el('div', 'kb-head');
+    head.append(el('h3', '', chapterNames[i + 1]), el('span', got === ch.keepsakes.length ? 'kb-tally all' : 'kb-tally', `${got} of ${ch.keepsakes.length}`));
+    s.append(head);
     const ul = el('ul');
     for (const k of ch.keepsakes) {
       const have = found.has(k.id);

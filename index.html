@@ -916,9 +916,10 @@
     #battle-ui {
       position: fixed; top: 70px; left: 50%; transform: translateX(-50%);
       display: none; flex-direction: column; gap: 8px; z-index: 12;
-      width: min(520px, calc(100% - 32px)); pointer-events: none;
+      width: max-content; max-width: calc(100% - 24px); pointer-events: none;
     }
     #battle-ui.show { display: flex; }
+    @media (min-width: 701px) { #battle-ui { flex-direction: row; } }
     #battle-ui .brow {
       display: flex; align-items: center; gap: 10px;
       background: var(--paper); border: 3px solid var(--accent2);
@@ -927,14 +928,12 @@
     }
     #battle-ui .brow.apo { border-color: #c9535f; }
     #battle-ui .bname { font-size: 13px; font-weight: bold; white-space: nowrap; min-width: 82px; }
-    #battle-ui .btrack {
-      flex: 1; height: 14px; border-radius: 999px; background: #eee4d4; overflow: hidden;
-    }
-    #battle-ui .bfill {
-      height: 100%; border-radius: 999px; background: #7fc47f;
-      transition: width 0.35s ease;
-    }
-    #battle-ui .brow.apo .bfill { background: #c9535f; }
+    #battle-ui .hearts { display: flex; gap: 5px; }
+    #battle-ui .heart { position: relative; width: 30px; height: 27px; }
+    #battle-ui .heart svg { position: absolute; left: 0; top: 0; width: 30px; height: 27px; }
+    #battle-ui .heart i { position: absolute; left: 0; top: 0; width: 100%; height: 100%; overflow: hidden; }
+    #battle-ui .heart.hit { animation: heart-hit .45s ease-out; }
+    @keyframes heart-hit { 30% { transform: scale(1.35) rotate(-8deg); } 60% { transform: scale(.9); } }
     #sword-btn {
       position: fixed; right: 28px; bottom: 34px; z-index: 18;
       display: none; align-items: center; gap: 10px;
@@ -948,7 +947,10 @@
     }
     #sword-btn.show { display: flex; }
     #sword-btn:active { transform: translateY(4px); box-shadow: 0 2px 0 #4d82ae; }
-    #sword-btn .blade-icon { font-size: 25px; filter: drop-shadow(0 0 5px #fff); }
+    #sword-btn .blade-icon { display: grid; }
+    #sword-btn .blade-icon svg { width: 26px; height: 26px; }
+    #sword-btn .i-shield, #sword-btn.shield .i-sword { display: none; }
+    #sword-btn.shield .i-shield { display: block; }
 
     /* ---------- screen fade (masks the outdoor/indoor cut) ---------- */
     #fade {
@@ -1187,11 +1189,11 @@
   <div id="battle-ui">
     <div class="brow chr">
       <span class="bname">Christian</span>
-      <div class="btrack"><div class="bfill" style="width:100%"></div></div>
+      <div class="hearts"></div>
     </div>
     <div class="brow apo">
       <span class="bname">Apollyon</span>
-      <div class="btrack"><div class="bfill" style="width:100%"></div></div>
+      <div class="hearts"></div>
     </div>
   </div>
   <div id="sleep-ui" aria-live="polite">
@@ -1199,7 +1201,8 @@
     <div class="sleep-track"><div class="sleep-fill"></div></div>
   </div>
   <button id="sword-btn" aria-label="Swing the Sword of the Spirit">
-    <span class="blade-icon">⚔</span>
+    <!-- icons: Lucide (ISC licence) -->
+    <span class="blade-icon"><svg class="i-sword" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="14.5 17.5 3 6 3 3 6 3 17.5 14.5"/><line x1="13" x2="19" y1="19" y2="13"/><line x1="16" x2="20" y1="16" y2="20"/><line x1="19" x2="21" y1="21" y2="19"/></svg><svg class="i-shield" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/></svg></span>
     <span>Swing the Sword</span>
   </button>
 
