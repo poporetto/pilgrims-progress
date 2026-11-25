@@ -2,7 +2,7 @@
 // chapter and every animated episode. Opened from the title screen, Settings,
 // the chapter-complete card and the finale. Its text loads on first use.
 import type { Guide } from '../guides/chapters';
-import { CHAPTER_SLUGS, videoForChapter, videoForEpisode, watchUrl } from '../guides/videos';
+import { CHAPTER_SLUGS, videoForChapter, videoForEpisode, watchUrl, embedUrl, type Video } from '../guides/videos';
 import './familyGuide.css';
 
 type Kind = 'chapters' | 'episodes';
@@ -28,24 +28,62 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, cls = '', text = ''):
 
 let dialog: HTMLDialogElement | null = null;
 let body: HTMLDivElement;
+let videoListener: (playing: boolean) => void = () => {};
+/** told when a guide's video starts, and when it goes away */
+export function onGuideVideo(fn: (playing: boolean) => void): void { videoListener = fn; }
+
+/** swap the sheet's contents; any playing video is removed with the old page */
+function show(...nodes: HTMLElement[]): void {
+  body.replaceChildren(...nodes);
+  videoListener(false);
+}
+
+// the YouTube player loads only when asked for, so reading stays light
+function videoPlayer(v: Video, title: string): HTMLElement {
+  const box = el('div', 'fg-video');
+  const b = el('button');
+  b.type = 'button';
+  b.setAttribute('aria-label', `Play Episode ${v.episode}: ${title}`);
+  const img = el('img');
+  img.src = `https://i.ytimg.com/vi/${v.youtubeId}/maxresdefault.jpg`;
+  img.alt = '';
+  b.append(img, el('span', 'fg-play', `Play Episode ${v.episode}`));
+  b.addEventListener('click', () => {
+    const f = el('iframe');
+    f.src = `${embedUrl(v)}?autoplay=1&playsinline=1&rel=0`;
+    f.title = `Episode ${v.episode}: ${title}`;
+    f.allow = 'autoplay; encrypted-media; picture-in-picture; fullscreen';
+    f.referrerPolicy = 'strict-origin-when-cross-origin';
+    f.allowFullscreen = true;
+    box.replaceChildren(f);
+    f.focus();
+    videoListener(true);
+  });
+  box.append(b);
+  return box;
+}
+
 let returnFocus: HTMLElement | null = null;
 
 function build(): HTMLDialogElement {
   const d = el('dialog');
   d.id = 'family-guide';
   d.setAttribute('aria-label', 'Family Guide');
+  const tidy = (): void => { show(); returnFocus?.focus(); };
+  const shut = (): void => { d.close(); tidy(); };
   const close = el('button', 'fg-close', '×');
   close.type = 'button';
   close.setAttribute('aria-label', 'Close Family Guide');
-  close.addEventListener('click', () => d.close());
+  close.addEventListener('click', () => shut());
   body = el('div', 'fg-body');
   d.append(close, body);
   // reading must never drive the game underneath
   for (const type of ['keydown', 'keyup'] as const) {
     d.addEventListener(type, (e) => e.stopPropagation());
   }
-  d.addEventListener('click', (e) => { if (e.target === d) d.close(); });
-  d.addEventListener('close', () => returnFocus?.focus());
+  d.addEventListener('click', (e) => { if (e.target === d) shut(); });
+  // Escape closes it without our buttons; the event can land after a quick reopen
+  d.addEventListener('close', () => { if (!d.open) tidy(); });
   document.body.append(d);
   return d;
 }
@@ -76,7 +114,7 @@ async function showList(kind: Kind): Promise<void> {
     li.append(b);
     list.append(li);
   });
-  body.replaceChildren(
+  show(
     el('h2', '', 'Family Guide'),
     el('p', 'fg-lead', 'Talk about the story together: what it means, questions for two age groups, something to do and a short prayer.'),
     tabs(kind), list,
@@ -119,7 +157,7 @@ async function showGuide(kind: Kind, i: number): Promise<void> {
     a.rel = 'noopener';
     links.append(a);
   };
-  if (video) link(watchUrl(video), kind === 'chapters' ? `Watch Episode ${video.episode}` : 'Watch on YouTube');
+  if (video) link(watchUrl(video), 'Watch on YouTube');
   if (kind === 'chapters') link(`./family-guide/${CHAPTER_SLUGS[i]}/`, 'Open as a page');
   else if (video) link(`./episodes/${video.slug}/`, 'Open as a page');
   const nav = el('div', 'fg-nav');
@@ -132,11 +170,12 @@ async function showGuide(kind: Kind, i: number): Promise<void> {
   };
   step(i - 1, `‹ ${label(kind, i - 1)}`);
   step(i + 1, `${label(kind, i + 1)} ›`);
-  body.replaceChildren(
+  show(
     back,
     el('p', 'fg-kicker', label(kind, i)),
     el('h2', '', g.title),
     el('p', 'fg-story', g.story),
+    ...(video ? [videoPlayer(video, lib.episodes[video.episode - 1].title)] : []),
     links,
     section('The big idea', idea),
     section('From the Bible', ...verses),
@@ -155,7 +194,7 @@ async function showGuide(kind: Kind, i: number): Promise<void> {
 export async function openFamilyGuide(chapter?: number): Promise<void> {
   dialog ??= build();
   returnFocus = document.activeElement as HTMLElement | null;
-  body.replaceChildren(el('p', 'fg-lead', 'Opening the guide…'));
+  show(el('p', 'fg-lead', 'Opening the guide…'));
   if (!dialog.open) dialog.showModal();
   try {
     if (chapter && ROMAN[chapter - 1]) await showGuide('chapters', chapter - 1);
@@ -164,7 +203,7 @@ export async function openFamilyGuide(chapter?: number): Promise<void> {
     const retry = el('button', 'fg-back', 'Try again');
     retry.type = 'button';
     retry.addEventListener('click', () => { void openFamilyGuide(chapter); });
-    body.replaceChildren(el('p', 'fg-lead', 'The guide couldn’t load. Check your connection.'), retry);
+    show(el('p', 'fg-lead', 'The guide couldn’t load. Check your connection.'), retry);
   }
 }
 

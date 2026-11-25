@@ -148,7 +148,7 @@ export class Music {
 
   start(): void {
     if (this.ctx) {
-      if (this.ctx.state === 'suspended') void this.ctx.resume();
+      if (this.ctx.state === 'suspended' && !this.held) void this.ctx.resume();
       return;
     }
     this.ctx = new AudioContext();
@@ -168,6 +168,14 @@ export class Music {
     for (let i = 0; i < len; i++) data[i] = Math.random() * 2 - 1;
     this.nextBarTime = this.ctx.currentTime + 0.1;
     this.timer = window.setInterval(() => this.schedule(), 200);
+  }
+
+  private held = false;
+  /** pause all game sound while something else (a video) is playing */
+  hold(on: boolean): void {
+    if (on === this.held) return;
+    this.held = on;
+    if (this.ctx) void (on ? this.ctx.suspend() : this.ctx.resume());
   }
 
   toggle(): boolean {

@@ -4,7 +4,7 @@
 import { bookPage } from './book';
 import { CHAPTER_GUIDES, ESV_NOTICE, type Guide } from '../guides/chapters';
 import episodes from '../guides/episodes.json';
-import { CHANNEL_URL, CHAPTER_SLUGS, VIDEOS, videoForChapter, watchUrl, type Video } from '../guides/videos';
+import { CHANNEL_URL, CHAPTER_SLUGS, VIDEOS, embedUrl, videoForChapter, watchUrl, type Video } from '../guides/videos';
 
 export const SITE = 'https://pilgrimsprogress.com.au/';
 const ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII', 'XIII', 'XIV', 'XV', 'XVI', 'XVII'];
@@ -105,6 +105,9 @@ const notice = `<p class="notice">${esc(ESV_NOTICE)}</p>`;
 const watchCard = (root: string, v: Video): string =>
   `<a class="watch" href="${root}${episodePath(v)}"><img src="${thumb(v)}" width="1280" height="720" loading="lazy" alt=""><span><strong>Episode ${v.episode}: ${esc(EPISODES[v.episode - 1].title)}</strong><span>Watch the animated episode</span></span></a>`;
 
+const player = (v: Video, lazy = false): string =>
+  `<div class="video"><iframe src="${embedUrl(v)}" title="${esc(`Pilgrim’s Progress Episode ${v.episode}: ${EPISODES[v.episode - 1].title}`)}"${lazy ? ' loading="lazy"' : ''} allow="accelerometer; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe></div>`;
+
 function chapterPage(g: Guide, i: number): Page {
   const n = i + 1;
   const path = chapterPath(n);
@@ -129,7 +132,9 @@ function chapterPage(g: Guide, i: number): Page {
 <h1>${esc(g.title)}</h1>
 <p class="lead">${esc(g.story)}</p>
 <img class="hero" src="${root}chapters/${CHAPTER_SLUGS[i]}.jpg" width="1200" height="630" alt="${esc(g.title)} in the Pilgrim’s Progress game">
-${video ? watchCard(root, video) : ''}
+${video ? `<h2>Watch Episode ${video.episode}</h2>
+${player(video, true)}
+<p><a href="${root}${episodePath(video)}">Guide for Episode ${video.episode}: ${esc(EPISODES[video.episode - 1].title)}</a></p>` : ''}
 ${guideBody(g)}
 <p class="actions"><a class="btn" href="${root}">Play the game</a></p>
 ${pager(link(root, n - 1, (t) => `‹ ${t}`), link(root, n + 1, (t) => `${t} ›`))}
@@ -160,7 +165,7 @@ function episodePage(v: Video, i: number): Page {
     body: (root) => `<p class="crumbs"><a href="${root}episodes/">All episodes</a></p>
 <p class="kicker">Episode ${v.episode}</p>
 <h1>${esc(g.title)}</h1>
-<div class="video"><iframe src="https://www.youtube-nocookie.com/embed/${v.youtubeId}" title="${esc(name)}" allow="accelerometer; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe></div>
+${player(v)}
 <p class="actions"><a class="btn" href="${watchUrl(v)}">Watch on YouTube</a><a class="btn soft" href="${CHANNEL_URL}?sub_confirmation=1">Subscribe</a></p>
 ${guideBody(g)}
 <h2>Play this part of the story</h2>

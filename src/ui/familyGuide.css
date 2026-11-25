@@ -67,3 +67,10 @@ html.large-dialogue #family-guide { font-size: 18.5px; }
 @media (max-width: 480px) { #family-guide .fg-body { padding: 22px 18px 26px; } }
 #finale.end #finale-guide-btn { pointer-events: auto; }
 #title-screen #title-guide-btn:hover { background: rgba(255, 255, 255, .7); }
+#family-guide .fg-video { position: relative; aspect-ratio: 16 / 9; margin-top: 16px; border-radius: 18px; overflow: hidden; background: #3c4a52; }
+#family-guide .fg-video :is(button, img, iframe) { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; padding: 0; border: 0; }
+#family-guide .fg-video button { cursor: pointer; background: none; }
+#family-guide .fg-video img { object-fit: cover; }
+#family-guide .fg-play { position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); padding: 12px 24px; border-radius: 999px; background: #a8324a; color: #fff; font-size: 16px; font-weight: 800; white-space: nowrap; }
+#family-guide .fg-video button:hover .fg-play { background: #8f2740; }
+#family-guide .fg-video button:focus-visible { outline: 4px solid #4d94bb; outline-offset: -4px; }

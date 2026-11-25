@@ -39,5 +39,6 @@ export const CHAPTER_SLUGS = [
 ];
 
 export const watchUrl = (v: Video): string => `https://www.youtube.com/watch?v=${v.youtubeId}`;
+export const embedUrl = (v: Video): string => `https://www.youtube-nocookie.com/embed/${v.youtubeId}`;
 export const videoForEpisode = (n: number): Video | undefined => VIDEOS.find((v) => v.episode === n);
 export const videoForChapter = (n: number): Video | undefined => VIDEOS.find((v) => v.chapters.includes(n));

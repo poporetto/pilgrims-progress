@@ -1,6 +1,6 @@
 import { setupInstallButton, registerServiceWorker } from './ui/install';
 import { preventMobileZoom } from './ui/noZoom';
-import { openFamilyGuide, chapterFromTitle } from './ui/familyGuide';
+import { openFamilyGuide, chapterFromTitle, onGuideVideo } from './ui/familyGuide';
 import * as THREE from 'three';
 import { PALETTE } from './palette';
 import { makeBear, animateBear, block, mat, liveBears, BearParts } from './bear';
@@ -671,6 +671,7 @@ const MODE_CHAPTER: Record<GameMode, number | undefined> = {
   hill: 7, palace: 8, valley: 9, shadow: 10, vanity: 11, lucre: 12, castle: 13,
   mountain: 14, enchanted: 15, beulah: 16, celestial: 17,
 };
+onGuideVideo((playing) => music.hold(playing));
 document.getElementById('title-guide-btn')!.addEventListener('click', () => { void openFamilyGuide(); });
 document.getElementById('settings-guide-btn')!.addEventListener('click', () => {
   void openFamilyGuide(started ? MODE_CHAPTER[mode] : undefined);
