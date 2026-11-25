@@ -135,7 +135,7 @@ export class CrossScene {
   }
 
   // hill height: a smooth green mound the road climbs over
-  private groundY(x: number, z: number): number {
+  groundY(x: number, z: number): number {
     const d = Math.hypot(x, z);
     if (d >= HILL_R) return 0;
     const u = 1 - (d / HILL_R) ** 2;

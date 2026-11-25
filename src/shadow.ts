@@ -58,8 +58,8 @@ export class ShadowScene {
   phase: Phase = 'enter';
   private cb: ShadowCallbacks;
   private christian: BearParts;
-  private faithful: BearParts;
-  private faithfulJoined = false;
+  faithful: BearParts;
+  faithfulJoined = false;
   private lamp: THREE.PointLight;
   private hemi: THREE.HemisphereLight | null = null;
   private groundMat: THREE.MeshStandardMaterial | null = null;

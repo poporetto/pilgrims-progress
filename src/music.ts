@@ -256,6 +256,53 @@ export class Music {
     osc.stop(t + 0.15);
   }
 
+  // cartoon collision: a hollow bonk, then a springy boing
+  bonk(): void {
+    if (!this.ctx || !this.sfxBus || !this.enabled) return;
+    const t = this.now();
+    const tone = (type: OscillatorType, at: number, from: number, to: number, dur: number, vol: number) => {
+      const osc = this.ctx!.createOscillator();
+      const g = this.ctx!.createGain();
+      osc.type = type;
+      osc.frequency.setValueAtTime(from, at);
+      osc.frequency.exponentialRampToValueAtTime(to, at + dur);
+      g.gain.setValueAtTime(vol, at);
+      g.gain.exponentialRampToValueAtTime(0.001, at + dur);
+      osc.connect(g).connect(this.sfxBus!);
+      osc.start(at);
+      osc.stop(at + dur + 0.05);
+      return osc;
+    };
+    tone('triangle', t, 420, 90, 0.18, 0.4);
+    const boing = tone('sine', t + 0.14, 150, 520, 0.65, 0.22);
+    const lfo = this.ctx.createOscillator();
+    const depth = this.ctx.createGain();
+    lfo.frequency.value = 17;
+    depth.gain.value = 45;
+    lfo.connect(depth).connect(boing.frequency);
+    lfo.start(t + 0.14);
+    lfo.stop(t + 0.85);
+  }
+
+  // a little run of bell notes (keepsakes, village bells)
+  chime(notes: number[] = [784, 988, 1175], gap = 0.09): void {
+    if (!this.ctx || !this.sfxBus || !this.enabled) return;
+    const t0 = this.now();
+    notes.forEach((f, i) => {
+      const t = t0 + i * gap;
+      const osc = this.ctx!.createOscillator();
+      const g = this.ctx!.createGain();
+      osc.type = 'triangle';
+      osc.frequency.value = f;
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.linearRampToValueAtTime(0.11, t + 0.015);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.8);
+      osc.connect(g).connect(this.sfxBus!);
+      osc.start(t);
+      osc.stop(t + 0.85);
+    });
+  }
+
   // muddy splash for the slough
   splash(): void {
     if (!this.ctx || !this.sfxBus || !this.enabled || !this.noiseBuf) return;

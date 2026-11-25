@@ -118,7 +118,7 @@ export class CelestialScene {
   private gatePassageStarted = false;
   private crownTriggered = false;
   private endTriggered = false;
-  private revisit = false;
+  revisit = false;
   private built = false;
 
   constructor(cb: CelestialCallbacks) {
@@ -304,7 +304,7 @@ export class CelestialScene {
 
   // ground height: Beulah level, then the great shining climb, then the City plateau.
   // The far-east epilogue area sits back down at ground level.
-  private groundY(x: number): number {
+  groundY(x: number): number {
     if (x > 120) return 0;
     const u = THREE.MathUtils.clamp((x - HILL_X0) / (HILL_X1 - HILL_X0), 0, 1);
     return HILL_H * u * u * (3 - 2 * u);

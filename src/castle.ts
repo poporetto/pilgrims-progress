@@ -312,7 +312,7 @@ export class CastleScene {
   // seconds remaining while Giant Despair & Diffidence walk off before the key attempt
   private giantLeaveT = -1;
 
-  private revisit = false;
+  revisit = false;
   private built   = false;
 
   constructor(cb: CastleCallbacks) {

@@ -18,12 +18,23 @@ import { voxelMesh, Voxel, rng as seeded, vary } from './world/voxels';
 // to find it glowing where he slept. Climbing again he meets Timorous and
 // Mistrust fleeing from lions ahead — but he presses on toward the light.
 
+// the foothold climb: rows of three stones, one of them firm
+const ROWS: Array<-1 | 0 | 1> = [0, -1, 1, 0, 1, -1];
+const ROW_X = (i: number): number => -5.6 + i * 1.2;
+const LANE_Z = 1.6;
+const STEP_BREATH = 0.5;
+
 interface HillCallbacks {
   playScript: (lines: DialogueLine[], onDone?: () => void) => void;
   setObjective: (text: string) => void;
   onComplete: () => void;
   onExit: () => void; // leaving on a revisit
   blipSound: () => void;
+  footholds?: {
+    start: (c: { step: (lane: -1 | 0 | 1) => void; skip: () => void }) => void;
+    state: (breath: number, note: string | null) => void;
+    end: () => void;
+  };
   setMusic?: (style: 'gate' | 'cross') => void;
 }
 
@@ -31,6 +42,7 @@ type Phase =
   | 'walk'      // approaching the fork with Formalist & Hypocrisy
   | 'fork'      // parked: the three-paths scene
   | 'climb'     // up the steep way
+  | 'footholds' // stepping from stone to stone up the steepest part
   | 'arbor'     // parked: sitting down in the arbor
   | 'sleeping'  // timed doze — the sun slides down
   | 'climb2'    // on up, scroll left behind
@@ -77,6 +89,12 @@ export class HillScene {
   private zzzTimer = 0;
   private dust: Array<{ mesh: THREE.Mesh; m: THREE.MeshBasicMaterial; life: number; vx: number; vz: number }> = [];
   private shining: ShiningLight | null = null;
+  private stones: Array<{ g: THREE.Group; row: number; lane: number; fall: number }> = [];
+  private footRow = -1;      // -1 before the first stone
+  private footDone = false;
+  private breath = 1;
+  private footAuto = false;  // skipped: he climbs on by himself
+  private hop: { from: THREE.Vector3; to: THREE.Vector3; t: number; dur: number; slip: boolean } | null = null;
   private revisit = false;
   private built = false;
 
@@ -147,7 +165,7 @@ export class HillScene {
   }
 
   // the slope: flat, then a smooth climb, then the summit plateau
-  private groundY(x: number): number {
+  groundY(x: number): number {
     const u = THREE.MathUtils.clamp((x - HILL_X0) / (HILL_X1 - HILL_X0), 0, 1);
     return HILL_H * u * u * (3 - 2 * u);
   }
@@ -356,6 +374,12 @@ export class HillScene {
   enter(revisit: boolean): { christian: BearParts } {
     this.build();
     this.revisit = revisit;
+    this.footRow = -1;
+    this.footDone = false;
+    this.footAuto = false;
+    this.breath = 1;
+    this.hop = null;
+    for (const st of this.stones) { st.g.visible = false; st.fall = 0; }
     this.duskP = 0;
     this.duskTarget = 0;
     this.fleeT = 0;
@@ -388,6 +412,7 @@ export class HillScene {
   }
 
   moveFactor(): number {
+    if (this.phase === 'footholds') return 0;
     if (this.phase === 'fork' || this.phase === 'arbor' || this.phase === 'sleeping' ||
         this.phase === 'panic' || this.phase === 'warning') return 0;
     // the steep way is slow going — unless he's coming back down
@@ -460,6 +485,11 @@ export class HillScene {
       return;
     }
 
+    if (this.phase === 'climb' && !this.footDone && this.cb.footholds && p.x > HILL_X0 + 1) {
+      this.startFootholds();
+      return;
+    }
+
     // Trigger the rest scene only after Christian has cleared the arbor rather
     // than while he is approaching it; this keeps the middle of the path free.
     if (this.phase === 'climb' && p.x > ARBOR.x + 1.7) {
@@ -512,6 +542,97 @@ export class HillScene {
     }
   }
 
+  // ---------- the foothold climb ----------
+  private startFootholds(): void {
+    this.phase = 'footholds';
+    if (!this.stones.length) {
+      ROWS.forEach((firm, row) => {
+        for (const lane of [-1, 0, 1]) {
+          const g = new THREE.Group();
+          if (lane === firm) {
+            g.add(block(0.95, 0.24, 0.95, 0xf3e6cb, 0, 0.08, 0), block(0.7, 0.08, 0.7, 0xfff6e2, 0, 0.22, 0));
+            // a golden flower at its edge, like the King's sign at the fork
+            g.add(block(0.08, 0.34, 0.08, 0x7fa86a, 0.42, 0.34, 0.42), block(0.24, 0.16, 0.24, 0xf3c24f, 0.42, 0.56, 0.42));
+          } else {
+            // a tilted, mossy, broken stone
+            g.add(block(0.5, 0.3, 0.6, 0x8b867f, -0.22, 0.1, 0.06), block(0.4, 0.22, 0.44, 0x7b8a66, 0.24, 0.08, -0.12));
+            g.rotation.z = 0.22;
+            g.rotation.y = 0.5 + row;
+          }
+          g.position.set(ROW_X(row), this.groundY(ROW_X(row)), lane * LANE_Z);
+          this.scene.add(g);
+          this.stones.push({ g, row, lane, fall: 0 });
+        }
+      });
+    }
+    for (const st of this.stones) st.g.visible = true;
+    this.cb.setObjective('⛰ Climb stone by stone, and stop for breath');
+    this.cb.footholds!.start({
+      step: (lane) => this.stepTo(lane),
+      skip: () => { this.footAuto = true; },
+    });
+  }
+
+  private stepTo(lane: -1 | 0 | 1): void {
+    if (this.phase !== 'footholds' || this.hop) return;
+    const row = this.footRow + 1;
+    if (row >= ROWS.length) return;
+    if (this.breath < STEP_BREATH && !this.footAuto) {
+      this.cb.footholds!.state(this.breath, 'Catch your breath first…');
+      return;
+    }
+    const firm = ROWS[row] === lane;
+    const x = ROW_X(row);
+    const from = this.christian.root.position.clone();
+    const to = new THREE.Vector3(x, this.groundY(x) + (row === ROWS.length - 1 ? 0 : 0.22), lane * LANE_Z);
+    this.breath = Math.max(0, this.breath - STEP_BREATH);
+    this.hop = { from, to, t: 0, dur: Math.max(0.45, from.distanceTo(to) / 5), slip: !firm };
+    this.christian.root.rotation.y = Math.atan2(to.x - from.x, to.z - from.z);
+    this.cb.blipSound();
+  }
+
+  private updateFootholds(dt: number, t: number): void {
+    const p = this.christian.root.position;
+    this.breath = Math.min(1, this.breath + dt / 2.6);
+    if (this.footAuto && !this.hop && this.footRow + 1 < ROWS.length) this.stepTo(ROWS[this.footRow + 1]);
+    let note: string | null = null;
+    const h = this.hop;
+    if (h) {
+      h.t += dt;
+      const u = Math.min(1, h.t / h.dur);
+      // a loose stone: he steps out, it gives way, and he comes back down
+      const k = h.slip ? Math.sin(u * Math.PI) * 0.85 : u * u * (3 - 2 * u);
+      p.lerpVectors(h.from, h.to, k);
+      p.y += Math.sin(u * Math.PI) * 0.3;
+      if (u >= 1) {
+        p.copy(h.slip ? h.from : h.to);
+        if (h.slip) {
+          const st = this.stones.find((q) => q.row === this.footRow + 1 && q.lane * LANE_Z === h.to.z);
+          if (st && st.fall === 0) st.fall = 0.01;
+          for (let i = 0; i < 4; i++) this.spawnDust(h.to.x, h.to.y, h.to.z);
+          note = 'That one crumbled! Try another';
+        } else {
+          this.footRow++;
+          const left = ROWS.length - 1 - this.footRow;
+          note = left > 0 ? `Firm! ${left} more` : 'Up you go!';
+        }
+        this.hop = null;
+      }
+    } else if (this.footRow >= 0 && this.footRow < ROWS.length - 1) {
+      p.y = this.groundY(p.x) + 0.22; // standing on the stone
+      if (this.breath > 0.98) note = 'Choose the pale, flat stone';
+    }
+    animateBear(this.christian, t, !!h);
+    if (!h && this.breath < STEP_BREATH) this.christian.body.position.y += Math.sin(t * 9) * 0.03; // puffing
+    this.cb.footholds!.state(this.breath, note);
+    if (!this.hop && this.footRow === ROWS.length - 1) {
+      this.footDone = true;
+      this.phase = 'climb';
+      this.cb.footholds!.end();
+      this.cb.setObjective('⛰ Well climbed! Keep on up the steep path');
+    }
+  }
+
   private spawnDust(x: number, y: number, z: number): void {
     const d = this.dust.find((p) => p.life >= 1);
     if (!d) return;
@@ -526,7 +647,15 @@ export class HillScene {
     if (!this.built) return;
     const p = this.christian.root.position;
     this.applyDusk(dt);
-    animateBear(this.christian, t, moving && this.moveFactor() > 0);
+    if (this.phase === 'footholds') this.updateFootholds(dt, t);
+    else animateBear(this.christian, t, moving && this.moveFactor() > 0);
+    for (const st of this.stones) {
+      if (st.fall > 0 && st.fall < 1) {
+        st.fall = Math.min(1, st.fall + dt * 1.6);
+        st.g.position.y -= dt * 1.2;
+        if (st.fall === 1) { st.g.visible = false; st.g.position.y = this.groundY(st.g.position.x); }
+      }
+    }
 
     // ---------- Formalist & Hypocrisy walk their chosen ways ----------
     if (this.phase === 'walk') {

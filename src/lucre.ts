@@ -64,7 +64,7 @@ export class LucreScene {
   phase: Phase = 'walk';
   private cb: LucreCallbacks;
   private christian: BearParts;
-  private hopeful: BearParts;
+  hopeful: BearParts;
   private byends: BearParts;
   private friends: BearParts[] = []; // Hold-the-world, Money-love, Save-all
   private carriage: THREE.Group | null = null;

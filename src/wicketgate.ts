@@ -1012,7 +1012,7 @@ export class WicketGateScene {
     this.goodwillNear = false;
     this.goodwillEntering = false;
     this.goodwillEntranceDone = null;
-    this.christian.root.position.set(-60, 0, 0);
+    this.christian.root.position.set(revisit ? -55 : -60, 0, 0);
     this.christian.root.rotation.y = Math.PI / 2;
     this.scene.add(this.christian.root);
     // back to his post outside the cottage door

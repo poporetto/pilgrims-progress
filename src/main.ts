@@ -28,6 +28,10 @@ import { makeAlpineMountain } from './alpine';
 import { CameraController, type CameraFrame } from './core/camera';
 import { Atmosphere, configureRenderer } from './render/atmosphere';
 import { windUniforms } from './world/voxels';
+import { PlayLayer } from './play/layer';
+import { PLAY, ALL_KEEPSAKES, type CompanionName, type PlayMode } from './play/content';
+import { MiniGames } from './play/minigames';
+import { openBook, keepsakeCount, clearKeepsakes } from './play/book';
 import { getDialogueCharacterNames, getDialoguePortrait, preloadAllPortraits } from './dialoguePortraits';
 
 // ---------------------------------------------------------------- setup
@@ -656,12 +660,13 @@ function clearSaveAndReload(): void {
   } catch {
     // Reload still starts a fresh in-memory journey if storage is unavailable.
   }
+  clearKeepsakes();
   storedChapterSave = null;
   window.location.reload();
 }
 
 ui.newJourneyBtn.addEventListener('click', () => {
-  if (!window.confirm('Start a new journey? Your saved chapter progress will be cleared.')) return;
+  if (!window.confirm('Start a new journey? Your saved chapter progress and keepsakes will be cleared.')) return;
   clearSaveAndReload();
 });
 
@@ -769,12 +774,12 @@ ui.largeTextToggle.addEventListener('click', () => {
   applySettings();
 });
 ui.resetSaveBtn.addEventListener('click', () => {
-  if (!window.confirm('Reset the saved journey? Your settings will stay the same.')) return;
+  if (!window.confirm('Reset the saved journey and keepsakes? Your settings will stay the same.')) return;
   clearSaveAndReload();
 });
 
 ui.restartBtn.addEventListener('click', () => {
-  if (!window.confirm('Restart from the beginning? Your saved chapter progress will be cleared.')) return;
+  if (!window.confirm('Restart from the beginning? Your saved chapter progress and keepsakes will be cleared.')) return;
   clearSaveAndReload();
 });
 
@@ -1048,12 +1053,24 @@ const highway = new HighwayScene({
 });
 let highwayActors: { christian: import('./bear').BearParts } | null = null;
 
+// ---------- gentle mini-games (telescope, bird song, footholds) ----------
+const mini = new MiniGames(renderer.domElement, {
+  note: (f) => music.chime([f]),
+  win: () => music.chime([523, 659, 784, 1047], 0.11),
+  soft: () => music.blip(),
+});
+
 // ---------- Chapter VII: the Hill of Difficulty ----------
 const hill = new HillScene({
   playScript,
   setObjective,
   onExit: () => goToMap(),
   blipSound: () => music.blip(),
+  footholds: {
+    start: (c) => mini.footholds('hill', c),
+    state: (breath, note) => mini.footholdState(breath, note),
+    end: () => { mini.cancel(); music.chime(); },
+  },
   setMusic: (style) => music.setStyle(style),
   onComplete: () => {
     quest.hillDone = true;
@@ -1155,6 +1172,7 @@ const valley = new ValleyScene({
   rumbleSound: () => music.rumble(),
   blipSound: () => music.blip(),
   setMusic: (style) => music.setStyle(style),
+  blockSound: () => music.chime([1175, 1568], 0.05),
   battleUI: (show) => battleUI.classList.toggle('show', show),
   setHP: (c, a) => {
     battleFillChr.style.width = `${Math.max(0, c)}%`;
@@ -1525,6 +1543,7 @@ const mountain = new MountainScene({
   onExit: () => goToMap(),
   blipSound: () => music.blip(),
   rumbleSound: () => music.rumble(),
+  telescope: (from, to, done) => mini.telescope('mountain', from, to, done),
   setMusic: (style) => music.setStyle(style),
   onComplete: () => {
     quest.mountainDone = true;
@@ -1628,6 +1647,7 @@ const beulah = new BeulahScene({
   onExit: () => goToMap(),
   blipSound: () => music.blip(),
   rumbleSound: () => music.rumble(),
+  birdSong: (onBird, done) => mini.song('beulah', onBird, done),
   setMusic: (style) => music.setStyle(style),
   onComplete: () => {
     quest.beulahDone = true;
@@ -2019,9 +2039,123 @@ function revealShiningLight(): void {
   setObjective('✨ Follow the shining light through the Wicket Gate!');
 }
 
+// ---------------------------------------------------------------- keepsakes, living world, companions
+
+const keepsakeBtn = document.createElement('button');
+keepsakeBtn.id = 'keepsake-btn';
+keepsakeBtn.type = 'button';
+keepsakeBtn.title = 'Open Keepsake Book (K)';
+document.body.append(keepsakeBtn);
+function updateKeepsakeBtn(): void {
+  const n = keepsakeCount();
+  keepsakeBtn.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.6l2.8 6 6.5.8-4.8 4.5 1.3 6.5L12 17.2l-5.8 3.2 1.3-6.5L2.7 9.4l6.5-.8z" fill="#f3c969" stroke="#b9853a" stroke-width="1.6" stroke-linejoin="round"/></svg>'
+    + `<span>${n}</span>`;
+  keepsakeBtn.setAttribute('aria-label', `Open Keepsake Book, ${n} of ${ALL_KEEPSAKES.length} found`);
+}
+updateKeepsakeBtn();
+function showKeepsakes(): void {
+  keys.clear();
+  openBook(CHAPTER_NAMES, mode);
+}
+keepsakeBtn.addEventListener('click', () => { keepsakeBtn.blur(); showKeepsakes(); });
+
+const play = new PlayLayer({
+  pickup: () => music.chime(),
+  soft: () => music.blip(),
+  bell: () => music.chime([523, 392], 0.45),
+}, updateKeepsakeBtn);
+
+/** Whoever is walking with Christian right now, if they are close by. */
+function companionNow(actor: BearParts): { rig: BearParts; name: CompanionName } | null {
+  let rig: BearParts | null = null;
+  let name: CompanionName = 'Hopeful';
+  switch (mode) {
+    case 'village':
+      if (quest.pliableFollowing && !quest.pliableLeft) { rig = npcs.find((n) => n.id === 'pliable')?.parts ?? null; name = 'Pliable'; }
+      break;
+    case 'slough':
+      if (slough.pliableStage === 'follow') { rig = slough.pliable; name = 'Pliable'; }
+      break;
+    case 'shadow':
+      if (shadow.faithfulJoined) { rig = shadow.faithful; name = 'Faithful'; }
+      break;
+    case 'vanity':
+      if (vanity.hopefulJoined) rig = vanity.hopeful;
+      else { rig = vanity.faithful; name = 'Faithful'; }
+      break;
+    case 'lucre': rig = lucre.hopeful; break;
+    case 'castle': rig = castle.hopeful; break;
+    case 'mountain': rig = mountain.hopeful; break;
+    case 'enchanted': rig = enchantedActors?.hopeful ?? null; break;
+    case 'beulah': rig = beulah.hopeful; break;
+    case 'celestial': rig = celestial.hopeful; break;
+  }
+  if (!rig || !rig.root.visible || Math.abs(rig.root.rotation.x) + Math.abs(rig.root.rotation.z) > 0.05) return null;
+  const a = actor.root.position;
+  return Math.hypot(rig.root.position.x - a.x, rig.root.position.z - a.z) < 4.5 ? { rig, name } : null;
+}
+
+function playGroundY(x: number, z: number): number {
+  switch (mode) {
+    case 'cross': return cross.groundY(x, z);
+    case 'hill': return hill.groundY(x);
+    case 'valley': return valley.groundY(x);
+    case 'celestial': return celestial.groundY(x);
+    default: return 0;
+  }
+}
+
+function updatePlay(sc: THREE.Scene, actor: BearParts, dt: number, t: number, moving: boolean, free: boolean, storyPrompt: boolean): void {
+  play.endFrame({
+    mode: mode as PlayMode, scene: sc, actor, companion: companionNow(actor), camera,
+    dt, t, moving, free, storyPrompt, reducedMotion: gameSettings.reducedMotion,
+    wandering: (mode === 'castle' && castle.revisit) || (mode === 'mountain' && mountain.revisit)
+      || (mode === 'beulah' && beulah.revisit) || (mode === 'celestial' && celestial.revisit),
+    groundY: playGroundY,
+  });
+}
+
 // ---------------------------------------------------------------- input
 
 const keys = new Set<string>();
+
+/** The action key and the touch button: talk, look, take, or use what is near. */
+function primaryAction(): void {
+  if (mini.active) return;
+  if (dialogueOpen) advanceDialogue();
+  else if (play.act()) return;
+  else if (mode === 'map') tryEnterFromMap();
+  else if (mode === 'village') tryTalk();
+  else if (mode === 'slough') slough.talkToHelp();
+  else if (mode === 'morality') morality.talkEvangelist();
+  else if (mode === 'hill') hill.tryPickScroll();
+  else if (mode === 'cross') {
+    if (cross.nearCross()) cross.talkCross();
+    else if (cross.nearTomb()) cross.talkTomb();
+  }
+  else if (mode === 'palace') {
+    if (palace.nearWatchful()) palace.talkWatchful();
+    else {
+      for (let wi = 0; wi < 4; wi++) {
+        if (palace.nearWoman(wi)) { palace.talkWoman(wi); break; }
+      }
+    }
+  }
+  else if (mode === 'shadow') {
+    if (shadow.nearFaithful()) shadow.talkFaithful();
+  }
+  else if (mode === 'vanity') {
+    if (vanity.nearFountain()) vanity.talkFountain();
+    else if (vanity.nearCitizen()) vanity.talkCitizen();
+  }
+  else if (mode === 'valley') { if (valley.canBlock()) valley.tryBlock(); else valley.tryAttack(); }
+  else if (mode === 'lucre') lucre.tryTouchPillar();
+  else if (mode === 'mountain') mountain.talkShepherd();
+  else if (mode === 'enchanted') enchanted.tryWakeAction();
+  else if (mode === 'beulah') { if (beulah.nearAngel()) beulah.talkAngel(); else beulah.singWithBirds(); }
+  else if (mode === 'celestial') { if (celestial.nearSaint()) celestial.talkSaint(); }
+}
+
 window.addEventListener('keydown', (e) => {
   if (ui.settingsOverlay.classList.contains('open')) {
     if (e.code === 'Escape') closeSettings();
@@ -2029,41 +2163,18 @@ window.addEventListener('keydown', (e) => {
   }
   if (e.repeat) return;
   keys.add(e.code);
+  if (mini.active) {
+    mini.key(e.code);
+    return;
+  }
+  if (started && !e.ctrlKey && !e.metaKey && !e.altKey) {
+    if (e.code === 'KeyK' && !endingOpen) { showKeepsakes(); return; }
+  }
   if (
     e.code === 'KeyE' || e.code === 'Space' || e.code === 'Enter' ||
     e.key === 'e' || e.key === 'E' || e.key === ' ' || e.key === 'Enter'
   ) {
-    if (dialogueOpen) advanceDialogue();
-    else if (mode === 'map') tryEnterFromMap();
-    else if (mode === 'village') tryTalk();
-    else if (mode === 'slough') slough.talkToHelp();
-    else if (mode === 'morality') morality.talkEvangelist();
-    else if (mode === 'hill') hill.tryPickScroll();
-    else if (mode === 'cross') {
-      if (cross.nearCross()) cross.talkCross();
-      else if (cross.nearTomb()) cross.talkTomb();
-    }
-    else if (mode === 'palace') {
-      if (palace.nearWatchful()) palace.talkWatchful();
-      else {
-        for (let wi = 0; wi < 4; wi++) {
-          if (palace.nearWoman(wi)) { palace.talkWoman(wi); break; }
-        }
-      }
-    }
-    else if (mode === 'shadow') {
-      if (shadow.nearFaithful()) shadow.talkFaithful();
-    }
-    else if (mode === 'vanity') {
-      if (vanity.nearFountain()) vanity.talkFountain();
-      else if (vanity.nearCitizen()) vanity.talkCitizen();
-    }
-    else if (mode === 'valley') valley.tryAttack();
-    else if (mode === 'lucre') lucre.tryTouchPillar();
-    else if (mode === 'mountain') mountain.talkShepherd();
-    else if (mode === 'enchanted') enchanted.tryWakeAction();
-    else if (mode === 'beulah') { if (beulah.nearAngel()) beulah.talkAngel(); }
-    else if (mode === 'celestial') { if (celestial.nearSaint()) celestial.talkSaint(); }
+    primaryAction();
   }
 });
 
@@ -2318,37 +2429,7 @@ function updateJoy(e: PointerEvent): void {
 }
 
 ui.talkBtn.addEventListener('click', () => {
-  if (dialogueOpen) advanceDialogue();
-  else if (mode === 'map') tryEnterFromMap();
-  else if (mode === 'village') tryTalk();
-  else if (mode === 'slough') slough.talkToHelp();
-  else if (mode === 'morality') morality.talkEvangelist();
-  else if (mode === 'hill') hill.tryPickScroll();
-  else if (mode === 'cross') {
-    if (cross.nearCross()) cross.talkCross();
-    else if (cross.nearTomb()) cross.talkTomb();
-  }
-  else if (mode === 'palace') {
-    if (palace.nearWatchful()) palace.talkWatchful();
-    else {
-      for (let wi = 0; wi < 4; wi++) {
-        if (palace.nearWoman(wi)) { palace.talkWoman(wi); break; }
-      }
-    }
-  }
-  else if (mode === 'shadow') {
-    if (shadow.nearFaithful()) shadow.talkFaithful();
-  }
-  else if (mode === 'vanity') {
-    if (vanity.nearFountain()) vanity.talkFountain();
-    else if (vanity.nearCitizen()) vanity.talkCitizen();
-  }
-  else if (mode === 'valley') valley.tryAttack();
-  else if (mode === 'lucre') lucre.tryTouchPillar();
-  else if (mode === 'mountain') mountain.talkShepherd();
-  else if (mode === 'enchanted') enchanted.tryWakeAction();
-  else if (mode === 'beulah') { if (beulah.nearAngel()) beulah.talkAngel(); }
-  else if (mode === 'celestial') { if (celestial.nearSaint()) celestial.talkSaint(); }
+  primaryAction();
 });
 
 // The prompt itself is the largest and clearest touch target. Route it through
@@ -2360,7 +2441,7 @@ ui.prompt.addEventListener('click', () => {
 // Chapter IX has its own explicit combat control. It uses the same guarded
 // attack method as the keyboard, so rapid taps cannot skip the turn sequence.
 swordBtn.addEventListener('click', () => {
-  if (mode === 'valley' && !dialogueOpen && !endingOpen) valley.trySwordButton();
+  if (mode === 'valley' && !dialogueOpen && !endingOpen) { if (valley.canBlock()) valley.tryBlock(); else valley.trySwordButton(); }
 });
 
 // ---------------------------------------------------------------- interaction
@@ -2562,7 +2643,137 @@ const CHASE_LINES: DialogueLine[] = [
   { speaker: 'Pliable', text: 'Don\'t mind him. Lead the way, friend Christian — hop hop!' },
 ];
 
+// ---------- slapstick: Obstinate charges straight into Evangelist ----------
+// Seconds since the collision; -1 = not hit yet.
+let bumpT = -1;
+let bumpSounded = 0;
+const BUMP = { splat: 0.16, land: 0.85, up: 2.35, resume: 2.75, done: 4.5 };
+const bumpFrom = new THREE.Vector3();
+const bumpFocus = new THREE.Vector3();
+const bumpOffset = new THREE.Vector3();
+const obstinateNPC = npcs.find((n) => n.id === 'obstinate')!;
+const evangelistNPC = npcs.find((n) => n.id === 'evangelist')!;
+// turn first, then tip: lets both of them rock along their own facing
+obstinateNPC.parts.root.rotation.order = 'YXZ';
+evangelistNPC.parts.root.rotation.order = 'YXZ';
+const dizzyStars = new THREE.Group();
+for (let i = 0; i < 5; i++) {
+  const a = (i / 5) * Math.PI * 2;
+  const star = block(0.17, 0.17, 0.17, 0xffd75e, Math.cos(a) * 0.75, 0, Math.sin(a) * 0.75);
+  star.rotation.set(0.6, a, 0.8);
+  star.castShadow = false;
+  dizzyStars.add(star);
+}
+dizzyStars.visible = false;
+scene.add(dizzyStars);
+
+/** True while the camera should watch the collision instead of Christian. */
+function watchingBump(): boolean {
+  if (!chaseRunning || bumpT >= BUMP.resume) return false;
+  return bumpT >= 0
+    || obstinateNPC.parts.root.position.distanceTo(evangelistNPC.parts.root.position) < 16;
+}
+
+function poseBumpedObstinate(t: number): void {
+  const P = obstinateNPC.parts;
+  const R = P.root;
+  const p = bumpT;
+  const base = 1.05;
+  animateBear(P, t, false);
+  R.rotation.x = 0;
+  R.scale.setScalar(base);
+  R.position.copy(bumpFrom);
+  const landX = bumpFrom.x - 2.7;
+  if (p < BUMP.splat) {
+    // squashed flat against the robe
+    const k = Math.sin((p / BUMP.splat) * Math.PI * 0.5);
+    R.scale.set(base * (1 + 0.22 * k), base * (1 + 0.12 * k), base * (1 - 0.5 * k));
+    P.armL.rotation.x = P.armR.rotation.x = -1.5 * k;
+  } else if (p < BUMP.land) {
+    // bounces off in one big backward somersault, limbs everywhere
+    const k = (p - BUMP.splat) / (BUMP.land - BUMP.splat);
+    const spin = gameSettings.reducedMotion ? 0 : -Math.PI * 2 * k;
+    const c = 1; // spin about the tummy rather than the feet
+    R.rotation.x = spin;
+    R.position.x = bumpFrom.x + (landX - bumpFrom.x) * k - Math.sin(spin) * c;
+    R.position.y = Math.sin(k * Math.PI) * 1.5 + c - Math.cos(spin) * c - 0.4 * k;
+    P.armL.rotation.x = -2.4 + Math.sin(p * 40) * 0.5;
+    P.armR.rotation.x = -2.4 - Math.sin(p * 40) * 0.5;
+    P.legL.rotation.x = -1.4 * k + Math.sin(p * 34) * 0.4 * (1 - k);
+    P.legR.rotation.x = -1.4 * k - Math.sin(p * 34) * 0.4 * (1 - k);
+  } else if (p < BUMP.up) {
+    // plonk: sat in the road, seeing stars
+    const q = p - BUMP.land;
+    const wob = Math.exp(-5 * q) * Math.cos(q * 22);
+    R.position.set(landX, -0.4 + Math.abs(wob) * 0.12, bumpFrom.z);
+    R.scale.set(base * (1 + 0.22 * wob), base * (1 - 0.28 * wob), base * (1 + 0.22 * wob));
+    P.legL.rotation.x = P.legR.rotation.x = -1.4;
+    P.legL.rotation.y = -0.3;
+    P.legR.rotation.y = 0.3;
+    P.armL.rotation.x = P.armR.rotation.x = -0.35;
+    P.body.rotation.z = Math.sin(q * 5) * 0.12;
+    P.head.rotation.z = Math.sin(q * 5 - 0.6) * 0.28;
+    P.head.rotation.x = Math.cos(q * 5 - 0.6) * 0.16;
+  } else {
+    // springs up and shakes it off
+    const k = Math.min(1, (p - BUMP.up) / (BUMP.resume - BUMP.up));
+    R.position.set(landX, Math.sin(k * Math.PI) * 0.55 - 0.4 * (1 - k), bumpFrom.z);
+    P.head.rotation.y = Math.sin(k * Math.PI * 6) * 0.5 * (1 - k);
+  }
+  if (p >= BUMP.up) {
+    P.legL.rotation.y = P.legR.rotation.y = 0;
+    P.head.rotation.x = 0;
+  }
+  dizzyStars.visible = p >= BUMP.land && p < BUMP.up + 0.15;
+  dizzyStars.position.set(landX, 2.2 + Math.sin(p * 4) * 0.06, bumpFrom.z);
+  dizzyStars.rotation.y = p * 4.5;
+
+  if (bumpSounded === 0) {
+    bumpSounded = 1;
+    music.bonk();
+    cameraRig.kick(0.5, -0.25, 0);
+    setObjective('💥 BONK!');
+    for (let i = 0; i < 6; i++) {
+      spawnDust(bumpFrom.x + 0.4 + (Math.random() - 0.5), bumpFrom.z + (Math.random() - 0.5) * 1.4);
+    }
+  } else if (bumpSounded === 2 && p >= BUMP.up) {
+    bumpSounded = 3;
+    setObjective('❗ Someone is shouting after you…');
+  } else if (bumpSounded === 1 && p >= BUMP.land) {
+    bumpSounded = 2;
+    music.rumble();
+    cameraRig.kick(0, -0.35, 0);
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * Math.PI * 2;
+      spawnDust(landX + Math.cos(a) * 0.8, bumpFrom.z + Math.sin(a) * 0.8);
+    }
+  }
+}
+
+function poseBumpedEvangelist(dt: number, t: number): void {
+  const P = evangelistNPC.parts;
+  animateBear(P, t, false);
+  // rocks like a skittle (away from the blow first), but never falls
+  const away = Math.sin(P.root.rotation.y) >= 0 ? 1 : -1;
+  P.root.rotation.x = bumpT >= BUMP.done ? 0
+    : away * 0.3 * Math.sin(bumpT * 9) * Math.exp(-2.4 * bumpT);
+  if (bumpT > 0.95 && bumpT < BUMP.resume + 0.6) {
+    // slowly looks round, then tilts a puzzled head at the heap on the road
+    const o = obstinateNPC.parts.root.position;
+    const dx = o.x - P.root.position.x;
+    const dz = o.z - P.root.position.z;
+    P.root.rotation.y = lerpAngle(P.root.rotation.y, Math.atan2(dx, dz), 5 * dt);
+    const look = Math.min(1, (bumpT - 0.95) * 2.5) * Math.min(1, Math.max(0, (BUMP.resume + 0.6 - bumpT) * 2.5));
+    P.head.rotation.x = 0.22 * look;
+    P.head.rotation.z = 0.2 * look;
+  } else if (bumpT >= BUMP.resume + 0.6) {
+    P.head.rotation.x = 0;
+  }
+}
+
 function startChase(): void {
+  bumpT = -1;
+  bumpSounded = 0;
   cutscene = true;
   chaseRunning = true;
   chaseArrived.obstinate = false;
@@ -2665,16 +2876,74 @@ const wanderState = npcs.map((npc) => ({
 }));
 
 function updateNPCs(dt: number, t: number): void {
+  const evPos = evangelistNPC.parts.root.position;
+  if (bumpT >= 0 && bumpT < BUMP.done) bumpT = Math.min(BUMP.done, bumpT + dt);
   npcs.forEach((npc, i) => {
     const ws = wanderState[i];
     const isTalking = dialogueOpen && dialogueNPC === npc;
+
+    if (npc.id === 'evangelist' && bumpT >= 0 && bumpT < BUMP.done) {
+      poseBumpedEvangelist(dt, t + i * 1.7);
+      return;
+    }
+    if (chaseRunning && npc.id === 'obstinate' && bumpT >= 0 && bumpT < BUMP.resume) {
+      poseBumpedObstinate(t + i);
+      return;
+    }
 
     // gate chase: the pair sprint after Christian
     // (both stop NORTH-west of him so the dialogue panel can't hide them)
     if (chaseRunning && (npc.id === 'obstinate' || npc.id === 'pliable')) {
       const pos = npc.parts.root.position;
-      const tx = christian.root.position.x - (npc.id === 'pliable' ? 1.3 : 2.6);
-      const tz = christian.root.position.z - (npc.id === 'pliable' ? 2.3 : 1.1);
+      let tx = christian.root.position.x - (npc.id === 'pliable' ? 1.3 : 2.6);
+      let tz = christian.root.position.z - (npc.id === 'pliable' ? 2.3 : 1.1);
+      if (npc.id === 'obstinate') {
+        pos.y = 0;
+        npc.parts.root.rotation.x = 0;
+        npc.parts.root.scale.setScalar(1.05);
+        if (bumpT < 0) {
+          // too busy bellowing to look where he is going…
+          tx = evPos.x - 1.05;
+          tz = evPos.z;
+          if (Math.hypot(tx - pos.x, tz - pos.z) < 0.3) {
+            bumpT = 0;
+            bumpFrom.set(pos.x, 0, pos.z);
+            npc.parts.root.rotation.y = Math.PI / 2;
+            poseBumpedObstinate(t + i);
+            return;
+          }
+        } else if (pos.x < evPos.x + 0.3) {
+          // second attempt: a careful loop around the immovable bear
+          tx = evPos.x + 0.5;
+          tz = evPos.z - 2;
+        }
+      } else if (bumpT < BUMP.resume) {
+        // Pliable keeps just behind, then skids to a halt to gawp
+        const oPos = obstinateNPC.parts.root.position;
+        tx = bumpT < 0 ? Math.min(oPos.x - 1.6, evPos.x - 4) : evPos.x - 2.6;
+        tz = evPos.z - 2.4;
+        if (bumpT < 0 && pos.x > tx - 0.3) {
+          npc.parts.root.rotation.y = Math.PI / 2;
+          animateBear(npc.parts, t * 1.4 + i, true);
+          return;
+        }
+        if (bumpT >= 0 && Math.hypot(tx - pos.x, tz - pos.z) < 0.3) {
+          npc.parts.root.rotation.y = lerpAngle(
+            npc.parts.root.rotation.y, Math.atan2(oPos.x - pos.x, oPos.z - pos.z), 10 * dt);
+          animateBear(npc.parts, t + i, false);
+          // startled arms-up, then helpless giggling hops
+          const q = bumpT - BUMP.land;
+          pos.y = q > 0 && q < 1.4 ? Math.abs(Math.sin(q * 9)) * 0.22 : 0;
+          if (q < 0.7) npc.parts.armL.rotation.x = npc.parts.armR.rotation.x = -2.5;
+          return;
+        }
+      } else {
+        pos.y = 0;
+        if (pos.x < evPos.x + 0.3) {
+          tx = evPos.x + 0.5;
+          tz = evPos.z - 3.2;
+        }
+      }
       const dx = tx - pos.x;
       const dz = tz - pos.z;
       const d = Math.hypot(dx, dz);
@@ -2698,14 +2967,18 @@ function updateNPCs(dt: number, t: number): void {
     // Obstinate stomps back home after the argument
     if (npc.id === 'obstinate' && obstinateReturning) {
       const pos = npc.parts.root.position;
-      const dx = npc.position.x - pos.x;
-      const dz = npc.position.z - pos.z;
+      // once bumped, twice shy: he gives Evangelist a wide berth going home
+      const passing = pos.x > evPos.x - 1.2;
+      const dx = (passing ? evPos.x - 1.5 : npc.position.x) - pos.x;
+      const dz = (passing ? evPos.z + 2.2 : npc.position.z) - pos.z;
       const d = Math.hypot(dx, dz);
       if (d > 0.25) {
         pos.x += (dx / d) * 3.6 * dt;
         pos.z += (dz / d) * 3.6 * dt;
         npc.parts.root.rotation.y = Math.atan2(dx, dz);
         animateBear(npc.parts, t + i, true);
+        // …glaring at him all the way past
+        npc.parts.head.rotation.y = passing && Math.abs(pos.x - evPos.x) < 4 ? 0.9 : 0;
       } else {
         obstinateReturning = false;
         npc.parts.root.rotation.y = npc.facing;
@@ -2889,8 +3162,18 @@ const CHAPTERS: Partial<Record<GameMode, ChapterAdapter>> = {
     moveFactor: () => valley.moveFactor(),
     afterMove: () => valley.afterMove(),
     update: (dt, t, moving) => valley.update(dt, t, moving),
-    prompt: () => (valley.canAttack() ? { text: 'Swing the sword!', button: null } : null),
-    extra: () => swordBtn.classList.toggle('show', battleUI.classList.contains('show') && !dialogueOpen && !endingOpen),
+    prompt: () => (valley.canBlock() ? { text: 'Raise your shield as the dart comes close!', button: null } : valley.canAttack() ? { text: 'Swing the sword!', button: null } : null),
+    extra: () => {
+      swordBtn.classList.toggle('show', battleUI.classList.contains('show') && !dialogueOpen && !endingOpen);
+      const shield = valley.canBlock();
+      if (swordBtn.classList.contains('shield') !== shield) {
+        swordBtn.classList.toggle('shield', shield);
+        (swordBtn.children[0] as HTMLElement).textContent = shield ? '🛡' : '⚔';
+        (swordBtn.children[1] as HTMLElement).textContent = shield ? 'Raise the Shield' : 'Swing the Sword';
+        swordBtn.setAttribute('aria-label', shield ? 'Raise the Shield of Faith' : 'Swing the Sword of the Spirit');
+      }
+      swordBtn.classList.toggle('now', valley.blockNow());
+    },
     frame: (a, dt) => {
       const frameBattle = valley.battleCameraFocus(valleyBattleFocus);
       const mobileBattle = frameBattle && window.innerWidth <= 700 && camera.aspect < 0.8;
@@ -2983,6 +3266,7 @@ const CHAPTERS: Partial<Record<GameMode, ChapterAdapter>> = {
         };
       }
       if (beulah.nearAngel()) return talk('Speak with the Shining One');
+      if (beulah.nearSongBirds()) return talk('Sing with the birds', 'Sing');
       return null;
     },
   },
@@ -3078,6 +3362,8 @@ function faceTalkPartner(sc: THREE.Scene, actor: Actor, dt: number, a: ChapterAd
 function runChapter(a: ChapterAdapter, dt: number, t: number): boolean {
   const actor = a.actor();
   if (!actor) return false;
+  play.beginFrame();
+  const modeBefore = mode;
   readMoveInput(moveInput);
   let mx = moveInput.x;
   let mz = moveInput.z;
@@ -3085,7 +3371,15 @@ function runChapter(a: ChapterAdapter, dt: number, t: number): boolean {
   const len = Math.hypot(mx, mz);
   const factor = a.moveFactor();
   const choiceOpen = choiceBox.classList.contains('open');
-  const moving = len > 0.15 && !dialogueOpen && !endingOpen
+  if (mini.active && (joy.active || joy.x || joy.y)) {
+    // the joystick is put away mid-drag, so let go of it
+    joy.active = false;
+    joy.x = 0;
+    joy.y = 0;
+    ui.stick.style.transform = 'translate(-50%, -50%)';
+  }
+  mini.update(dt, moveInput, gameSettings.reducedMotion);
+  const moving = len > 0.15 && !dialogueOpen && !endingOpen && !mini.active
     && !(a.blockOnChoice && choiceOpen) && factor > 0;
   if (moving) {
     mx /= Math.max(len, 1);
@@ -3098,8 +3392,16 @@ function runChapter(a: ChapterAdapter, dt: number, t: number): boolean {
   a.update(dt, t, moving);
   faceTalkPartner(a.scene(), actor, dt, a);
 
-  const idle = !dialogueOpen && !endingOpen;
-  applyPrompt(idle && a.prompt ? a.prompt(choiceOpen) : null);
+  const idle = !dialogueOpen && !endingOpen && !mini.active;
+  const storyPrompt = idle && a.prompt ? a.prompt(choiceOpen) : null;
+  // a chapter can end (back to the map) inside its own update
+  if (mode === modeBefore) {
+    const calm = !(mode === 'castle' && castle.phase !== 'enter' && castle.phase !== 'meadow' && castle.phase !== 'highway' && castle.phase !== 'sign')
+      && !(mode === 'beulah' && beulah.phase === 'cross');
+    const free = idle && calm && !choiceOpen && started && a.moveFactor() > 0 && !ui.fade.classList.contains('show');
+    updatePlay(a.scene(), actor, dt, t, moving, free, storyPrompt !== null);
+  }
+  applyPrompt(storyPrompt ?? (idle ? play.prompt() : null));
   a.extra?.(choiceOpen);
 
   let frame: CameraFrame;
@@ -3114,7 +3416,7 @@ function runChapter(a: ChapterAdapter, dt: number, t: number): boolean {
   cameraRig.update(dt, frame, gameSettings.reducedMotion);
   const sc = a.scene();
   atmosphere.update(sc, camera, cameraRig.target);
-  renderer.render(sc, camera);
+  renderer.render(sc, mini.kind === 'telescope' ? mini.scopeCam : camera);
   return true;
 }
 
@@ -3160,7 +3462,13 @@ function tick(): void {
     titleFaceRenderer.render(titleFaceScene, titleFaceCamera);
   }
 
+  keepsakeBtn.classList.toggle('show', started && !endingOpen);
+
+  // leaving a chapter mid-game (map, Journey Book) puts its mini-game away
+  if (mini.active && mini.mode !== mode) mini.cancel();
+
   if (mode === 'map') {
+    play.hide();
     // ---- world map mode ----
     let ax = 0;
     let az = 0;
@@ -3293,6 +3601,7 @@ function tick(): void {
 
   // ---- village mode ----
   if (started) {
+    play.beginFrame();
     updatePlayer(dt, t);
     updateNPCs(dt, t);
     updateBunHandoff(dt);
@@ -3300,7 +3609,13 @@ function tick(): void {
     // interact prompt
     nearestNPC = dialogueOpen ? null : findNearestNPC();
     nearestThing = (dialogueOpen || nearestNPC) ? null : findNearestThing();
-    if ((nearestNPC || nearestThing) && !endingOpen && !cutscene) {
+    if (mode === 'village') {
+      updatePlay(scene, christian, dt, t, playerMoving, !dialogueOpen && !endingOpen && !cutscene, !!(nearestNPC || nearestThing));
+    }
+    const playPrompt = play.prompt();
+    if (playPrompt && !nearestNPC && !nearestThing && !dialogueOpen && !endingOpen && !cutscene) {
+      applyPrompt(playPrompt);
+    } else if ((nearestNPC || nearestThing) && !endingOpen && !cutscene) {
       ui.prompt.style.display = 'block';
       ui.promptWho.textContent = nearestNPC
         ? `Talk to ${nearestNPC.name}`
@@ -3325,8 +3640,11 @@ function tick(): void {
   }
 
   // camera follows with a soft lag
-  chapterFrame.focus = christian.root.position;
-  chapterFrame.offset = camOffset;
+  const bumpShot = watchingBump();
+  chapterFrame.focus = bumpShot
+    ? bumpFocus.copy(evangelistNPC.parts.root.position).setX(evangelistNPC.parts.root.position.x - 1.8)
+    : christian.root.position;
+  chapterFrame.offset = bumpShot ? bumpOffset.copy(camOffset).multiplyScalar(0.6) : camOffset;
   chapterFrame.lookHeight = 1.4;
   chapterFrame.follow = 4;
   cameraRig.update(dt, chapterFrame, gameSettings.reducedMotion);
@@ -3376,6 +3694,7 @@ requestAnimationFrame(() => {
   palace, enterPalace, valley, enterValley, shadow, enterShadow,
   vanity, enterVanity, lucre, enterLucre, playScript, goToMap,
   castle, enterCastle, mountain, enterMountain, enchanted, enterEnchanted, beulah, enterBeulah, celestial, enterCelestial, renderer, camera, camOffset, DUNGEON_CAM_OFFSET, cameraRig,
+  play, mini, PLAY, CHAPTERS,
   get mode() { return mode; },
   get castleActors() { return castleActors; },
   get keys() { return keys; },

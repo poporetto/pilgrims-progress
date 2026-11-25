@@ -28,6 +28,8 @@ interface MountainCallbacks {
   onExit: () => void;
   blipSound: () => void;
   rumbleSound: () => void;
+  /** steady the glass on `to` as seen from `from` */
+  telescope?: (from: THREE.Vector3, to: THREE.Vector3, done: () => void) => void;
   setMusic?: (style: 'village' | 'cross') => void;
 }
 
@@ -99,7 +101,7 @@ export class MountainScene {
   private welcomeTriggered = false;
   private landmarks: Landmark[] = [];
 
-  private revisit = false;
+  revisit = false;
   private built = false;
 
   constructor(cb: MountainCallbacks) {
@@ -181,6 +183,7 @@ export class MountainScene {
   // ---------------------------------------------------------------- enter
   enter(revisit: boolean): { christian: BearParts; hopeful: BearParts } {
     this.revisit = revisit;
+    if (this.glassCity) this.showGlassCity(false);
     this.welcomeTriggered = false;
     if (!this.built) this.build();
     for (const lm of this.landmarks) lm.triggered = false;
@@ -1125,6 +1128,71 @@ export class MountainScene {
     this.cb.playScript([
       { speaker: 'Sincere',    text: 'Now, one sight of pure joy. Climb to the top, and look east through our perspective glass.' },
       { speaker: 'Experience', text: 'Steady your hands, and look — there, on the far horizon.' },
+    ], () => {
+      const seen = () => this.telescopeSeen();
+      if (this.cb.telescope) {
+        this.showGlassCity(true);
+        this.cb.telescope(new THREE.Vector3(TELESCOPE_X + 1, 5.5, -2), new THREE.Vector3(LIGHT_X + 26, 11, 9), seen);
+      } else seen();
+    });
+  }
+
+  // The City as the glass shows it: built to face the telescope, and only
+  // there while someone is looking through it.
+  private glassCity: THREE.Group | null = null;
+  private showGlassCity(on: boolean): void {
+    if (on && !this.glassCity) {
+      const g = new THREE.Group();
+      const glow = (w: number, h: number, d: number, c: number, y: number, z: number, x = 0, lit = 0.5): void => {
+        const b = block(w, h, d, c, x, y, z);
+        b.material = new THREE.MeshStandardMaterial({ color: c, emissive: c, emissiveIntensity: lit + 0.3, roughness: 0.7, fog: false });
+        b.castShadow = false;
+        g.add(b);
+      };
+      const halo = new THREE.Mesh(
+        new THREE.CircleGeometry(15, 40),
+        new THREE.MeshBasicMaterial({ color: 0xfff9dc, transparent: true, opacity: 0.75, toneMapped: false, fog: false }),
+      );
+      halo.position.set(9, 4, 0);
+      halo.rotation.y = -Math.PI / 2;
+      g.add(halo);
+      // towers tallest at the heart of the City
+      [[0, 15], [-3.2, 11.5], [3.2, 11.5], [-6, 8.5], [6, 8.5], [-8.6, 6], [8.6, 6]].forEach(([z, h], i) => {
+        const c = i % 2 ? 0xf8d98a : 0xfce6a8;
+        glow(2.2, h, 2.1, c, h / 2 - 7, z, 4 + Math.abs(z) * 0.15, 0.28);
+        glow(2.6, 0.5, 2.5, 0xfff3cf, h - 7, z, 4, 0.45);
+        glow(1.3, 1.5, 1.3, 0xf2b9a6, h - 6, z, 4, 0.3);
+        glow(0.5, 1, 0.5, 0xfff8dd, h - 4.8, z, 4, 0.8);
+        for (let k = 0; k < Math.floor(h / 3) - 1; k++) glow(0.2, 0.9, 0.5, 0xfffdf0, h - 9 - k * 2.4, z, 2.8, 0.9);
+      });
+      // the wall, with the pearly gates standing in it
+      for (const side of [-1, 1]) {
+        glow(1.2, 4.2, 7.6, 0xf3cf86, -5, side * 6.3, 0, 0.22);
+        for (let k = 0; k < 4; k++) glow(1.3, 0.7, 1, 0xfbe3ad, -2.6, side * (3.2 + k * 2), 0, 0.3);
+        glow(1.8, 6, 1.6, 0xfff1d6, -4, side * 2.2, -0.2, 0.35);
+        glow(0.5, 3.6, 1.2, 0xfdf7f4, -5.2, side * 0.65, -0.5, 0.6);
+      }
+      glow(1.8, 1, 6, 0xfff1d6, -0.8, 0, -0.2, 0.4);
+      glow(0.6, 1.1, 1.1, 0xffe08a, 0.2, 0, -0.4, 0.9);
+      // clouds for it to rest on
+      for (let i = 0; i < 15; i++) {
+        glow(2, 1.5 + (i % 3) * 0.5, 3.4, i % 2 ? 0xfffaf4 : 0xfbeaf0, -8 - (i % 2) * 0.9, (i - 7) * 1.9, -1.4 - (i % 3) * 0.7, 0.22);
+      }
+      g.position.set(LIGHT_X + 26, 11, 9);
+      // square on to the telescope
+      g.rotation.y = -Math.atan2(11, LIGHT_X + 25 - TELESCOPE_X);
+      this.scene.add(g);
+      this.glassCity = g;
+    }
+    if (this.glassCity) this.glassCity.visible = on;
+    if (this.cityGlow) this.cityGlow.visible = !on;
+    if (this.shining) this.shining.group.visible = !on;
+    for (const c of this.clouds) c.visible = !on;
+  }
+
+  private telescopeSeen(): void {
+    this.showGlassCity(false);
+    this.cb.playScript([
       { speaker: 'Christian',  text: 'I see it! Golden gates... shining towers... is that — the Celestial City itself?' },
       { speaker: 'Hopeful',    text: 'My hands are shaking too hard to hold it still — but I saw it! I truly saw it! Our journey has an end, Christian, and it is glorious.' },
       { speaker: 'Watchful',   text: 'You could not see it perfectly — few can, this side of the river. But it is real, and it is waiting. Let that carry you on.' },

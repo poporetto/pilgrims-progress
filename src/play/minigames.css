@@ -1,0 +1,36 @@
+#mini-game {
+  position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom)); z-index: 36; display: none; flex-direction: column; align-items: center; gap: 9px;
+  width: min(480px, calc(100vw - 24px)); padding: 15px 18px; transform: translateX(-50%); box-sizing: border-box;
+  border: 3px solid #fff; border-radius: 24px; background: rgba(255, 248, 239, .96); color: var(--ink); text-align: center; box-shadow: 0 6px 0 rgba(91, 74, 63, .16);
+}
+#mini-game.show { display: flex; }
+#mini-game strong { font: 700 20px/1.2 Georgia, serif; color: #7a4a36; }
+#mini-game > span { min-height: 21px; font-size: 15px; line-height: 1.4; }
+#mini-game .mg-bar { width: 100%; height: 14px; overflow: hidden; border-radius: 999px; background: #eadfce; }
+#mini-game .mg-bar i { display: block; width: 0; height: 100%; border-radius: 999px; background: #f0c45f; transition: width .12s linear; }
+#mini-game.footholds .mg-bar i { background: #8fc8a4; }
+#mini-game.footholds .mg-bar.tired i { background: #e7a58f; }
+#mini-game .mg-pads { display: flex; gap: 8px; width: 100%; }
+#mini-game .mg-pads:empty { display: none; }
+#mini-game .mg-pads button {
+  flex: 1; min-width: 0; min-height: 56px; padding: 8px 4px; border: 3px solid #f1dfc6; border-radius: 18px; background: #fffdf8; color: var(--ink);
+  font: inherit; font-weight: 800; font-size: 15px; cursor: pointer; touch-action: manipulation;
+}
+#mini-game .mg-pads button:active { transform: translateY(2px); }
+#mini-game .mg-pads svg { display: block; width: 100%; height: 54px; }
+#mini-game .mg-pads button.lit { animation: mg-lit .42s ease-out; }
+@keyframes mg-lit { 0%, 60% { background: #ffedb0; border-color: #e9b94c; transform: translateY(-6px); } 100% { transform: none; } }
+html.reduce-motion #mini-game .mg-pads button.lit { animation-timing-function: steps(1); }
+#mini-game kbd { display: inline-block; margin-left: 5px; padding: 2px 7px; border-radius: 8px; background: #f7e3cf; font: inherit; font-size: 12px; font-weight: 800; }
+.touch-device #mini-game kbd { display: none; }
+#mini-game .mg-skip { min-height: 44px; padding: 4px 20px; border: 0; background: none; color: #7a5d4d; font: inherit; font-weight: 800; font-size: 14px; text-decoration: underline; text-underline-offset: 4px; cursor: pointer; }
+#mini-scope {
+  position: fixed; inset: 0; z-index: 11; display: none; touch-action: none; cursor: grab;
+  background: radial-gradient(circle at 50% 39%, transparent 0 min(36vmin, 32vh), #d2a955 calc(min(36vmin, 32vh) + 1px) calc(min(36vmin, 32vh) + 10px), #7b5f34 calc(min(36vmin, 32vh) + 12px) calc(min(36vmin, 32vh) + 16px), #3f342c calc(min(36vmin, 32vh) + 18px));
+}
+#mini-scope.show { display: block; }
+body.mini-open #keepsake-btn, body.mini-open #talk-btn, body.mini-open #prompt, body.mini-open #joystick { display: none !important; }
+#sword-btn.shield { color: #5d3f12; background: linear-gradient(145deg, #fffaf0, #f5d58a); border-color: #fff6dd; box-shadow: 0 6px 0 #b98f43, 0 0 22px rgba(255, 200, 92, .6); }
+#sword-btn.shield.now { animation: shield-now .45s ease-in-out infinite alternate; }
+@keyframes shield-now { to { transform: scale(1.07); } }
+html.reduce-motion #sword-btn.shield.now { animation: none; outline: 4px solid #fff; }

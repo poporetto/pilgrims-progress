@@ -37,8 +37,8 @@ export class SloughScene {
   phase: Phase = 'walk';
   private cb: SloughCallbacks;
   private christian: BearParts;
-  private pliable: BearParts | null = null;
-  private pliableStage: 'follow' | 'aghast' | 'clamber' | 'farewell' | 'flee' = 'follow';
+  pliable: BearParts | null = null;
+  pliableStage: 'follow' | 'aghast' | 'clamber' | 'farewell' | 'flee' = 'follow';
   private revisit = false;
   private help: BearParts;
   private steps: Array<[number, number]> = [

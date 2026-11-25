@@ -25,6 +25,7 @@ interface BeulahCallbacks {
   onExit: () => void;
   blipSound: () => void;
   rumbleSound: () => void;
+  birdSong?: (onBird: (i: number) => void, done: () => void) => void;
   setMusic?: (style: 'village' | 'cross') => void;
 }
 
@@ -108,7 +109,7 @@ export class BeulahScene {
 
   private brinkTriggered = false;
   private angelArrivalT = -1;
-  private revisit = false;
+  revisit = false;
   private built = false;
 
   constructor(cb: BeulahCallbacks) {
@@ -162,7 +163,10 @@ export class BeulahScene {
     this.sinkT = 0;
     this.walkT = 0;
     this.angelArrivalT = -1;
-    if (!this.built) this.build();
+    if (!this.built) {
+      this.build();
+      this.buildSongBirds();
+    }
 
     // reset balloons + particles
     for (const b of this.balloons) {
@@ -485,6 +489,47 @@ export class BeulahScene {
     this.hopeful.root.rotation.y = this.christian.root.rotation.y;
   }
 
+  // ---- the singing birds on their perch, one beside each stretch of road ----
+  private songBirds: Array<{ g: THREE.Group; hop: number }> = [];
+  private static readonly PERCHES = [-6, 44];
+  private buildSongBirds(): void {
+    const colors = [0x8fc4e4, 0xf3afc0, 0xf4d77e, 0xa5d3a0];
+    for (const x of BeulahScene.PERCHES) {
+      const perch = new THREE.Group();
+      perch.add(block(0.2, 1.5, 0.2, 0x94704f, -1.3, 0.75, 0), block(0.2, 1.5, 0.2, 0x94704f, 1.3, 0.75, 0));
+      perch.add(block(3.2, 0.16, 0.22, 0xa9825d, 0, 1.55, 0));
+      colors.forEach((c, i) => {
+        const g = new THREE.Group();
+        g.add(block(0.36, 0.32, 0.4, c, 0, 0.2, 0), block(0.3, 0.28, 0.28, c, 0, 0.46, 0.08));
+        g.add(block(0.1, 0.08, 0.14, 0xeb9f55, 0, 0.45, 0.28), block(0.1, 0.12, 0.26, c, 0, 0.22, -0.28));
+        g.add(block(0.06, 0.07, 0.05, 0x43352d, -0.1, 0.52, 0.22), block(0.06, 0.07, 0.05, 0x43352d, 0.1, 0.52, 0.22));
+        g.position.set(-1.05 + i * 0.7, 1.63, 0);
+        perch.add(g);
+        this.songBirds.push({ g, hop: 0 });
+      });
+      perch.position.set(x, 0, -3.6);
+      this.scene.add(perch);
+    }
+  }
+  nearSongBirds(): boolean {
+    if (this.phase !== 'meadow' && this.phase !== 'depart') return false;
+    const p = this.christian.root.position;
+    return BeulahScene.PERCHES.some((x) => Math.hypot(p.x - x, p.z + 3.6) < 3.4);
+  }
+  singWithBirds(): void {
+    if (!this.nearSongBirds() || !this.cb.birdSong) return;
+    this.christian.root.rotation.y = Math.PI; // turns to the birds
+    this.cb.birdSong((i) => {
+      this.songBirds[i].hop = 1;
+      this.songBirds[i + 4].hop = 1;
+    }, () => {
+      this.cb.playScript([
+        { speaker: 'Hopeful', text: 'Listen to them, Christian! The whole country is singing.' },
+        { speaker: 'Christian', text: 'And soon we will sing before the King himself.' },
+      ]);
+    });
+  }
+
   canPop(): boolean {
     return this.phase === 'doubt' && this.canPopFlag;
   }
@@ -639,6 +684,10 @@ export class BeulahScene {
   // ---------------------------------------------------------------- update
   update(dt: number, t: number, moving: boolean): void {
     if (!this.built) return;
+    for (const b of this.songBirds) {
+      b.hop = Math.max(0, b.hop - dt * 2.4);
+      b.g.position.y = 1.63 + Math.sin(b.hop * Math.PI) * 0.35;
+    }
     const chr = this.christian;
     const hop = this.hopeful;
 

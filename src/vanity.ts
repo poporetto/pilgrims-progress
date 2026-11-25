@@ -74,9 +74,9 @@ export class VanityScene {
   phase: Phase = 'walk';
   private cb: VanityCallbacks;
   private christian: BearParts;
-  private faithful: BearParts;
-  private hopeful: BearParts;
-  private hopefulJoined = false;
+  faithful: BearParts;
+  hopeful: BearParts;
+  hopefulJoined = false;
   private talkative: BearParts;
   private tantrumT = 0;
   private judge: BearParts;
