@@ -6,7 +6,7 @@ import { PALETTE } from './palette';
 // and tails, and everyone wears clothes.
 
 export type Species = 'bear' | 'pig' | 'frog' | 'rabbit' | 'cat' | 'lion' | 'owl' | 'mouse' | 'sheep' | 'dog' | 'ox';
-export type Outfit = 'shirt' | 'dress' | 'apron' | 'robe' | 'overalls' | 'none';
+export type Outfit = 'shirt' | 'dress' | 'gown' | 'apron' | 'robe' | 'overalls' | 'none';
 
 export interface CharacterOptions {
   /** travels with Christian: never picked as the talk partner to turn */
@@ -465,6 +465,26 @@ function buildBear(opts: CharacterOptions = {}): BearParts {
     body.add(block(0.5, 0.16, 0.06, 0xffffff, 0, 0.68, 0.34)); // collar
     armL.add(block(0.32, 0.24, 0.36, oc, 0, -0.08, 0));
     armR.add(block(0.32, 0.24, 0.36, oc, 0, -0.08, 0));
+  } else if (outfit === 'gown') {
+    // One connected, modest dress: a single A-line shell from the neck to about
+    // the knee (no waist seam), with long sleeves and a white collar.
+    const h = 0.94;
+    const gown = block(1.0, h, 0.74, oc, 0, 0.35, 0);
+    gown.geometry = gown.geometry.clone(); // block geometry may be shared
+    const pos = gown.geometry.getAttribute('position');
+    gown.geometry.computeBoundingBox();
+    const { min, max } = gown.geometry.boundingBox!;
+    for (let i = 0; i < pos.count; i++) {
+      const down = (max.y - pos.getY(i)) / (max.y - min.y); // 0 neck → 1 hem
+      pos.setX(i, pos.getX(i) * (1 + 0.2 * down));
+      pos.setZ(i, pos.getZ(i) * (1 + 0.36 * down));
+    }
+    gown.geometry.computeBoundingBox();
+    gown.geometry.computeBoundingSphere();
+    body.add(gown);
+    root.userData.legSwing = 0.75; // shorter steps, so legs stay inside the skirt
+    body.add(block(0.5, 0.16, 0.08, 0xffffff, 0, 0.72, 0.38)); // collar
+    for (const arm of [armL, armR]) arm.add(block(0.32, 0.46, 0.38, oc, 0, -0.14, 0));
   } else if (outfit === 'apron') {
     body.add(block(0.98, 0.5, 0.7, 0xfaf3e3, 0, 0.5, 0)); // shirt under the apron
     armL.add(block(0.32, 0.26, 0.36, 0xfaf3e3, 0, -0.1, 0));
@@ -618,8 +638,9 @@ export function animateBear(parts: BearParts, t: number, moving: boolean): void 
   const stride = Math.sin(t * 9);
   const swing = stride * 0.7 * walk;
   const hop = Math.abs(stride); // two footfalls per cycle
-  parts.legL.rotation.x = swing;
-  parts.legR.rotation.x = -swing;
+  const legSwing = swing * ((parts.root.userData.legSwing as number | undefined) ?? 1);
+  parts.legL.rotation.x = legSwing;
+  parts.legR.rotation.x = -legSwing;
   parts.armL.rotation.x = -swing * 0.8;
   parts.armR.rotation.x = swing * 0.8;
 
