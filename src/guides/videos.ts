@@ -29,6 +29,10 @@ export const VIDEOS: Video[] = [
     episode: 3, slug: 'the-mountain-of-fire', youtubeId: 'O-9-uQnE708',
     uploadDate: '2026-11-24T14:44:55-08:00', duration: 'PT2M54S', chapters: [3],
   },
+  {
+    episode: 4, slug: 'the-wicket-gate', youtubeId: '5limINPHlyI',
+    uploadDate: '2026-11-24T20:13:11-08:00', duration: 'PT2M52S', chapters: [4],
+  },
 ];
 
 /** URL slugs of the 17 chapter guides, in order. Keep stable once published. */
