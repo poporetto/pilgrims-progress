@@ -168,15 +168,21 @@ export class PalaceScene {
     for (const def of womenDefs) {
       const w = makeBear({
         species: def.species, fur: def.fur,
-        outfit: 'dress', outfitColor: def.dress, scale: 1.02,
+        outfit: 'gown', outfitColor: def.dress, scale: 1.02,
       });
       this.women.push(w);
     }
     // Portrait-specific clothing details.
-    this.women[1].body.add(block(0.62, 0.58, 0.08, 0xf1eadc, 0, 0.38, 0.36)); // Prudence's pale apron
+    // The aprons lean with the flare of the gown, so they lie flat against it.
+    const apron = (w: number, h: number, color: number) => {
+      const a = block(w, h, 0.08, color, 0, 0.36, 0.45);
+      a.rotation.x = -0.141;
+      return a;
+    };
+    this.women[1].body.add(apron(0.62, 0.58, 0xf1eadc)); // Prudence's pale apron
     this.women[1].head.add(block(0.2, 0.2, 0.12, 0xf5efdc, 0.37, 0.88, 0.08)); // hair flower
-    this.women[2].body.add(block(0.16, 0.2, 0.08, 0xd8b553, 0, 0.68, 0.37));   // Piety's gold clasp
-    this.women[3].body.add(block(0.58, 0.54, 0.08, 0xd99aa5, 0, 0.38, 0.36)); // Charity's pink apron
+    this.women[2].body.add(block(0.16, 0.2, 0.08, 0xd8b553, 0, 0.68, 0.42));   // Piety's gold clasp
+    this.women[3].body.add(apron(0.58, 0.54, 0xd99aa5)); // Charity's pink apron
     for (const side of [-1, 1]) {
       this.women[3].head.add(block(0.2, 0.2, 0.13, 0xe9a5b1, 0.3 + side * 0.1, 0.9 + side * 0.08, 0.08));
     }

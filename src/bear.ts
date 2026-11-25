@@ -224,8 +224,9 @@ function buildBear(opts: CharacterOptions = {}): BearParts {
     // a thin, long tail
     body.add(block(0.08, 0.08, 0.6, 0xd9a3ac, 0.1, 0.22, -0.5));
   } else if (species === 'sheep') {
-    // woolly fleece over the shoulders and a stubby tail
-    body.add(block(bodyW + 0.12, 0.34, bodyD + 0.12, 0xffffff, 0, 0.66, 0));
+    // woolly fleece over the shoulders (under a gown it would poke through)
+    // and a stubby tail
+    if (opts.outfit !== 'gown') body.add(block(bodyW + 0.12, 0.34, bodyD + 0.12, 0xffffff, 0, 0.66, 0));
     body.add(block(0.22, 0.22, 0.18, 0xffffff, 0, 0.3, -(bodyD / 2 + 0.06)));
   } else if (species === 'dog') {
     // A short, three-piece voxel tail with a jaunty upward wag.
@@ -333,9 +334,8 @@ function buildBear(opts: CharacterOptions = {}): BearParts {
       // A single short voxel tuft keeps the owl silhouette while reducing the
       // former three-step feather horns to roughly one-fifth their height.
       head.add(block(0.16, 0.1, 0.16, fur, 0.37 * side, 0.94, 0));
-      // The cream mask is wide and almost meets at the beak, as in the profile.
-      head.add(block(0.48, 0.55, 0.12, belly, 0.23 * side, 0.48, 0.47));
-      head.add(block(0.38, 0.16, 0.13, belly, 0.27 * side, 0.18, 0.46));
+      // Cream eye disks, with a clear strip of feathers between them.
+      head.add(block(0.42, 0.55, 0.12, belly, 0.265 * side, 0.48, 0.47));
       // Side and lower cheek feathers soften the square base head.
       head.add(block(0.18, 0.34, 0.18, fur, 0.52 * side, 0.4, 0.08));
       head.add(block(0.24, 0.15, 0.18, fur, 0.34 * side, 0.08, 0.12));
@@ -425,7 +425,7 @@ function buildBear(opts: CharacterOptions = {}): BearParts {
     // Tall, single-colour eyes match the portraits; the cream facial disks
     // provide all the contrast, so no separate white sclera is needed.
     for (const side of [-1, 1]) {
-      const pupil = block(0.14, 0.27, 0.07, PALETTE.nose, 0.23 * side, 0.52, 0.57);
+      const pupil = block(0.14, 0.27, 0.07, PALETTE.nose, 0.265 * side, 0.52, 0.57);
       head.add(pupil);
       eyes.push(pupil);
     }
