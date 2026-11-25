@@ -79,12 +79,20 @@ li { margin-bottom: 7px; }
 footer { padding: 24px 0 40px; font-size: 15px; text-align: center; }
 footer a { display: inline-block; padding: 8px; }
 @media (max-width: 520px) { .watch { grid-template-columns: 1fr; } .list a { grid-template-columns: 46px 1fr; gap: 12px; } }
+.hero { display: block; width: 100%; height: auto; margin: 18px 0 0; border-radius: 20px; }
+h3 { margin: 24px 0 6px; font: 700 20px/1.25 var(--story); }
+.more { font-size: 15.5px; }
+.cast { list-style: none; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); gap: 18px 24px; }
+.cast li { display: grid; grid-template-columns: 72px 1fr; gap: 14px; margin: 0; }
+.cast img { width: 72px; height: 72px; border-radius: 18px; object-fit: cover; background: #dff0f8; }
+.cast strong { display: block; font-family: var(--story); }
+@media (max-width: 520px) { .top nav { gap: 0 16px; font-size: 16px; } }
 </style>
 </head>
 <body>
 <header class="top">
 <a class="brand" href="../">Pilgrim’s Progress</a>
-<nav aria-label="Main"><a href="../">Play the game</a><a href="../family-guide/">Family Guide</a><a href="../episodes/" aria-current="page">Episodes</a></nav>
+<nav aria-label="Main"><a href="../">Play the game</a><a href="../family-guide/">Family Guide</a><a href="../episodes/" aria-current="page">Episodes</a><a href="../about-the-book/">The book</a></nav>
 </header>
 <main>
 <h1>Pilgrim’s Progress animated episodes</h1>

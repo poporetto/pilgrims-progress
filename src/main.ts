@@ -1,4 +1,3 @@
-import { inject as injectAnalytics } from '@vercel/analytics';
 import { setupInstallButton, registerServiceWorker } from './ui/install';
 import { preventMobileZoom } from './ui/noZoom';
 import { openFamilyGuide, chapterFromTitle } from './ui/familyGuide';
@@ -33,10 +32,6 @@ import { getDialogueCharacterNames, getDialoguePortrait, preloadAllPortraits } f
 
 // ---------------------------------------------------------------- setup
 
-// Vercel Analytics (vanilla/no-framework integration — this is a plain
-// Vite + TS app, not Next.js). No-ops harmlessly when not served from Vercel.
-// Vercel Analytics only exists on Vercel hosting; elsewhere its script 404s
-if (location.hostname.endsWith('.vercel.app')) injectAnalytics();
 setupInstallButton();
 registerServiceWorker();
 preventMobileZoom();

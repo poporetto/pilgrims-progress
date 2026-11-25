@@ -1,4 +1,6 @@
 ---
 deployment:
   tasks:
+    # keep the .htaccess that was on the server before this one, once
+    - /bin/cp -n $HOME/pilgrimsprogress.com.au/.htaccess $HOME/pilgrimsprogress.com.au/.htaccess.before-git || true
     - /bin/cp -R docs/. $HOME/pilgrimsprogress.com.au/

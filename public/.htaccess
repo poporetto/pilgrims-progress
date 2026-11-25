@@ -1,0 +1,26 @@
+# One address for the site: https, no www. Certificate renewal checks are left alone.
+<IfModule mod_rewrite.c>
+RewriteEngine On
+RewriteCond %{REQUEST_URI} !^/(\.well-known/|404\.html$)
+RewriteCond %{HTTPS} off [OR]
+RewriteCond %{HTTP_HOST} ^www\. [NC]
+RewriteCond %{HTTP_HOST} ^(?:www\.)?pilgrimsprogress\.com\.au$ [NC]
+RewriteRule ^ https://pilgrimsprogress.com.au%{REQUEST_URI} [R=301,L]
+</IfModule>
+
+ErrorDocument 404 /404.html
+
+<IfModule mod_headers.c>
+Header set X-Content-Type-Options "nosniff"
+# pages and the service worker: always check for a new version
+<FilesMatch "(\.html|\.xml|\.webmanifest|^sw\.js)$">
+Header set Cache-Control "no-cache"
+</FilesMatch>
+<FilesMatch "\.(png|jpg|webp|svg)$">
+Header set Cache-Control "public, max-age=604800"
+</FilesMatch>
+# built files have a hash in their name, so they never change
+<FilesMatch "-[A-Za-z0-9_-]{8}\.(js|css)$">
+Header set Cache-Control "public, max-age=31536000, immutable"
+</FilesMatch>
+</IfModule>

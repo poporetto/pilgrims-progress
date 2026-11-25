@@ -7,3 +7,4 @@ dist/
 film/out/
 film/.env
 film/.venv/
+pictures/out/
