@@ -1,6 +1,7 @@
 import { inject as injectAnalytics } from '@vercel/analytics';
 import { setupInstallButton, registerServiceWorker } from './ui/install';
 import { preventMobileZoom } from './ui/noZoom';
+import { openFamilyGuide, chapterFromTitle } from './ui/familyGuide';
 import * as THREE from 'three';
 import { PALETTE } from './palette';
 import { makeBear, animateBear, block, mat, liveBears, BearParts } from './bear';
@@ -668,6 +669,22 @@ ui.newJourneyBtn.addEventListener('click', () => {
   if (!window.confirm('Start a new journey? Your saved chapter progress will be cleared.')) return;
   clearSaveAndReload();
 });
+
+// ---------- Family Guide: opens at the chapter the player is in ----------
+const MODE_CHAPTER: Record<GameMode, number | undefined> = {
+  map: undefined, village: 1, slough: 2, morality: 3, wicket: 4, cross: 5, highway: 6,
+  hill: 7, palace: 8, valley: 9, shadow: 10, vanity: 11, lucre: 12, castle: 13,
+  mountain: 14, enchanted: 15, beulah: 16, celestial: 17,
+};
+document.getElementById('title-guide-btn')!.addEventListener('click', () => { void openFamilyGuide(); });
+document.getElementById('settings-guide-btn')!.addEventListener('click', () => {
+  void openFamilyGuide(started ? MODE_CHAPTER[mode] : undefined);
+});
+document.getElementById('ending-guide-btn')!.addEventListener('click', () => {
+  const heading = ['ending-title', 'ending-sub'].map((id) => document.getElementById(id)!.textContent).join(' ');
+  void openFamilyGuide(chapterFromTitle(heading) ?? MODE_CHAPTER[mode]);
+});
+document.getElementById('finale-guide-btn')!.addEventListener('click', () => { void openFamilyGuide(17); });
 
 function updateSoundToggle(): void {
   ui.soundToggle.setAttribute('aria-checked', String(gameSettings.audioEnabled));
@@ -3356,6 +3373,7 @@ requestAnimationFrame(() => {
 
 // small debug handle for testing (harmless in production)
 (window as any).__game = {
+  music, Music,
   christian, npcs, quest, world, openDialogue, advanceDialogue, camTarget,
   worldMap, slough, enterSlough, morality, enterMorality,
   wicket, enterWicket, cross, enterCross, highway, enterHighway, hill, enterHill,

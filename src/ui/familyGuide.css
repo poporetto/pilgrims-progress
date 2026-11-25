@@ -1,0 +1,66 @@
+#family-guide {
+  width: min(640px, calc(100vw - 24px)); max-width: none;
+  max-height: min(780px, calc(100dvh - 24px - env(safe-area-inset-top) - env(safe-area-inset-bottom)));
+  margin: auto; padding: 0; overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y;
+  border: 2px solid #fff; border-radius: 28px;
+  background: var(--paper); color: var(--ink);
+  box-shadow: var(--shadow-lg);
+  font-family: var(--font-ui); font-size: 16px; line-height: 1.55;
+  user-select: text; -webkit-user-select: text;
+}
+#family-guide::backdrop { background: rgba(90, 69, 53, .32); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+#family-guide * { touch-action: pan-y; box-sizing: border-box; }
+#family-guide .fg-body { padding: 26px 26px 30px; }
+#family-guide .fg-close {
+  position: sticky; top: 12px; float: right; margin: 12px 12px 0 0; z-index: 1;
+  width: 44px; height: 44px; border-radius: 50%; border: 2px solid #f0c9d3;
+  background: #fff7f8; color: #865e68; font-size: 22px; font-weight: 800; line-height: 1; cursor: pointer;
+}
+#family-guide h2 { margin: 0 0 6px; font-family: var(--font-story); font-size: 29px; line-height: 1.15; color: #5d4533; text-wrap: balance; }
+#family-guide h3 { margin: 0 0 8px; font-family: var(--font-story); font-size: 19px; color: #7a4a36; }
+#family-guide section { margin-top: 24px; }
+#family-guide p { margin: 0; }
+#family-guide .fg-lead, #family-guide .fg-story { color: #6c5849; }
+#family-guide .fg-kicker { font-weight: 800; font-size: 14px; color: #9a3d57; }
+#family-guide .fg-idea { padding: 14px 18px; border-radius: 18px; background: #fff1cf; font-weight: 700; }
+#family-guide blockquote { margin: 0 0 12px; font-family: var(--font-narration); font-size: 18px; color: #5b4a63; }
+#family-guide cite { display: block; margin-top: 2px; font: 700 14px/1.4 var(--font-ui); color: #7d6878; }
+#family-guide dt { font-weight: 900; }
+#family-guide dd { margin: 0 0 12px; }
+#family-guide ul { margin: 0; padding-left: 22px; }
+#family-guide li { margin-bottom: 6px; }
+#family-guide .fg-prayer { padding: 14px 18px; border-radius: 18px; background: #e6f4ec; font-family: var(--font-narration); font-size: 18px; }
+#family-guide .fg-notice { margin-top: 24px; font-size: 12.5px; color: #7d6a5b; }
+#family-guide .fg-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 18px 0 14px; padding: 5px; border-radius: 16px; background: #e9f2f3; }
+#family-guide .fg-tabs button { min-height: 44px; border: 0; border-radius: 12px; background: transparent; color: #6c5849; font-size: 15px; font-weight: 800; cursor: pointer; }
+#family-guide .fg-tabs button[aria-pressed="true"] { background: #fffaf2; color: var(--ink); box-shadow: 0 2px 6px rgba(91, 74, 63, .16); }
+#family-guide .fg-list { list-style: none; margin: 0; padding: 0; }
+#family-guide .fg-list button {
+  display: flex; align-items: center; gap: 14px; width: 100%; min-height: 48px; padding: 6px 12px;
+  border: 0; border-radius: 14px; background: transparent; color: var(--ink);
+  font-size: 16.5px; font-weight: 750; text-align: left; cursor: pointer;
+}
+#family-guide .fg-list button:hover { background: #fdeef2; }
+#family-guide .fg-num { flex: 0 0 46px; padding: 4px 0; border-radius: 10px; background: #dff0f8; color: #35617a; font-weight: 900; font-size: 14px; text-align: center; }
+#family-guide .fg-back, #family-guide .fg-nav button {
+  min-height: 44px; padding: 8px 16px; border: 2px solid #f0c9d3; border-radius: 999px;
+  background: #fff7f9; color: #8a3450; font-size: 15px; font-weight: 800; cursor: pointer;
+}
+#family-guide .fg-back { margin-bottom: 14px; }
+#family-guide .fg-nav { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 10px; margin-top: 28px; }
+html.large-dialogue #family-guide { font-size: 18.5px; }
+#title-screen #title-guide-btn {
+  margin: 14px 0 0; border: 0; border-radius: 12px; background: none; box-shadow: none; text-shadow: none; color: #8a3450; font: 800 15px/1.2 var(--font-ui);
+  min-height: 44px; padding: 8px 14px; cursor: pointer; text-decoration: underline; text-underline-offset: 4px;
+}
+#settings-guide-btn {
+  flex: 0 0 auto; min-height: 40px; padding: 8px 18px; border: 2px solid #fff; border-radius: 999px;
+  background: #cfe9f6; color: #2f5a72; font: 800 14px/1 var(--font-ui); cursor: pointer;
+}
+#finale-guide-btn {
+  display: block; margin: 14px auto 0; min-height: 44px; padding: 8px 18px; border: 0; background: none;
+  color: inherit; font: 800 16px/1.2 var(--font-ui); text-decoration: underline; text-underline-offset: 4px; cursor: pointer;
+}
+@media (max-width: 480px) { #family-guide .fg-body { padding: 22px 18px 26px; } }
+#finale.end #finale-guide-btn { pointer-events: auto; }
+#title-screen #title-guide-btn:hover { background: rgba(255, 255, 255, .7); }
