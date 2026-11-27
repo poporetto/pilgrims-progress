@@ -33,6 +33,10 @@ export const VIDEOS: Video[] = [
     episode: 4, slug: 'the-wicket-gate', youtubeId: '5limINPHlyI',
     uploadDate: '2026-11-24T20:13:11-08:00', duration: 'PT2M52S', chapters: [4],
   },
+  {
+    episode: 5, slug: 'the-interpreters-house', youtubeId: 'VASWfXd0_2o',
+    uploadDate: '2026-11-25T15:58:31-08:00', duration: 'PT3M1S', chapters: [4],
+  },
 ];
 
 /** URL slugs of the 17 chapter guides, in order. Keep stable once published. */
