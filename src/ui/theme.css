@@ -368,7 +368,6 @@ body.dialogue-open #joystick, body.dialogue-open #talk-btn {
   box-shadow: var(--shadow-lg), inset 0 0 0 7px rgba(255, 255, 255, .6), inset 0 0 0 8px rgba(197, 160, 111, .35);
   backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
 }
-.title-card::before, .title-card::after { color: #c9a57a; }
 #title-screen .eyebrow { font-family: var(--font-ui); font-weight: 900; letter-spacing: .24em; color: #a08165; }
 #title-screen h1 { font-family: var(--font-story); font-weight: 700; }
 #title-screen h1 span { font-family: var(--font-story); font-weight: 600; }
@@ -380,7 +379,6 @@ body.dialogue-open #joystick, body.dialogue-open #talk-btn {
   color: #8a3450; text-shadow: 0 1px 0 rgba(255, 255, 255, .55);
   box-shadow: 0 7px 0 #e59fb2, 0 13px 28px rgba(126, 82, 91, .18);
 }
-#title-screen #start-btn::after { color: #8a3450; }
 #title-screen #start-btn:hover {
   background: linear-gradient(180deg, #fddbe4, #f6bfcd);
   box-shadow: 0 9px 0 #e59fb2, 0 15px 30px rgba(126, 82, 91, .2);
@@ -389,6 +387,11 @@ body.dialogue-open #joystick, body.dialogue-open #talk-btn {
 #title-screen #new-journey-btn { color: #8a3a52; border-color: #efb3c3; background: #fdf3f6; }
 #save-summary { font-family: var(--font-ui); }
 .title-credit { font-family: var(--font-ui); font-weight: 800; }
+/* a stitched seam just inside the card edge, like a cloth-bound book */
+.title-card::before {
+  content: ''; position: absolute; inset: 14px; border-radius: 22px; pointer-events: none;
+  border: 2px dashed rgba(197, 160, 111, .45);
+}
 
 /* ------------------------------------------------------------ finale */
 

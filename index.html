@@ -649,11 +649,6 @@
       box-shadow: 0 10px 0 rgba(106,91,72,.18), 0 22px 60px rgba(126,82,91,.2),
                   inset 0 0 0 3px rgba(255,255,255,.72);
     }
-    .title-card::before, .title-card::after {
-      content: '❦'; position: absolute; top: 20px; color: #94785f; font-size: 25px;
-    }
-    .title-card::before { left: 24px; }
-    .title-card::after { right: 24px; color: #c78698; transform: scaleX(-1); }
     .title-mark {
       display: grid; place-items: center; width: 78px; height: 78px;
       margin: -74px auto 14px; border: 6px double #fff9df;
@@ -701,7 +696,6 @@
       background: linear-gradient(180deg, #f6bdc9, #efabb9);
       box-shadow: 0 7px 0 #c9bec4, 0 13px 28px rgba(126,82,91,.18);
     }
-    #title-screen #start-btn::after { content: '  →'; color: #fff; }
     #title-screen #start-btn:hover {
       transform: translateY(-2px);
       background: linear-gradient(180deg, #f8c7d1, #f1b0bd);
@@ -1244,7 +1238,7 @@
       <div class="title-mark" aria-hidden="true"><canvas id="title-face-canvas"></canvas></div>
       <div class="eyebrow">A journey of faith and courage</div>
       <h1>Pilgrim’s <span>Progress</span></h1>
-      <h2>Chapter I · The City of Destruction</h2>
+      <h2 id="title-chapter">Chapter 1 · The City of Destruction</h2>
       <p>Christian carries a heavy burden and knows he must find a better way.
          Walk beside him as his hopeful journey toward the Celestial City begins.</p>
       <div id="boot-loader" role="status" aria-live="polite" aria-label="Loading the journey">
@@ -1253,9 +1247,9 @@
       </div>
       <button id="start-btn" disabled aria-disabled="true">Loading Journey…</button>
       <div id="save-summary" aria-live="polite"></div>
-      <button id="new-journey-btn">Start a New Journey</button>
+      <button id="new-journey-btn">Start over</button>
       <button id="title-guide-btn" type="button">Family Guide</button>
-      <div class="title-credit">AN INTERACTIVE STORYBOOK ADVENTURE · AFTER JOHN BUNYAN</div>
+      <div class="title-credit">Interactive Storybook Game based on John Bunyan’s book from 1678</div>
     </div>
   </div>
 

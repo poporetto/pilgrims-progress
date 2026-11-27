@@ -3675,13 +3675,15 @@ requestAnimationFrame(() => {
     ui.startBtn.setAttribute('aria-disabled', 'false');
     if (storedChapterSave) {
       const completed = storedChapterSave.completedChapter;
-      ui.startBtn.textContent = 'Continue the Journey';
-      ui.saveSummary.textContent =
-        `Saved after Chapter ${completed} · ${CHAPTER_NAMES[completed]}`;
+      ui.startBtn.textContent = 'Keep walking';
+      const next = Math.min(completed + 1, CHAPTER_NAMES.length - 1);
+      const chapterLine = document.getElementById('title-chapter');
+      if (chapterLine) chapterLine.textContent = `Chapter ${next} · ${CHAPTER_NAMES[next]}`;
+      ui.saveSummary.textContent = `Last stop: ${CHAPTER_NAMES[completed]}`;
       ui.saveSummary.style.display = 'block';
       ui.newJourneyBtn.style.display = 'block';
     } else {
-      ui.startBtn.textContent = 'Begin the Journey';
+      ui.startBtn.textContent = 'Start walking';
     }
     ui.titleScreen.classList.add('game-ready');
   });
