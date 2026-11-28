@@ -150,6 +150,7 @@ export function createBush(o: { seed?: number; size?: number; flowers?: boolean;
   const g = new THREE.Group();
   g.add(voxelMesh(vox, foliageMaterial));
   g.add(makeContactShadow(s * 1.4, 0.2));
+  g.userData.clutter = true; // loose scenery: the play layer may clear it from under a bench
   return g;
 }
 
@@ -190,6 +191,7 @@ export function createRock(o: { seed?: number; size?: number; moss?: boolean; co
   m.rotation.y = r() * Math.PI * 2;
   m.castShadow = true;
   m.receiveShadow = true;
+  m.userData.clutter = true;
   return m;
 }
 

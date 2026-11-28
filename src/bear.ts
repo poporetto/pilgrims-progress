@@ -562,6 +562,25 @@ function buildBear(opts: CharacterOptions = {}): BearParts {
 // Shared finishing layer for Christian's post-Palace armour. Scene-specific
 // swords and shields can still be added independently, but the breastplate,
 // pauldrons, belt, and greaves now read the same throughout the journey.
+/**
+ * Christian's sword, sheathed across his back with the hilt over his right
+ * shoulder. He carries it here whenever he isn't fighting.
+ */
+export function addBackSword(parts: BearParts): THREE.Group {
+  const g = new THREE.Group();
+  g.add(block(0.18, 0.86, 0.11, 0x8a5a3a, 0, 0, 0));                 // scabbard
+  g.add(block(0.2, 0.08, 0.13, PALETTE.robeGold, 0, -0.4, 0));       // tip cap
+  g.add(block(0.2, 0.07, 0.13, PALETTE.robeGold, 0, 0.18, 0));       // band
+  g.add(block(0.36, 0.08, 0.14, PALETTE.robeGold, 0, 0.47, 0));      // crossguard
+  g.add(block(0.09, 0.22, 0.09, 0x6a4a32, 0, 0.62, 0));              // grip
+  g.add(block(0.13, 0.1, 0.13, PALETTE.robeGold, 0, 0.77, 0));       // pommel
+  g.position.set(0.04, 0.5, -0.55);
+  g.rotation.z = 0.6;
+  for (const m of g.children) (m as THREE.Mesh).castShadow = true;
+  parts.body.add(g);
+  return g;
+}
+
 export function addPilgrimArmorDetails(parts: BearParts): void {
   const STEEL_LIGHT = 0xe8edf2;
   parts.body.add(block(0.72, 0.42, 0.07, STEEL_LIGHT, 0, 0.43, 0.48));

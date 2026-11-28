@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { PALETTE } from './palette';
-import { makeBear, animateBear, addPilgrimArmorDetails, BearParts, block, mat } from './bear';
+import { makeBear, animateBear, addPilgrimArmorDetails, BearParts, block, mat, addBackSword } from './bear';
 import { makeShiningLight, animateShiningLight, ShiningLight, setupSunShadow } from './light';
 import { DialogueLine } from './npcs';
 import { addHighwayPaving } from './road';
@@ -334,11 +334,7 @@ export class CastleScene {
     this.christian.head.add(helmet);
     this.christian.body.add(block(1.16, 0.62, 0.88, STEEL, 0, 0.42, 0));
     addPilgrimArmorDetails(this.christian);
-    const sword = new THREE.Group();
-    sword.add(block(0.09, 0.95, 0.16, 0xe8edf2, 0, 0.55, 0));
-    sword.add(block(0.3, 0.1, 0.2, PALETTE.robeGold, 0, 0.04, 0));
-    sword.position.set(0.16, -0.5, 0.14);
-    this.christian.armR.add(sword);
+    addBackSword(this.christian); // sheathed: he only draws it to fight
 
     // Hopeful the young dog
     this.hopeful = makeBear({ companion: true,
@@ -676,49 +672,173 @@ export class CastleScene {
     // roof, so Doubting Castle reads as gloomy-yet-storybook rather than harsh
     const STONE    = 0x6f6a80;
     const STONE_DK = 0x565270;
+    const STONE_LT = 0x7a758b;
     const ROOF     = 0x7a5a70;
+    const ROOF_DK  = 0x654a5d;
+    const SLIT     = 0x241f2c;
+    const IVY      = [0x4f6b4a, 0x5d7a52, 0x46613f];
+    const r = seeded(4210);
+    const pick = <T,>(a: readonly T[]): T => a[Math.floor(r() * a.length)];
+    // glowing bits (lit windows, torch flames) keep their own material so
+    // bakeStatic leaves them unmerged and they stay bright at dusk
+    const glowMat = (c: number, i: number): THREE.MeshStandardMaterial =>
+      new THREE.MeshStandardMaterial({ color: c, emissive: c, emissiveIntensity: i, roughness: 1 });
+    const flame = glowMat(0xffb85c, 1.6);
+    const lit = glowMat(0xffcf7a, 0.9);
 
-    // corner towers — cylindrical, with conical roofs and a crenellated ring
+    // Loose ashlar stones laid proud of a flat face, so walls read as built
+    // from blocks rather than as one painted slab. face: z of the front face.
+    const stones = (x0: number, x1: number, y0: number, y1: number, face: number, n: number): void => {
+      for (let i = 0; i < n; i++) {
+        const w = 0.9 + r() * 1.1, h = 0.45 + r() * 0.35;
+        const x = x0 + w / 2 + r() * Math.max(0, x1 - x0 - w);
+        const y = y0 + h / 2 + r() * Math.max(0, y1 - y0 - h);
+        g.add(block(w, h, 0.14, r() < 0.6 ? STONE_LT : 0x625d78, x, y, face + 0.05));
+      }
+    };
+    // ivy spilling down from a point, thinning as it falls
+    const ivy = (x: number, yTop: number, face: number, len: number): void => {
+      for (let y = yTop; y > yTop - len; y -= 0.55) {
+        const spread = 0.5 + (yTop - y) / len * 0.9;
+        for (let k = 0; k < 2; k++) {
+          if (r() < 0.25) continue;
+          g.add(block(0.5 + r() * 0.5, 0.55, 0.16, pick(IVY), x + (r() - 0.5) * spread * 2, y, face + 0.1));
+        }
+      }
+    };
+
+    // ---- central keep, set back behind the curtain wall ----
+    const KZ = -3;
+    g.add(block(7, 17, 7, STONE, 6, 8.5, KZ));
+    g.add(block(7.6, 0.6, 7.6, STONE_DK, 6, 17, KZ)); // corbel band under the battlements
+    for (const mx of [-3.3, -1.65, 0, 1.65, 3.3]) {
+      g.add(block(0.9, 1.0, 0.7, STONE_DK, 6 + mx, 17.8, KZ + 3.45));
+    }
+    const keepRoof = new THREE.Mesh(new THREE.ConeGeometry(5.0, 5, 4), mat(ROOF));
+    keepRoof.rotation.y = Math.PI / 4;
+    keepRoof.position.set(6, 20.4, KZ);
+    g.add(keepRoof);
+    g.add(block(0.15, 3, 0.15, 0x2a2015, 6, 24.3, KZ));
+    // a ragged flag: two offset strips instead of one clean rectangle
+    g.add(block(1.3, 0.38, 0.06, 0x9e4652, 6.72, 25.25, KZ));
+    g.add(block(0.9, 0.34, 0.06, 0x9e4652, 6.52, 24.9, KZ));
+    stones(2.6, 9.4, 9.5, 16.2, KZ + 3.5, 9);
+    // one warm window high in the keep: the Giant is at home
+    g.add(block(1.0, 1.6, 0.2, SLIT, 6, 14, KZ + 3.55));
+    const keepLight = new THREE.Mesh(new THREE.BoxGeometry(0.7, 1.25, 0.08), lit);
+    keepLight.position.set(6, 13.95, KZ + 3.68);
+    g.add(keepLight);
+    g.add(block(1.3, 0.22, 0.32, STONE_DK, 6, 13.1, KZ + 3.6)); // sill
+    for (const wx of [3.8, 8.2]) g.add(block(0.32, 1.3, 0.2, SLIT, wx, 11.3, KZ + 3.55));
+
+    // ---- curtain wall linking the towers, crenellated along the top ----
+    g.add(block(20, 9, 3, STONE, 6, 4.5, 0));
+    g.add(block(20.4, 0.9, 3.4, STONE_DK, 6, 0.45, 0)); // plinth where wall meets ground
+    for (let mx = -3; mx <= 15; mx += 1.6) {
+      g.add(block(0.8, 1.0, 1.3, STONE_DK, mx, 9.5, 1.0));
+    }
+    stones(-3, 3.6, 1.2, 8.6, 1.5, 6);
+    stones(8.4, 15, 1.2, 8.6, 1.5, 6);
+    // tattered banners hung from the battlements either side of the gate
+    for (const bx of [1.2, 10.8]) {
+      g.add(block(1.5, 3.6, 0.1, ROOF_DK, bx, 6.9, 1.62));
+      g.add(block(0.6, 0.7, 0.1, ROOF_DK, bx - 0.45, 4.75, 1.62)); // ragged tails
+      g.add(block(0.5, 0.45, 0.1, ROOF_DK, bx + 0.5, 4.85, 1.62));
+      g.add(block(0.6, 0.6, 0.12, 0x2e2a36, bx, 7.4, 1.66)); // a dark sigil
+      g.add(block(1.9, 0.18, 0.18, 0x3a2f28, bx, 8.75, 1.66)); // hanging pole
+    }
+
+    // ---- corner towers: cylinders with conical roofs and arrow slits ----
     for (const side of [-1, 1]) {
       const tx = 6 + side * 9;
-      const tower = new THREE.Mesh(new THREE.CylinderGeometry(2.4, 2.7, 13, 12), mat(STONE));
+      const tower = new THREE.Mesh(new THREE.CylinderGeometry(2.4, 2.75, 13, 12), mat(STONE));
       tower.position.set(tx, 6.5, 0);
       g.add(tower);
-      const roof = new THREE.Mesh(new THREE.ConeGeometry(3.1, 4.2, 12), mat(ROOF));
-      roof.position.set(tx, 15.1, 0);
+      const base = new THREE.Mesh(new THREE.CylinderGeometry(2.95, 3.1, 1.1, 12), mat(STONE_DK));
+      base.position.set(tx, 0.55, 0);
+      g.add(base);
+      const collar = new THREE.Mesh(new THREE.CylinderGeometry(2.75, 2.45, 0.6, 12), mat(STONE_DK));
+      collar.position.set(tx, 12.6, 0);
+      g.add(collar);
+      const roof = new THREE.Mesh(new THREE.ConeGeometry(3.1, 5.2, 12), mat(ROOF));
+      roof.position.set(tx, 15.5, 0);
       g.add(roof);
-      for (let i = 0; i < 8; i++) {
-        const ang = (i / 8) * Math.PI * 2;
-        g.add(block(0.6, 0.9, 0.6, STONE_DK, tx + Math.cos(ang) * 2.5, 13.2, Math.sin(ang) * 2.5));
+      const tip = new THREE.Mesh(new THREE.ConeGeometry(0.5, 1.2, 6), mat(ROOF_DK));
+      tip.position.set(tx, 18.5, 0);
+      g.add(tip);
+      // arrow slits stacked up the road-facing side
+      for (const [sy, ang] of [[4.2, 0.15], [7.6, -0.25], [10.4, 0.3]] as const) {
+        const a = ang * side;
+        const slit = block(0.34, 1.3, 0.3, SLIT, tx + Math.sin(a) * 2.5, sy, Math.cos(a) * 2.5);
+        slit.rotation.y = a;
+        g.add(slit);
       }
+      // patchy stonework around the front of the drum
+      for (let i = 0; i < 6; i++) {
+        const a = (r() - 0.5) * 2.0;
+        const y = 1.6 + r() * 9.5;
+        const rad = 2.75 - (y / 13) * 0.35;
+        const st = block(0.9 + r() * 0.6, 0.5, 0.16, r() < 0.6 ? STONE_LT : 0x625d78, tx + Math.sin(a) * rad, y, Math.cos(a) * rad);
+        st.rotation.y = a;
+        g.add(st);
+      }
+      ivy(tx - side * 1.1, 6.5 + r() * 2, 2.45, 5.5);
     }
+    ivy(-1.2, 8.4, 1.5, 6);
+    ivy(13.6, 8.0, 1.5, 4.5);
 
-    // central keep, taller than the flanking towers, with a pyramid roof and flag
-    g.add(block(7, 17, 7, STONE, 6, 8.5, 1));
-    const keepRoof = new THREE.Mesh(new THREE.ConeGeometry(5.6, 5, 4), mat(ROOF));
-    keepRoof.rotation.y = Math.PI / 4;
-    keepRoof.position.set(6, 19.5, 1);
-    g.add(keepRoof);
-    g.add(block(0.15, 3, 0.15, 0x2a2015, 6, 23.5, 1));
-    g.add(block(1.2, 0.7, 0.06, 0xc9535f, 6.65, 24.2, 1));
-
-    // curtain wall linking the towers, crenellated along the top edge
-    g.add(block(20, 7, 3, STONE, 6, 5.5, 0));
-    for (let mx = -3; mx <= 15; mx += 1.6) {
-      g.add(block(0.7, 1.0, 1.3, STONE_DK, mx, 9.5, 0));
+    // ---- gatehouse, stepped forward toward the road ----
+    const GZ = 2.4; // centre z; its face is at GZ + 1.7
+    const GF = GZ + 1.7;
+    g.add(block(5.2, 11, 3.4, STONE_DK, 6, 5.5, GZ));
+    g.add(block(5.8, 0.5, 3.9, STONE, 6, 11.1, GZ)); // corbel band
+    for (const mx of [3.6, 5.2, 6.8, 8.4]) g.add(block(0.9, 1.1, 0.8, STONE, mx, 11.9, GF - 0.1));
+    stones(3.5, 8.5, 6.2, 10.5, GF, 5);
+    // the archway: dark opening, rounded head, and a keystone
+    g.add(block(2.8, 4.4, 0.4, 0x15110d, 6, 2.2, GF));
+    const archHead = new THREE.Mesh(new THREE.CylinderGeometry(1.4, 1.4, 0.4, 14, 1, false, 0, Math.PI), mat(0x15110d));
+    archHead.rotation.set(Math.PI / 2, Math.PI / 2, 0);
+    archHead.position.set(6, 4.4, GF);
+    g.add(archHead);
+    for (let i = 0; i < 7; i++) { // voussoir stones ringing the arch
+      const a = (i / 6) * Math.PI;
+      const vs = block(0.55, 0.75, 0.3, i === 3 ? STONE_LT : STONE, 6 + Math.cos(a) * 1.75, 4.4 + Math.sin(a) * 1.75, GF + 0.08);
+      vs.rotation.z = a - Math.PI / 2;
+      g.add(vs);
     }
-
-    // gatehouse facing south, toward the road, with a dark archway and portcullis
-    g.add(block(4.4, 9, 4.4, STONE_DK, 6, 4.5, -2));
-    g.add(block(3, 5.4, 3.2, 0x1c1610, 6, 2.7, -1.8));
-    for (let i = -1; i <= 1; i++) {
-      g.add(block(0.1, 4.8, 0.1, 0x161616, 6 + i, 2.5, -1.6));
+    for (const jx of [4.4, 7.6]) g.add(block(0.5, 4.4, 0.3, STONE, jx, 2.2, GF + 0.08)); // jambs
+    // portcullis, half raised — teeth hanging into the dark
+    for (let i = -2; i <= 2; i++) g.add(block(0.14, 3.3, 0.14, 0x1e1e24, 6 + i * 0.55, 4.0, GF + 0.25));
+    for (const y of [3.0, 4.3, 5.4]) g.add(block(2.6, 0.14, 0.14, 0x1e1e24, 6, y, GF + 0.25));
+    // a heavy murder-hole slit above the gate
+    g.add(block(1.6, 0.4, 0.2, SLIT, 6, 7.4, GF + 0.06));
+    // torches flanking the gate
+    for (const fx of [3.9, 8.1]) {
+      g.add(block(0.32, 0.9, 0.32, 0x3a2f28, fx, 5.6, GF + 0.3));
+      g.add(block(0.5, 0.2, 0.5, 0x2a2420, fx, 6.1, GF + 0.3));
+      const f = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.5, 0.34), flame);
+      f.position.set(fx, 6.45, GF + 0.3);
+      f.rotation.y = Math.PI / 4;
+      g.add(f);
     }
-    g.add(block(3, 0.1, 0.1, 0x161616, 6, 4.7, -1.6)); // crossbar
+    // worn steps down from the gate
+    g.add(block(3.6, 0.35, 1.0, STONE_LT, 6, 0.17, GF + 0.6));
+    g.add(block(3.2, 0.2, 0.9, STONE, 6, 0.1, GF + 1.4));
 
     g.position.set(castleX, 0, castleZ);
     g.scale.setScalar(scale);
     this.scene.add(bakeStatic(g));
+
+    // flagstones leading from the gate down to the King's Highway
+    const walk = new THREE.Group();
+    const fz0 = castleZ + (GF + 2) * scale;
+    for (let z = fz0, i = 0; z < -2.3; z += 0.62, i++) {
+      const w = 0.7 + r() * 0.35;
+      const st = block(w, 0.06, 0.48, r() < 0.5 ? 0x9d97a6 : 0x8a8594, castleX + 6 * scale + (r() - 0.5) * 0.25 + (i % 2 ? 0.18 : -0.18), 0.03, z);
+      st.rotation.y = (r() - 0.5) * 0.3;
+      walk.add(st);
+    }
+    this.scene.add(bakeStatic(walk));
   }
 
   // A moorland backdrop that makes the castle feel like it owns this stretch
@@ -880,9 +1000,142 @@ export class CastleScene {
     pt4.position.set(d.x + 0.5, 3, d.z + 7.8);
     this.scene.add(pt4);
 
-    // some damp stones / puddles on dungeon floor
-    this.scene.add(block(2.2, 0.08, 1.4, 0x52525a, d.x - 2, 0.01, d.z + 2));
-    this.scene.add(block(1.4, 0.08, 1.0, 0x52525a, d.x + 2, 0.01, d.z - 1));
+    this.dressDungeon();
+  }
+
+  // Everything that makes the cell read as an old, damp, lived-in prison
+  // rather than a bare box: worn flagstones, coursed walls, a moonlit window,
+  // straw bedding, chains, and the Giant's things out in the antechamber.
+  // Props hug the walls, outside the prisoners' walkable area (see 'key').
+  private dressDungeon(): void {
+    const d = DUNGEON;
+    const r = seeded(5150);
+    const cell = new THREE.Group();
+    const add = (w: number, h: number, dd: number, c: number, x: number, y: number, z: number): THREE.Mesh => {
+      const m = block(w, h, dd, c, d.x + x, y, d.z + z);
+      cell.add(m);
+      return m;
+    };
+    const FLAGS = [0x40404a, 0x3c3c46, 0x45444f, 0x393842];
+
+    // worn flagstones with dark grout showing between them
+    for (let x = -8.25; x < 8.6; x += 1.5) {
+      for (let z = -5.6; z < 5.5; z += 1.5) {
+        if (r() < 0.06) continue; // a missing stone here and there
+        const st = add(1.36 + r() * 0.06, 0.05, 1.36, FLAGS[Math.floor(r() * FLAGS.length)], x + (r() - 0.5) * 0.06, 0.055, z);
+        st.rotation.y = (r() - 0.5) * 0.04;
+      }
+    }
+
+    // coursed stone on both side walls (inner faces at x = ±8.75)
+    const BRICK = [0x50505a, 0x484852, 0x55545f, 0x42424c];
+    for (const side of [-1, 1]) {
+      for (let row = 0, y = 0.35; y < 6; row++, y += 0.62) {
+        for (let z = -6 + (row % 2) * 0.7; z < 5.6; z += 1.4) {
+          const len = Math.min(1.3, 5.65 - z);
+          if (len < 0.4) continue;
+          add(0.1, 0.54, len, BRICK[Math.floor(r() * BRICK.length)], side * 8.7, y, z + len / 2);
+        }
+      }
+      // damp moss creeping up from the floor
+      for (let k = 0; k < 5; k++) {
+        add(0.14, 0.3 + r() * 0.5, 0.6 + r() * 0.8, r() < 0.5 ? 0x33463a : 0x3a4f41, side * 8.62, 0.25 + r() * 0.3, -5 + r() * 10);
+      }
+    }
+
+    // a small barred window high on the west wall, with moonlight falling in
+    add(0.3, 1.5, 1.6, 0x1b2233, -8.62, 4.7, 0.4);
+    const moonMat = new THREE.MeshStandardMaterial({ color: 0xbcd4ff, emissive: 0x9fbcf5, emissiveIntensity: 0.9 });
+    const sky = new THREE.Mesh(new THREE.BoxGeometry(0.05, 1.2, 1.3), moonMat);
+    sky.position.set(d.x - 8.76, 4.7, d.z + 0.4);
+    this.scene.add(sky);
+    for (const bz of [-0.1, 0.4, 0.9]) add(0.12, 1.5, 0.1, 0x22222a, -8.5, 4.7, bz);
+    add(0.32, 0.2, 1.9, 0x5a5a64, -8.55, 3.88, 0.4); // sill
+    const shaftMat = new THREE.MeshBasicMaterial({ color: 0xbcd4ff, transparent: true, opacity: 0.09, depthWrite: false });
+    const shaft = new THREE.Mesh(new THREE.BoxGeometry(1.3, 5.6, 1.2), shaftMat);
+    shaft.position.set(d.x - 6.9, 2.4, d.z + 0.4);
+    shaft.rotation.z = 0.62; // leaning from the window down into the cell
+    this.scene.add(shaft);
+    const pool = new THREE.Mesh(new THREE.PlaneGeometry(1.7, 1.4),
+      new THREE.MeshBasicMaterial({ color: 0xbcd4ff, transparent: true, opacity: 0.1, depthWrite: false }));
+    pool.rotation.x = -Math.PI / 2;
+    pool.position.set(d.x - 5.2, 0.09, d.z + 0.4);
+    this.scene.add(pool);
+
+    // straw bedding heaped in the north-west corner
+    const STRAW = [0xc9a85e, 0xb8964f, 0xd6b86c];
+    for (let k = 0; k < 9; k++) {
+      const st = add(0.9 + r() * 0.9, 0.12 + r() * 0.12, 0.6 + r() * 0.7, STRAW[k % 3], -7.6 + r() * 1.0, 0.12 + r() * 0.08, -4.6 + r() * 1.6);
+      st.rotation.y = r() * Math.PI;
+    }
+    for (let k = 0; k < 14; k++) { // stray stalks
+      const st = add(0.5 + r() * 0.4, 0.04, 0.05, STRAW[k % 3], -7.2 + r() * 2.4, 0.1, -5 + r() * 3);
+      st.rotation.y = r() * Math.PI;
+    }
+
+    // iron rings and hanging chains on the east wall
+    const IRON = 0x2e2e36;
+    for (const cz of [-2.6, 1.2]) {
+      add(0.14, 0.34, 0.34, IRON, 8.6, 3.6, cz);
+      for (let i = 0; i < 6; i++) {
+        const link = add(0.1, 0.3, i % 2 ? 0.08 : 0.18, IRON, 8.5, 3.3 - i * 0.26, cz + Math.sin(i * 0.9) * 0.05);
+        link.rotation.x = (i % 2) * 0.1;
+      }
+      add(0.18, 0.18, 0.4, IRON, 8.48, 1.68, cz); // shackle
+    }
+
+    // a battered bucket and a puddle where the roof drips
+    add(0.62, 0.62, 0.62, 0x5c4a38, 7.8, 0.36, 4.4);
+    add(0.68, 0.08, 0.68, 0x2e2e36, 7.8, 0.6, 4.4);
+    add(0.68, 0.08, 0.68, 0x2e2e36, 7.8, 0.2, 4.4);
+    const puddleMat = new THREE.MeshStandardMaterial({ color: 0x2c3850, roughness: 0.12, metalness: 0.3 });
+    for (const [px, pz, w, dd] of [[3.2, -2.4, 1.6, 1.0], [3.9, -1.8, 0.8, 0.7], [-2.6, 4.2, 1.1, 0.7]] as const) {
+      const pd = new THREE.Mesh(new THREE.BoxGeometry(w, 0.02, dd), puddleMat);
+      pd.position.set(d.x + px, 0.085, d.z + pz);
+      this.scene.add(pd);
+    }
+
+    // a tiny mouse keeping the prisoners company by the straw
+    add(0.34, 0.2, 0.22, 0x8a8790, -6.0, 0.2, -3.0);
+    add(0.16, 0.16, 0.16, 0x8a8790, -5.78, 0.24, -3.0);
+    add(0.06, 0.1, 0.1, 0xe7b6c2, -5.8, 0.36, -3.08);
+    add(0.06, 0.1, 0.1, 0xe7b6c2, -5.8, 0.36, -2.92);
+    add(0.04, 0.04, 0.04, 0x15151a, -5.7, 0.27, -3.05);
+    add(0.32, 0.03, 0.03, 0xc79aa6, -6.3, 0.13, -3.0);
+
+    // ---- antechamber: the Giant's side of the bars ----
+    const WOOD = 0x6a4a30;
+    for (const tx of [-5.5, 5.5]) { // wall torches on the back wall
+      add(0.3, 0.9, 0.3, 0x3a2f28, tx, 3.6, 9.6);
+      add(0.5, 0.2, 0.5, 0x2a2420, tx, 4.1, 9.5);
+      const f = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.52, 0.36),
+        new THREE.MeshStandardMaterial({ color: 0xffb85c, emissive: 0xffa040, emissiveIntensity: 1.6 }));
+      f.position.set(d.x + tx, 4.45, d.z + 9.5);
+      f.rotation.y = Math.PI / 4;
+      this.scene.add(f);
+    }
+    // his great ring of keys, hung on a peg (the one he lacks is in Christian's coat)
+    add(0.2, 0.2, 0.4, WOOD, -1.8, 4.2, 9.55);
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(0.42, 0.06, 6, 16), mat(0x8a7a52));
+    ring.position.set(d.x - 1.8, 3.72, d.z + 9.62);
+    this.scene.add(ring);
+    for (const [kx, ky, rz] of [[-2.1, 3.25, 0.3], [-1.7, 3.2, -0.1], [-1.45, 3.35, -0.5]] as const) {
+      const key = add(0.1, 0.62, 0.06, 0x8a7a52, kx, ky, 9.62);
+      key.rotation.z = rz;
+    }
+    // a barrel and a stool — the Giant's own comforts
+    const barrel = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.62, 1.5, 10), mat(WOOD));
+    barrel.position.set(d.x + 7.3, 0.75, d.z + 8.6);
+    this.scene.add(barrel);
+    for (const by of [0.3, 1.2]) {
+      const hoop = new THREE.Mesh(new THREE.CylinderGeometry(0.72, 0.72, 0.1, 10), mat(0x2e2e36));
+      hoop.position.set(d.x + 7.3, by, d.z + 8.6);
+      this.scene.add(hoop);
+    }
+    add(1.3, 0.2, 1.3, WOOD, 5.4, 1.3, 8.4);
+    for (const [lx, lz] of [[-0.5, -0.5], [0.5, -0.5], [-0.5, 0.5], [0.5, 0.5]] as const) add(0.18, 1.2, 0.18, 0x553a26, 5.4 + lx, 0.6, 8.4 + lz);
+
+    this.scene.add(bakeStatic(cell));
   }
 
   private buildRain(): void {
@@ -923,6 +1176,7 @@ export class CastleScene {
     }
     g.position.set(x, 0, z);
     g.rotation.y = Math.random() * Math.PI * 0.5; // quarter-turn variety, staying axis-aligned-ish
+    g.userData.clutter = true; // scattered at random: the play layer clears any that land on a bench
     return g;
   }
 
@@ -974,7 +1228,8 @@ export class CastleScene {
     }
 
     if (this.phase === 'key') {
-      p.x = Math.max(DUNGEON.x - 8, Math.min(p.x, DUNGEON.x + 8));
+      // 7.3 keeps the prisoners off the straw, bucket and chains by the walls
+      p.x = Math.max(DUNGEON.x - 7.3, Math.min(p.x, DUNGEON.x + 7.3));
       p.z = Math.max(DUNGEON.z - 5, Math.min(p.z, DUNGEON.z + 5));
     }
 

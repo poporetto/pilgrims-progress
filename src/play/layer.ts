@@ -47,6 +47,20 @@ const ringGeo = new THREE.TorusGeometry(0.62, 0.06, 6, 24);
 const ringMat = new THREE.MeshBasicMaterial({ color: 0xfff0b0, transparent: true, opacity: 0.8 });
 const heartGeo = new THREE.BoxGeometry(0.14, 0.14, 0.14);
 
+/** Hide loose rocks and bushes (tagged `clutter`) that overlap a prop's
+ *  footprint. Some chapters scatter their verge rocks at random, so one can
+ *  land right on a bench that the play layer drops in later. */
+function clearClutter(scene: THREE.Scene, prop: THREE.Object3D): void {
+  prop.updateMatrixWorld(true);
+  const zone = new THREE.Box3().setFromObject(prop).expandByScalar(0.35);
+  const box = new THREE.Box3();
+  scene.traverse((o) => {
+    if (!o.userData.clutter || !o.visible) return;
+    box.setFromObject(o);
+    if (box.min.x < zone.max.x && box.max.x > zone.min.x && box.min.z < zone.max.z && box.max.z > zone.min.z) o.visible = false;
+  });
+}
+
 export class PlayLayer {
   private stages = new Map<PlayMode, Stage>();
   private near: LiveProp | null = null;
@@ -156,6 +170,7 @@ export class PlayLayer {
       const solid = { bench: 0.7, bell: 0.6, bush: 0.6, hedgehog: 0.35, squirrel: 0.3, duckling: 0.3 } as Partial<Record<PropKind, number>>;
       const radius = solid[p.kind];
       if (radius) { g.userData.characterRadius = radius; f.scene.add(g); } else root.add(g);
+      if (p.kind === 'bench') clearClutter(f.scene, g);
       return { p, root: g, act: 0, used: 0, flown: 0 };
     });
     f.scene.add(root);
