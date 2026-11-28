@@ -199,7 +199,10 @@ function hubs(): Page[] {
       data: [items(VIDEOS.map(episodePath)), crumbData(['Home', ''], ['Episodes', 'episodes/'])],
       body: (root) => `<h1>Pilgrim’s Progress animated episodes</h1>
 <p class="lead">John Bunyan’s story in short films for kids. Each one comes with a guide for talking about it together.</p>
+<p>The Pilgrim’s Progress follows Christian, a pilgrim with a heavy burden on his back, from the City of Destruction to the Celestial City. These episodes tell it in order, a few minutes at a time, with the same bears you meet in the game. They are made for children around 4 to 10 and the grown-ups watching with them.</p>
+<p>Under every episode you’ll find what that part of the story means, the Bible verses behind it, questions for younger and older children, a simple activity and a short prayer.</p>
 ${VIDEOS.map((v) => watchCard(root, v)).join('\n')}
+<p>Want to walk the road yourselves? <a href="${root}">Play the free game</a>, or read the <a href="${root}family-guide/">Family Guide</a> for all 17 chapters.</p>
 <p class="actions"><a class="btn" href="${CHANNEL_URL}?sub_confirmation=1">Subscribe on YouTube</a></p>`,
     },
   ];

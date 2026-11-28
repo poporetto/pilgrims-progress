@@ -57,7 +57,7 @@ button:disabled, button[aria-disabled="true"] {
 }
 
 /* round icon buttons (settings, journey book) */
-#settings-btn, #debug-btn, #keepsake-btn {
+#settings-btn, #debug-btn, #keepsake-btn, #share-btn {
   width: 46px; height: 46px; padding: 0;
   place-items: center;
   border: 1.5px solid rgba(255, 255, 255, .9);
@@ -67,11 +67,11 @@ button:disabled, button[aria-disabled="true"] {
   color: var(--ink-soft);
   transition: transform .25s var(--ease-bounce), box-shadow .2s ease, background .2s ease;
 }
-#settings-btn:hover, #debug-btn:hover, #keepsake-btn:hover {
+#settings-btn:hover, #debug-btn:hover, #keepsake-btn:hover, #share-btn:hover {
   background: #fff; transform: translateY(-2px) rotate(0deg);
   box-shadow: var(--shadow-md);
 }
-#settings-btn:active, #debug-btn:active, #keepsake-btn:active { transform: translateY(1px) scale(.96); box-shadow: var(--shadow-sm); }
+#settings-btn:active, #debug-btn:active, #keepsake-btn:active, #share-btn:active { transform: translateY(1px) scale(.96); box-shadow: var(--shadow-sm); }
 #settings-btn svg { width: 22px; height: 22px; }
 #settings-btn:hover svg { transform: rotate(40deg); }
 #settings-btn svg { transition: transform .5s var(--ease-out); }
@@ -387,6 +387,7 @@ body.dialogue-open #joystick, body.dialogue-open #talk-btn {
 #title-screen #new-journey-btn { color: #8a3a52; border-color: #efb3c3; background: #fdf3f6; }
 #save-summary { font-family: var(--font-ui); }
 .title-credit { font-family: var(--font-ui); font-weight: 800; }
+.title-credit a { color: inherit; text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px; }
 /* a stitched seam just inside the card edge, like a cloth-bound book */
 .title-card::before {
   content: ''; position: absolute; inset: 14px; border-radius: 22px; pointer-events: none;

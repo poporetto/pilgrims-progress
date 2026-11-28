@@ -1,6 +1,7 @@
 import { setupInstallButton, registerServiceWorker } from './ui/install';
 import { preventMobileZoom } from './ui/noZoom';
 import { openFamilyGuide, chapterFromTitle, onGuideVideo } from './ui/familyGuide';
+import { openShare, SHARE_ICON } from './ui/share';
 import * as THREE from 'three';
 import { PALETTE } from './palette';
 import { makeBear, animateBear, block, mat, liveBears, BearParts } from './bear';
@@ -678,7 +679,8 @@ const MODE_CHAPTER: Record<GameMode, number | undefined> = {
   mountain: 14, enchanted: 15, beulah: 16, celestial: 17,
 };
 onGuideVideo((playing) => music.hold(playing));
-document.getElementById('title-guide-btn')!.addEventListener('click', () => { void openFamilyGuide(); });
+// a real link, so search engines can follow it to the guide pages; players get the in-game sheet
+document.getElementById('title-guide-btn')!.addEventListener('click', (e) => { e.preventDefault(); void openFamilyGuide(); });
 document.getElementById('settings-guide-btn')!.addEventListener('click', () => {
   void openFamilyGuide(started ? MODE_CHAPTER[mode] : undefined);
 });
@@ -687,6 +689,18 @@ document.getElementById('ending-guide-btn')!.addEventListener('click', () => {
   void openFamilyGuide(chapterFromTitle(heading) ?? MODE_CHAPTER[mode]);
 });
 document.getElementById('finale-guide-btn')!.addEventListener('click', () => { void openFamilyGuide(17); });
+
+// ---------- sharing: a title-screen button, then a row in Settings once playing ----------
+const shareBtn = document.createElement('button');
+shareBtn.id = 'share-btn';
+shareBtn.type = 'button';
+shareBtn.title = 'Share the game';
+shareBtn.setAttribute('aria-label', 'Share the game');
+shareBtn.innerHTML = SHARE_ICON;
+document.body.append(shareBtn);
+for (const el of [shareBtn, document.getElementById('settings-share-btn'), document.getElementById('ending-share-btn'), document.getElementById('finale-share-btn')]) {
+  el?.addEventListener('click', openShare);
+}
 
 function updateSoundToggle(): void {
   ui.soundToggle.setAttribute('aria-checked', String(gameSettings.audioEnabled));
@@ -3465,6 +3479,7 @@ function tick(): void {
   }
 
   keepsakeBtn.classList.toggle('show', started && !endingOpen);
+  shareBtn.classList.toggle('show', !started);
 
   // leaving a chapter mid-game (map, Journey Book) puts its mini-game away
   if (mini.active && mini.mode !== mode) mini.cancel();
