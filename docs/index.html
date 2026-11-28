@@ -1042,8 +1042,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,600;0,9..144,700;1,9..144,600&family=Source+Serif+4:opsz,wght@8..60,500;8..60,700&family=Nunito:wght@600;700;800;900&display=swap">
-  <script type="module" crossorigin src="./assets/index-CxG1zR0f.js"></script>
-  <link rel="stylesheet" crossorigin href="./assets/index-BBtxEPOn.css">
+  <script type="module" crossorigin src="./assets/index-CPBd2Ypl.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/index-cOwQgMK0.css">
 </head>
 <body>
   <noscript>
@@ -1136,6 +1136,13 @@
             <span><strong>Family Guide</strong><small>Questions, verses and activities for every chapter</small></span>
           </div>
           <button id="settings-guide-btn" type="button">Open</button>
+        </div>
+        <div class="settings-row">
+          <div class="settings-row-copy">
+            <span class="settings-row-icon" aria-hidden="true">↗</span>
+            <span><strong>Share the game</strong><small>Facebook, Instagram or a link</small></span>
+          </div>
+          <button id="settings-share-btn" type="button">Share</button>
         </div>
         <div class="settings-row a2hs-row" id="a2hs-row">
           <div class="settings-row-copy">
@@ -1249,8 +1256,8 @@
       <button id="start-btn" disabled aria-disabled="true">Loading Journey…</button>
       <div id="save-summary" aria-live="polite"></div>
       <button id="new-journey-btn">Start over</button>
-      <button id="title-guide-btn" type="button">Family Guide</button>
-      <div class="title-credit">Interactive Storybook Game based on John Bunyan’s book from 1678</div>
+      <a id="title-guide-btn" href="./family-guide/">Family Guide</a>
+      <div class="title-credit">Interactive Storybook Game based on <a href="./about-the-book/">John Bunyan’s book</a> from 1678</div>
     </div>
   </div>
 
@@ -1261,6 +1268,7 @@
        long road to the Celestial City…</p>
     <button id="continue-btn">Continue the Journey →</button>
     <button id="ending-guide-btn" class="ghost" type="button">Talk About It Together</button>
+    <button id="ending-share-btn" class="ghost" type="button">Share the Journey</button>
     <button id="restart-btn" class="ghost">Restart from the Beginning</button>
   </div>
 
@@ -1285,6 +1293,7 @@
       <div class="end-sub">The pilgrimage is complete</div>
       <button id="finale-restart">Start the Journey Again ↻</button>
       <button id="finale-guide-btn" type="button">Talk About It Together</button>
+      <button id="finale-share-btn" type="button">Share the Journey</button>
     </div>
   </div>
 

@@ -10,6 +10,9 @@ RewriteRule ^ https://pilgrimsprogress.com.au%{REQUEST_URI} [R=301,L]
 
 ErrorDocument 404 /404.html
 
+# no public file listings for folders like /assets/
+Options -Indexes
+
 <IfModule mod_headers.c>
 Header set X-Content-Type-Options "nosniff"
 # pages and the service worker: always check for a new version
